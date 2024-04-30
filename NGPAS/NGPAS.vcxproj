@@ -103,13 +103,12 @@
     <ClCompile Include="Backend\Assembler.cpp" />
     <ClCompile Include="Frontend\Lexer.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="Frontend\Parser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Backend\Assembler.h" />
     <ClInclude Include="Backend\Function.h" />
+    <ClInclude Include="ErrorManager.h" />
     <ClInclude Include="Frontend\Lexer.h" />
-    <ClInclude Include="Frontend\Parser.h" />
     <ClInclude Include="SymbolTable.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

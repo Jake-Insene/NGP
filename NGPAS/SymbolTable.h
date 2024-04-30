@@ -19,7 +19,7 @@ struct SymbolTable {
 
     [[nodiscard]] T& create(const std::string_view& label) {
         auto& value = data.emplace_back();
-        map.emplace(label, data.size() - 1);
+        map.emplace(label, u32(data.size() - 1));
         return value;
     }
 

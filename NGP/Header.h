@@ -14,6 +14,8 @@ using f64 = double;
 
 using word = u32;
 
-enum ErrorCodes {
+enum ErrorCodes : i32 {
+    STATUS_OK = 0,
     INVALID_ARGUMENTS = -1,
+    ERROR = -2,
 };

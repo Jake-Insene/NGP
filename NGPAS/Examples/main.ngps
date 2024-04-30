@@ -1,9 +1,8 @@
 
-.version 1.0
 .entry_point main
 
 .function main {
-	mov x0, zr
+	mov x0, 0
 	ret x0
 }
 

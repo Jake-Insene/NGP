@@ -1,8 +1,11 @@
-
 .entry_point main
 
-.function main {
-	mov x0, 0
-	ret x0
-}
+main:
+	mov r0, #0
+	b label
+	ret
+label:
+	ret
 
+lives:
+	.word 0

@@ -35,7 +35,7 @@
     <ClInclude Include="Frontend\Lexer.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Backend\Function.h">
+    <ClInclude Include="Backend\Instruction.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="ErrorManager.h">

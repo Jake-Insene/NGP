@@ -1,13 +1,21 @@
 #pragma once
 #include "Frontend/Lexer.h"
-#include "Backend/Function.h"
+#include "Backend/Instruction.h"
 #include "SymbolTable.h"
 
 struct Constant {
-    i64 i;
-    u64 u;
+    i32 i;
+    u32 u;
     f32 f;
-    f64 d;
+};
+
+struct Label {
+    std::string_view symbol;
+    u32 address;
+
+    const char* source_file;
+    u32 line;
+    u32 column;
 };
 
 struct Assembler {
@@ -16,23 +24,23 @@ struct Assembler {
 
     i32 assemble_file(const char* file_path, const char* output_path);
 
+    // first fase
     void assemble_program();
     void assemble_directive();
-    void assemble_function();
+    void assemble_label();
+    void assemble_instruction();
 
-    void assemble_function_directives(Function& fn);
-    void assemble_instruction(Function& fn);
+    // second fase
+    void resolve_labels();
+    void encode();
 
     void advance();
     void syncronize();
     bool expected(TokenType tk, const char* format, ...);
+    void skip_whitespaces();
 
     // Utility
     Register get_register(Token tk);
-
-    struct {
-        bool is_in_function;
-    } Context;
 
     Lexer lexer;
 
@@ -41,10 +49,10 @@ struct Assembler {
     Token next;
 
     SymbolTable<Constant> constants;
-    SymbolTable<Function> functions;
-    i32 current_status;
+    SymbolTable<Label> labels;
+    std::vector<Instruction> instructions;
 
     std::string_view entry_point;
-    u16 major;
-    u16 minor;
+    u32 entry_point_address;
+    i32 current_status;
 };

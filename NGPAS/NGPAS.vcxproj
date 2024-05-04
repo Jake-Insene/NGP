@@ -106,7 +106,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Backend\Assembler.h" />
-    <ClInclude Include="Backend\Function.h" />
+    <ClInclude Include="Backend\Instruction.h" />
     <ClInclude Include="ErrorManager.h" />
     <ClInclude Include="Frontend\Lexer.h" />
     <ClInclude Include="SymbolTable.h" />

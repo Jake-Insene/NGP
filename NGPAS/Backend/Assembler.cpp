@@ -1,8 +1,9 @@
-#include "Assembler.h"
+#include "Backend/Assembler.h"
 #include "ErrorManager.h"
+#include <FileFormat/Room.h>
 #include <fstream>
 
-i32 Assembler::assemble_file(const char* file_path, const char* /*output_path*/)
+i32 Assembler::assemble_file(const char* file_path, const char* output_path)
 {
     std::ifstream input{ file_path, std::ios::binary | std::ios::ate };
     if (!input.is_open()) {
@@ -23,7 +24,25 @@ i32 Assembler::assemble_file(const char* file_path, const char* /*output_path*/)
     advance();
 
     assemble_program();
-    
+    resolve_labels();
+    encode();
+
+    // write
+    std::ofstream output{ output_path, std::ios::binary };
+
+    RoomHeader header = {
+        .size_of_raw_data = instructions.size() * sizeof(word),
+        .address_of_entry_point = entry_point_address,
+    };
+
+    output.write((char*)&header, sizeof(header));
+
+    for (auto& inst : instructions) {
+        output.write((char*)&inst.encoded, 4);
+    }
+
+    output.close();
+
     return current_status;
 }
 
@@ -41,6 +60,12 @@ void Assembler::assemble_program()
             break;
         case TOKEN_NEW_LINE:
             advance();
+            break;
+        case TOKEN_LABEL:
+            assemble_label();
+            break;
+        case TOKEN_INSTRUCTION:
+            assemble_instruction();
             break;
         default:
             ErrorManager::error(current.source_file, current.line, current.column, "invalid token");
@@ -62,56 +87,41 @@ void Assembler::assemble_directive()
         }
         entry_point = last.str;
         break;
-    case TD_FUNCTION:
-        assemble_function();
-        break;
     default:
         break;
     }
+
+    skip_whitespaces();
 }
 
-void Assembler::assemble_function()
+void Assembler::assemble_label()
 {
-    Context.is_in_function = true;
-    
-    Function& fn = functions.create(current.str);
+    auto& l = labels.create(current.str);
+
+    l.symbol = current.str;
+    l.address = instructions.size() - 1;
+    l.source_file = current.source_file;
+    l.line = current.line;
+    l.column = current.column;
+
     advance();
-
-    assemble_function_directives(fn);
-
-    if(!expected(TOKEN_LEFT_BRACE, "'{' was expected")) {
-        current_status = ERROR;
-        return;
-    }
-
-    while (current.is_not(TOKEN_RIGHT_BRACE)) {
-        assemble_instruction(fn);
-    }
-    advance(); // }
-
-    Context.is_in_function = false;
-}
-
-void Assembler::assemble_function_directives(Function& /*fn*/)
-{
+    skip_whitespaces();
 }
 
 #define EXPECTED_COMMA \
     if (!expected(TOKEN_COMMA, "',' was expected")) {\
         current_status = ERROR;\
-        return;\
     }
 
-void Assembler::assemble_instruction(Function& fn)
+void Assembler::assemble_instruction()
 {
-    advance();
-
     if (last.is_not(TOKEN_INSTRUCTION)) {
         ErrorManager::error(current.source_file, current.line, current.column, "invalid token");
         current_status = ERROR;
         return;
     }
 
+    u32 address = instructions.size();
     switch (last.subtype)
     {
     case TI_MOV:
@@ -120,38 +130,64 @@ void Assembler::assemble_instruction(Function& fn)
         advance();
         EXPECTED_COMMA;
 
+        auto& inst = instructions.emplace_back();
+        inst.source_file = last.source_file;
+        inst.line = last.line;
+        inst.column = last.column;
+        inst.address = address;
+
         if (current.is(TOKEN_REGISTER)) {
-            fn.body.emplace_back(Instruction::mov(dest, get_register(current)));
+            inst = Instruction::mov(dest, get_register(current));
             advance();
         }
         else if (current.is(TOKEN_IMMEDIATE)) {
-            fn.body.emplace_back(Instruction::movi(dest, (u16)current.u));
+            inst = Instruction::movi(dest, (u16)current.u);
             advance();
         }
     }
         break;
     case TI_RET:
-        if (current.is(TOKEN_REGISTER)) {
-            fn.body.emplace_back(Instruction::ret(get_register(current)));
-        }
-        else if(current.is_one_of(TOKEN_NEW_LINE, TOKEN_END_OF_FILE)) {
-            fn.body.emplace_back(Instruction::retv());
-        }
-        else {
-            ErrorManager::error(last.source_file, last.line, last.column, "invalid operand");
-            return;
-        }
+    {
+        auto& inst = instructions.emplace_back(Instruction::ret());
+        inst.source_file = last.source_file;
+        inst.line = last.line;
+        inst.column = last.column;
+        inst.address = address;
+    }
         break;
     default:
         ErrorManager::error(last.source_file, last.line, last.column, "invalid token");
         current_status = ERROR;
-        return;
+        break;
     }
 
     if (!expected(TOKEN_NEW_LINE, "a new line was expected")) {
         current_status = ERROR;
-        return;
     }
+
+    skip_whitespaces();
+}
+
+void Assembler::resolve_labels()
+{
+    for (auto& inst : instructions) {
+        if (inst.type == TI_CALL || inst.is_branch()) {
+            auto it = labels.find(inst.symbol);
+            if (it != labels.map.end()) {
+                inst.imm = labels.get(it->second).address - (inst.address+1);
+            }
+            else {
+                ErrorManager::error(
+                    inst.source_file, inst.line, inst.column,
+                    "undefine reference to %s.*", inst.symbol.size(), inst.symbol.data()
+                );
+            }
+        }
+    }
+}
+
+void Assembler::encode()
+{
 }
 
 void Assembler::advance()
@@ -163,6 +199,8 @@ void Assembler::advance()
 
 void Assembler::syncronize()
 {
+    ErrorManager::must_syncronize = false;
+
     while (true) {
         advance();
 
@@ -191,31 +229,23 @@ bool Assembler::expected(TokenType tk, const char* format, ...)
     return true;
 }
 
+void Assembler::skip_whitespaces()
+{
+    while (current.is(TOKEN_NEW_LINE)) {
+        advance();
+    }
+}
+
 Register Assembler::get_register(Token tk)
 {
     Register reg = {};
-    if (tk.subtype >= TOKEN_X0 && tk.subtype <= TOKEN_X15) {
-        reg.size = REG_DWORD;
+    if (tk.subtype >= TOKEN_R0 && tk.subtype <= TOKEN_R15) {
+        reg.is_float = false;
         reg.index = tk.subtype;
-    }
-    else if (tk.subtype >= TOKEN_W0 && tk.subtype <= TOKEN_W15) {
-        reg.size = REG_WORD;
-        reg.index = tk.subtype - TOKEN_W0;
     }
     else if (tk.subtype >= TOKEN_S0 && tk.subtype <= TOKEN_S15) {
         reg.is_float = true;
-        reg.size = REG_WORD;
         reg.index = tk.subtype - TOKEN_S0;
-    }
-    else if (tk.subtype >= TOKEN_D0 && tk.subtype <= TOKEN_D15) {
-        reg.is_float = true;
-        reg.size = REG_DWORD;
-        reg.index = tk.subtype - TOKEN_D0;
-    }
-    else if (tk.subtype >= TOKEN_Q0 && tk.subtype <= TOKEN_Q15) {
-        reg.is_float = true;
-        reg.size = REG_QWORD;
-        reg.index = tk.subtype - TOKEN_Q0;
     }
 
     return reg;

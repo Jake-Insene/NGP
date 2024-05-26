@@ -1,5 +1,6 @@
 #include "Frontend/Lexer.h"
 #include "ErrorManager.h"
+#include <string>
 
 void Lexer::set(const char* source_file, u8* ctn, u32 s)
 {
@@ -21,7 +22,14 @@ struct SymbolInfo {
 
 SymbolInfo symbols[] = {
     {.symbol = "entry_point", .size = 11, .type = TOKEN_DIRECTIVE, .subtype = TD_ENTRY_POINT },
+    {.symbol = "string", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_STRING },
+    {.symbol = "byte", .size = 4, .type = TOKEN_DIRECTIVE, .subtype = TD_BYTE },
+    {.symbol = "half", .size = 4, .type = TOKEN_DIRECTIVE, .subtype = TD_HALF },
+    {.symbol = "word", .size = 4, .type = TOKEN_DIRECTIVE, .subtype = TD_WORD },
+    {.symbol = "dword", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_DWORD },
+    {.symbol = "zero", .size = 4, .type = TOKEN_DIRECTIVE, .subtype = TD_ZERO },
 
+    // general purporse registers
     {.symbol = "r0", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R0},
     {.symbol = "r1", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R1},
     {.symbol = "r2", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R2},
@@ -38,8 +46,24 @@ SymbolInfo symbols[] = {
     {.symbol = "r13", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R13},
     {.symbol = "r14", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R14},
     {.symbol = "r15", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R15},
-    {.symbol = "sp", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_SP},
+    {.symbol = "r16", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R16},
+    {.symbol = "r17", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R17},
+    {.symbol = "r18", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R18},
+    {.symbol = "r19", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R19},
+    {.symbol = "r20", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R20},
+    {.symbol = "r21", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R21},
+    {.symbol = "r22", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R22},
+    {.symbol = "r23", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R23},
+    {.symbol = "r24", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R24},
+    {.symbol = "r25", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R25},
+    {.symbol = "r26", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R26},
+    {.symbol = "r27", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R27},
+    {.symbol = "r28", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R28},
+    {.symbol = "r29", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R29},
+    {.symbol = "r30", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R30},
+    {.symbol = "r31", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_R31},
 
+    // single precision
     {.symbol = "s0", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_S0},
     {.symbol = "s1", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_S1},
     {.symbol = "s2", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_S2},
@@ -56,25 +80,81 @@ SymbolInfo symbols[] = {
     {.symbol = "s13", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S13},
     {.symbol = "s14", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S14},
     {.symbol = "s15", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S15},
+    {.symbol = "s16", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S16},
+    {.symbol = "s17", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S17},
+    {.symbol = "s18", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S18},
+    {.symbol = "s19", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S19},
+    {.symbol = "s20", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S20},
+    {.symbol = "s21", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S21},
+    {.symbol = "s22", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S22},
+    {.symbol = "s23", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S23},
+    {.symbol = "s24", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S24},
+    {.symbol = "s25", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S25},
+    {.symbol = "s26", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S26},
+    {.symbol = "s27", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S27},
+    {.symbol = "s28", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S28},
+    {.symbol = "s29", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S29},
+    {.symbol = "s30", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S30},
+    {.symbol = "s31", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S31},
+
+    // extra registers
+    {.symbol = "sp", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R31 },
 
     // instructions
     {.symbol = "mov", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MOV },
-    {.symbol = "fmov", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV },
     {.symbol = "add", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ADD },
-    {.symbol = "sub", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_SUB },
+    {.symbol = "sub", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SUB },
     {.symbol = "mul", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MUL },
     {.symbol = "umul", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_UMUL },
     {.symbol = "div", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_DIV },
     {.symbol = "udiv", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_UDIV },
+
+    {.symbol = "and", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_AND },
+    {.symbol = "or", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_OR },
+    {.symbol = "xor", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_XOR },
+    {.symbol = "shl", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SHL },
+    {.symbol = "shr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SHR },
+
     {.symbol = "cmp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_CMP },
-    {.symbol = "B.EQ", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BEQ },
-    {.symbol = "B.EZ", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BEZ },
-    {.symbol = "B.NE", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BNE },
-    {.symbol = "B.NZ", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BNZ },
-    {.symbol = "B.LT", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BLT },
-    {.symbol = "B.LE", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BLE },
-    {.symbol = "B.GT", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BGT },
-    {.symbol = "B.GE", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BGE },
+
+    { .symbol = "ld", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_LD },
+    {.symbol = "ldsh", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_LDSH },
+    {.symbol = "ldh", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDH },
+    {.symbol = "ldsb", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_LDSB },
+    {.symbol = "ldb", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDB },
+
+    { .symbol = "st", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_ST },
+    {.symbol = "sth", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STH },
+    {.symbol = "stb", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STB },
+
+    {.symbol = "adr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ADR },
+
+    { .symbol = "fmov", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV },
+    { .symbol = "fmovnc", .size = 6, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOVNC },
+    { .symbol = "fmovs2i", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV_S2I },
+    { .symbol = "fmovi2s", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV_I2S },
+    { .symbol = "fmovs2u", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV_S2U },
+    {.symbol = "fmovu2s", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV_U2S },
+
+    { .symbol = "fadd", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FADD },
+    { .symbol = "fsub", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FSUB },
+    { .symbol = "fmul", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FMUL },
+    { .symbol = "fdiv", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FDIV },
+
+    {.symbol = "beq", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BEQ },
+    {.symbol = "bez", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BEZ },
+    {.symbol = "bne", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BNE },
+    {.symbol = "bnz", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BNZ },
+    {.symbol = "blt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BLT },
+    {.symbol = "ble", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BLE },
+    {.symbol = "bgt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BGT },
+    {.symbol = "bge", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BGE },
+
+    {.symbol = "call", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_CALL },
+    { .symbol = "b", .size = 1, .type = TOKEN_INSTRUCTION, .subtype = TI_B },
+    { .symbol = "sc", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_SC },
+    { .symbol = "ret", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_RET },
+    { .symbol = "halt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_HALT },
 };
 
 #define MAKE_TOKEN(TYPE) { \
@@ -87,21 +167,28 @@ SymbolInfo symbols[] = {
 
 Token Lexer::get_next()
 {
+begin:
     Token tk = {};
 
     skip_white_space();
-    skip_comment();
 
     switch (current)
     {
+    case ';':
+        skip_comment();
+        goto begin;
+        break;
     case '.':
-        tk = parse_directive();
+        tk = get_directive();
         break;
     case ',':
         MAKE_TOKEN(TOKEN_COMMA);
         break;
     case '#':
-        tk = parse_immediate();
+        tk = get_immediate();
+        break;
+    case '"':
+        tk = get_string();
         break;
     case '\n':
         MAKE_TOKEN(TOKEN_NEW_LINE);
@@ -111,13 +198,10 @@ Token Lexer::get_next()
         break;
     default:
         if (is_alpha() || current == '_') {
-            tk = parse_symbol_or_label();
-        }
-        else if (is_num()) {
-            tk = parse_immediate();
+            tk = get_symbol_or_label();
         }
         else {
-            ErrorManager::error(file_path, line, column, "invalid character '%c'", current);
+            ErrorManager::error(file_path, line, column, "invalid token '%c'", current);
         }
         break;
     }
@@ -137,14 +221,10 @@ void Lexer::skip_white_space()
 void Lexer::skip_comment()
 {
     if (current == ';') {
-    loop:
         u32 last_line = line;
         while (last_line == line) {
             advance();
         }
-
-        if (current == ';')
-            goto loop;
     }
 }
 
@@ -169,7 +249,7 @@ void Lexer::advance()
     }
 }
 
-Token Lexer::parse_directive()
+Token Lexer::get_directive()
 {
     Token tk = {
         .type = TOKEN_END_OF_FILE,
@@ -201,7 +281,7 @@ Token Lexer::parse_directive()
     return tk;
 }
 
-Token Lexer::parse_symbol_or_label()
+Token Lexer::get_symbol_or_label()
 {
     Token tk = {
         .source_file = file_path,
@@ -223,18 +303,47 @@ Token Lexer::parse_symbol_or_label()
         tk.type = TOKEN_SYMBOL;
     }
 
+    for (auto& sym : symbols) {
+        if (sym.size == tk.str.size()) {
+            if (memcmp(sym.symbol, tk.str.data(), sym.size) == 0) {
+                tk.type = sym.type;
+                tk.subtype = sym.subtype;
+            }
+        }
+    }
+
     return tk;
 }
 
-Token Lexer::parse_immediate()
+Token Lexer::get_immediate()
 {
     Token tk = {
+        .type = TOKEN_IMMEDIATE,
         .source_file = file_path,
         .line = line,
         .column = column,
     };
 
     advance(); // #
+
+    u64 start = index;
+    while (is_hex()) {
+        advance();
+    }
+    tk.str = std::string_view((char*)content + start, index - start);
+
+    std::string str = { tk.str.data(), tk.str.size() };
+    int base = 10;
+    if (current == 'h' || current == 'H') {
+        advance();
+        base = 16;
+    }
+    else if (current == 'b' || current == 'B') {
+        advance();
+        base = 2;
+    }
+    
+    tk.u = std::stoull(str, nullptr, base);
 
     return tk;
 }
@@ -253,4 +362,38 @@ bool Lexer::is_num() const
 bool Lexer::is_alnum() const
 {
     return is_alpha() || is_num();
+}
+
+bool Lexer::is_hex() const
+{
+    return 
+        is_num() ||
+        (current >= 'A' && current <= 'F') ||
+        (current >= 'a' && current <= 'f');
+}
+
+Token Lexer::get_string()
+{
+    Token tk = {
+        .type = TOKEN_STRING,
+        .source_file = file_path,
+        .line = line,
+        .column = column,
+    };
+
+    advance(); // "
+    u32 start = index;
+    while (current != '"' && current != '\0') {
+        advance();
+    }
+    tk.str = std::string_view((char*)content + start, index - start);
+
+    if (current == '\0') {
+        ErrorManager::error(file_path, line, column, "bad string");
+    }
+    else {
+        advance(); // "
+    }
+
+    return tk;
 }

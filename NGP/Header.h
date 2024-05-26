@@ -18,4 +18,23 @@ enum ErrorCodes : i32 {
     STATUS_OK = 0,
     INVALID_ARGUMENTS = -1,
     ERROR = -2,
+    CORRUPT = -3,
 };
+
+
+[[nodiscard]] constexpr u64 alignUp(u32 size, u16 alignment) {
+    return (size + alignment - 1) & -(alignment);
+}
+
+[[nodiscard]] constexpr u32 signExt(u32 imm, u8 imm_width, u8 extend_size) {
+    u8 sign = (imm >> (imm_width - 1)) & 1;
+    u32 extended = imm;
+
+    if (sign) {
+        u32 extension_mask = ((1 << (extend_size - imm_width)) - 1) << imm_width;
+        extended = imm | extension_mask;
+    }
+
+    return extended;
+}
+

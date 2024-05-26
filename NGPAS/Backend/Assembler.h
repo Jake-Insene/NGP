@@ -1,12 +1,36 @@
 #pragma once
 #include "Frontend/Lexer.h"
-#include "Backend/Instruction.h"
 #include "SymbolTable.h"
+#include <FileFormat/ISA.h>
+#include <FileFormat/Room.h>
+#include <Backend/AssemblerUtility.h>
 
 struct Constant {
     i32 i;
     u32 u;
     f32 f;
+};
+
+struct InstructionToResolve {
+    u32 address;
+    TokenInstruction type;
+    std::string_view symbol;
+
+    const char* source_file;
+    u32 line;
+    u32 column;
+
+    [[nodiscard]] constexpr bool is_branch() const 
+    {
+        return
+            type == TI_B ||
+            type == TI_BEQ ||
+            type == TI_BNE ||
+            type == TI_BLT ||
+            type == TI_BLE ||
+            type == TI_BGT ||
+            type == TI_BGE;
+    }
 };
 
 struct Label {
@@ -30,9 +54,10 @@ struct Assembler {
     void assemble_label();
     void assemble_instruction();
 
+    void encode_string(u8* mem, const std::string_view& str);
+
     // second fase
     void resolve_labels();
-    void encode();
 
     void advance();
     void syncronize();
@@ -40,7 +65,9 @@ struct Assembler {
     void skip_whitespaces();
 
     // Utility
-    Register get_register(Token tk);
+    u8 get_register(Token tk);
+    u32& new_word();
+    u8* reserve(u32 count);
 
     Lexer lexer;
 
@@ -50,9 +77,10 @@ struct Assembler {
 
     SymbolTable<Constant> constants;
     SymbolTable<Label> labels;
-    std::vector<Instruction> instructions;
+    std::vector<InstructionToResolve> to_resolve;
+    std::vector<u8> program;
 
-    std::string_view entry_point;
+    Label entry_point;
     u32 entry_point_address;
     i32 current_status;
 };

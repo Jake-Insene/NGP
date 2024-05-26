@@ -62,7 +62,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)NGP;$(ProjectDir);</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <ExceptionHandling>false</ExceptionHandling>
+      <ExceptionHandling>Sync</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
@@ -85,7 +85,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)NGP;$(ProjectDir);</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <ExceptionHandling>false</ExceptionHandling>
+      <ExceptionHandling>Sync</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
@@ -100,13 +100,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Backend\AssembleDirective.cpp" />
+    <ClCompile Include="Backend\AssembleInstruction.cpp" />
     <ClCompile Include="Backend\Assembler.cpp" />
     <ClCompile Include="Frontend\Lexer.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Backend\Assembler.h" />
-    <ClInclude Include="Backend\Instruction.h" />
+    <ClInclude Include="Backend\AssemblerUtility.h" />
     <ClInclude Include="ErrorManager.h" />
     <ClInclude Include="Frontend\Lexer.h" />
     <ClInclude Include="SymbolTable.h" />

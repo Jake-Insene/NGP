@@ -36,7 +36,22 @@ enum TokenRegister : u8 {
     TOKEN_R13,
     TOKEN_R14,
     TOKEN_R15,
-    TOKEN_SP = TOKEN_R15,
+    TOKEN_R16,
+    TOKEN_R17,
+    TOKEN_R18,
+    TOKEN_R19,
+    TOKEN_R20,
+    TOKEN_R21,
+    TOKEN_R22,
+    TOKEN_R23,
+    TOKEN_R24,
+    TOKEN_R25,
+    TOKEN_R26,
+    TOKEN_R27,
+    TOKEN_R28,
+    TOKEN_R29,
+    TOKEN_R30,
+    TOKEN_R31,
 
     TOKEN_S0,
     TOKEN_S1,
@@ -54,15 +69,36 @@ enum TokenRegister : u8 {
     TOKEN_S13,
     TOKEN_S14,
     TOKEN_S15,
+    TOKEN_S16,
+    TOKEN_S17,
+    TOKEN_S18,
+    TOKEN_S19,
+    TOKEN_S20,
+    TOKEN_S21,
+    TOKEN_S22,
+    TOKEN_S23,
+    TOKEN_S24,
+    TOKEN_S25,
+    TOKEN_S26,
+    TOKEN_S27,
+    TOKEN_S28,
+    TOKEN_S29,
+    TOKEN_S30,
+    TOKEN_S31,
 };
 
 enum TokenDirective : u8 {
     TD_ENTRY_POINT,
+    TD_STRING,
+    TD_BYTE,
+    TD_HALF,
+    TD_WORD,
+    TD_DWORD,
+    TD_ZERO,
 };
 
 enum TokenInstruction : u8 {
     TI_MOV,
-    TI_FMOV,
 
     TI_ADD,
     TI_SUB,
@@ -71,9 +107,35 @@ enum TokenInstruction : u8 {
     TI_DIV,
     TI_UDIV,
 
+    TI_AND,
+    TI_OR,
+    TI_XOR,
+    TI_SHL,
+    TI_SHR,
+
+    TI_FMOV,
+    TI_FMOVNC,
+    TI_FMOV_S2I,
+    TI_FMOV_I2S,
+    TI_FMOV_S2U,
+    TI_FMOV_U2S,
+
+    TI_FADD,
+    TI_FSUB,
+    TI_FMUL,
+    TI_FDIV,
+
+    TI_LD,
+    TI_LDH,
+    TI_LDSH,
+    TI_LDB,
+    TI_LDSB,
+
+    TI_ST,
+    TI_STH,
+    TI_STB,
+
     TI_CMP,
-    TI_CALL,
-    TI_B,
     TI_BEQ,
     TI_BEZ = TI_BEQ,
     TI_BNE,
@@ -82,8 +144,14 @@ enum TokenInstruction : u8 {
     TI_BLE,
     TI_BGT,
     TI_BGE,
-    
+
+    TI_CALL,
+    TI_B,
+    TI_SC,
     TI_RET,
+    TI_HALT,
+
+    TI_ADR,
 };
 
 struct Token {
@@ -121,13 +189,15 @@ struct Lexer {
     char peek(u8 offset);
     void advance();
 
-    Token parse_directive();
-    Token parse_symbol_or_label();
-    Token parse_immediate();
+    Token get_directive();
+    Token get_symbol_or_label();
+    Token get_immediate();
+    Token get_string();
 
     bool is_alpha() const;
     bool is_num() const;
     bool is_alnum() const;
+    bool is_hex() const;
 
     const char* file_path;
     u8* content;

@@ -18,12 +18,18 @@
     <ClCompile Include="Main.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="VirtualMachine.cpp">
+    <ClCompile Include="Core\VirtualMachine.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Impl\DisplayWin32.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Impl\SystemCallsWin32.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="VirtualMachine.h">
+    <ClInclude Include="Core\VirtualMachine.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Header.h">
@@ -33,6 +39,12 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="FileFormat\ISA.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\SystemCalls.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Display.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>

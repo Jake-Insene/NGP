@@ -25,21 +25,26 @@ i32 Assembler::assemble_file(const char* file_path, const char* output_path)
 
     assemble_program();
     resolve_labels();
-    encode();
 
     // write
     std::ofstream output{ output_path, std::ios::binary };
 
+    auto it = labels.find(entry_point.symbol);
+    if (it == labels.map.end()) {
+        ErrorManager::error(entry_point.source_file, entry_point.line, entry_point.column, "the entry point was not defined");
+        current_status = ERROR;
+        return current_status;
+    }
+    
+    entry_point_address = labels.get(it->second).address;
     RoomHeader header = {
-        .size_of_raw_data = instructions.size() * sizeof(word),
-        .address_of_entry_point = entry_point_address,
+        .size_of_raw_data = (u32)program.size(),
+        .address_of_entry_point = entry_point_address/4,
     };
 
     output.write((char*)&header, sizeof(header));
 
-    for (auto& inst : instructions) {
-        output.write((char*)&inst.encoded, 4);
-    }
+    output.write((char*)program.data(), program.size());
 
     output.close();
 
@@ -75,31 +80,12 @@ void Assembler::assemble_program()
     }
 }
 
-void Assembler::assemble_directive()
-{
-    advance();
-    switch (last.subtype)
-    {
-    case TD_ENTRY_POINT:
-        if (!expected(TOKEN_SYMBOL, "a symbol was expected")) {
-            current_status = ERROR;
-            return;
-        }
-        entry_point = last.str;
-        break;
-    default:
-        break;
-    }
-
-    skip_whitespaces();
-}
-
 void Assembler::assemble_label()
 {
     auto& l = labels.create(current.str);
 
     l.symbol = current.str;
-    l.address = instructions.size() - 1;
+    l.address = u32(program.size());
     l.source_file = current.source_file;
     l.line = current.line;
     l.column = current.column;
@@ -108,86 +94,64 @@ void Assembler::assemble_label()
     skip_whitespaces();
 }
 
-#define EXPECTED_COMMA \
-    if (!expected(TOKEN_COMMA, "',' was expected")) {\
-        current_status = ERROR;\
-    }
-
-void Assembler::assemble_instruction()
+void Assembler::encode_string(u8* mem, const std::string_view& str)
 {
-    if (last.is_not(TOKEN_INSTRUCTION)) {
-        ErrorManager::error(current.source_file, current.line, current.column, "invalid token");
-        current_status = ERROR;
-        return;
-    }
-
-    u32 address = instructions.size();
-    switch (last.subtype)
-    {
-    case TI_MOV:
-    {
-        Register dest = get_register(current);
-        advance();
-        EXPECTED_COMMA;
-
-        auto& inst = instructions.emplace_back();
-        inst.source_file = last.source_file;
-        inst.line = last.line;
-        inst.column = last.column;
-        inst.address = address;
-
-        if (current.is(TOKEN_REGISTER)) {
-            inst = Instruction::mov(dest, get_register(current));
-            advance();
+    u32 i = 0;
+    u32 memi = 0;
+    while (i < str.size()) {
+        switch (str[i])
+        {
+        case '\\':
+        {
+            i++;
+            if (str[i] == '0') {
+                mem[memi] = '\0';
+                memi++;
+                i++;
+            }
+            else if (str[i] == 'n') {
+                mem[memi] = '\n';
+                memi++;
+                i++;
+            }
         }
-        else if (current.is(TOKEN_IMMEDIATE)) {
-            inst = Instruction::movi(dest, (u16)current.u);
-            advance();
+        break;
+        default:
+            mem[memi] = str[i];
+            memi++;
+            i++;
+            break;
         }
     }
-        break;
-    case TI_RET:
-    {
-        auto& inst = instructions.emplace_back(Instruction::ret());
-        inst.source_file = last.source_file;
-        inst.line = last.line;
-        inst.column = last.column;
-        inst.address = address;
-    }
-        break;
-    default:
-        ErrorManager::error(last.source_file, last.line, last.column, "invalid token");
-        current_status = ERROR;
-        break;
-    }
-
-    if (!expected(TOKEN_NEW_LINE, "a new line was expected")) {
-        current_status = ERROR;
-    }
-
-    skip_whitespaces();
 }
 
 void Assembler::resolve_labels()
 {
-    for (auto& inst : instructions) {
-        if (inst.type == TI_CALL || inst.is_branch()) {
-            auto it = labels.find(inst.symbol);
-            if (it != labels.map.end()) {
-                inst.imm = labels.get(it->second).address - (inst.address+1);
+    for (auto& tr : to_resolve) {
+        u32& inst = *(u32*)&program[tr.address];
+
+        auto it = labels.find(tr.symbol);
+        if (it != labels.map.end()) {
+            u32 ra = labels.get(it->second).address - (tr.address);
+            ra /= 4;
+
+            if (tr.type == TI_CALL) {
+                inst = call(ra);
             }
-            else {
-                ErrorManager::error(
-                    inst.source_file, inst.line, inst.column,
-                    "undefine reference to %s.*", inst.symbol.size(), inst.symbol.data()
-                );
+            else if (tr.type == TI_B) {
+                inst = b(ra);
+            }
+            else if (tr.type == TI_ADR) {
+                inst = adr((inst >> 6) & 0x1F, ra);
             }
         }
+        else {
+            ErrorManager::error(
+                tr.source_file, tr.line, tr.column,
+                "undefine reference to %s.*", tr.symbol.size(), tr.symbol.data()
+            );
+        }
     }
-}
-
-void Assembler::encode()
-{
 }
 
 void Assembler::advance()
@@ -224,6 +188,7 @@ bool Assembler::expected(TokenType tk, const char* format, ...)
         va_start(args, format);
         ErrorManager::errorV(last.source_file, last.line, last.column, format, args);
         va_end(args);
+        return false;
     }
 
     return true;
@@ -236,17 +201,30 @@ void Assembler::skip_whitespaces()
     }
 }
 
-Register Assembler::get_register(Token tk)
+u8 Assembler::get_register(Token tk)
 {
-    Register reg = {};
-    if (tk.subtype >= TOKEN_R0 && tk.subtype <= TOKEN_R15) {
-        reg.is_float = false;
-        reg.index = tk.subtype;
+    if (tk.subtype >= TOKEN_R0 && tk.subtype <= TOKEN_R31) {
+        return u8(tk.subtype);
     }
-    else if (tk.subtype >= TOKEN_S0 && tk.subtype <= TOKEN_S15) {
-        reg.is_float = true;
-        reg.index = tk.subtype - TOKEN_S0;
+    else if (tk.subtype >= TOKEN_S0 && tk.subtype <= TOKEN_S31) {
+        return u8(tk.subtype - TOKEN_S0);
     }
 
-    return reg;
+    return u8(-1);
+}
+
+u32& Assembler::new_word()
+{
+    program.emplace_back();
+    program.emplace_back();
+    program.emplace_back();
+    program.emplace_back();
+    return *(u32*)(&program[program.size() - 4]);
+}
+
+u8* Assembler::reserve(u32 count)
+{
+    for (u32 i = 0; i < count; i++)
+        program.emplace_back();
+    return &program[program.size() - count];
 }

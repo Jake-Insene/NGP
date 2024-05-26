@@ -24,7 +24,7 @@ struct SymbolTable {
     }
 
     [[nodiscard]] T& get(u32 index) {
-        return data[label];
+        return data[index];
     }
 
     [[nodiscard]] Map::iterator find(const std::string_view& label) {

@@ -11,7 +11,10 @@ int wWinMain(HINSTANCE, HINSTANCE, LPWSTR cmdline, int cmdShow) {
     AllocConsole();
 #endif // NDEBUG
 
-    system("\"..\\Build\\Debug-x64\\ngpas.exe\" ../NGPAS/Examples/main.s");
+    if (system("\"..\\Build\\Debug-x64\\ngpas.exe\" ../NGPAS/Examples/main.asm") != 0) {
+        system("pause");
+        return -1;
+    }
 
     int argc = 0;
     wchar_t** argv = CommandLineToArgvW(cmdline, &argc);

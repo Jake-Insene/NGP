@@ -1,5 +1,8 @@
 #pragma once
 
+#define KB(n) (1024*n)
+#define MB(n) (KB(1024)*n)
+
 using i8 = char;
 using u8 = unsigned char;
 using i16 = short;
@@ -21,12 +24,11 @@ enum ErrorCodes : i32 {
     CORRUPT = -3,
 };
 
-
-[[nodiscard]] constexpr u64 alignUp(u32 size, u16 alignment) {
+[[nodiscard]] constexpr u32 align_up(u32 size, u16 alignment) {
     return (size + alignment - 1) & -(alignment);
 }
 
-[[nodiscard]] constexpr u32 signExt(u32 imm, u8 imm_width, u8 extend_size) {
+[[nodiscard]] constexpr u32 sign_ext(u32 imm, u8 imm_width, u8 extend_size) {
     u8 sign = (imm >> (imm_width - 1)) & 1;
     u32 extended = imm;
 

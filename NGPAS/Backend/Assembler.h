@@ -1,9 +1,10 @@
 #pragma once
 #include "Frontend/Lexer.h"
-#include "SymbolTable.h"
+#include "Backend/AssemblerUtility.h"
 #include <FileFormat/ISA.h>
 #include <FileFormat/Room.h>
-#include <Backend/AssemblerUtility.h>
+#include <unordered_map>
+#include <map>
 
 struct Constant {
     i32 i;
@@ -43,7 +44,10 @@ struct Label {
 };
 
 struct Assembler {
-    Assembler() : lexer() {}
+    Assembler() 
+        : lexer(), last(), current(), next(),
+        entry_point(), entry_point_address(0), current_status(0)
+    {}
     ~Assembler() {}
 
     i32 assemble_file(const char* file_path, const char* output_path);
@@ -53,6 +57,10 @@ struct Assembler {
     void assemble_directive();
     void assemble_label();
     void assemble_instruction();
+
+    // assemble_instruction();
+    bool assemble_load_store(u32& inst, u8 dest, u8 imm_opcode, 
+        u16 index_opc, u8 alignment, bool is_fp, bool is_single);
 
     void encode_string(u8* mem, const std::string_view& str);
 
@@ -75,8 +83,8 @@ struct Assembler {
     Token current;
     Token next;
 
-    SymbolTable<Constant> constants;
-    SymbolTable<Label> labels;
+    std::unordered_map<std::string_view, Constant> constants;
+    std::unordered_map<std::string_view, Label> labels;
     std::vector<InstructionToResolve> to_resolve;
     std::vector<u8> program;
 

@@ -23,12 +23,38 @@ void Assembler::assemble_directive()
             return;
         }
 
-        u32 size = u32(alignUp(u32(last.str.size()), 4));
+        u32 size = u32(align_up(u32(last.str.size()), 4));
         u8* mem = reserve(size);
         encode_string(mem, last.str);
 
         break;
     }
+    case TD_BYTE:
+        break;
+    case TD_HALF:
+        break;
+    case TD_WORD:
+    {
+        if (!expected(TOKEN_IMMEDIATE, "a immediate value was expected")) {
+            current_status = ERROR;
+            return;
+        }
+
+        new_word() = (u32)last.u;
+    }
+        break;
+    case TD_DWORD:
+        break;
+    case TD_ZERO:
+    {
+        if (!expected(TOKEN_IMMEDIATE, "a immediate value was expected")) {
+            current_status = ERROR;
+            return;
+        }
+
+        reserve(align_up(u32(last.u), 4));
+    }
+        break;
     default:
         break;
     }

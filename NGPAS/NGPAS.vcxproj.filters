@@ -35,9 +35,6 @@
     <ClInclude Include="Backend\Assembler.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="SymbolTable.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
     <ClInclude Include="Frontend\Lexer.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>

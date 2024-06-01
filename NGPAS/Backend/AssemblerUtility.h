@@ -31,8 +31,22 @@
     return u32(NGP_BINARY | (dest << 6) | (src1 << 11) | (src2 << 16) | (opcode << 21));
 }
 
+[[nodiscard]] static constexpr u32 fbinary(u16 opcode, u8 dest, u8 src1, u8 src2) {
+    return u32(NGP_FBINARY | (dest << 6) | (src1 << 11) | (src2 << 16) | (opcode << 21));
+}
+
 [[nodiscard]] static constexpr u32 binaryi(u8 opcode, u8 dest, u8 src1, u16 imm) {
     return u32(opcode | (dest << 6) | (src1 << 11) | (imm<<16));
+}
+
+// Memory Immediate
+[[nodiscard]] static constexpr u32 memoryi(u8 opcode, u8 dest_src, u8 base, u16 offset, u8 add_sub) {
+    return u32(
+        NGP_MEMORY_IMMEDIATE 
+        | (dest_src << 6) | (base << 11) 
+        | (opcode << 16) | (add_sub << 19) 
+        | (offset<<20)
+    );
 }
 
 // Immediate
@@ -44,10 +58,6 @@
     return iimmediate(dest, NGP_CMP_IMMEDIATE, immediate);
 }
 
-[[nodiscard]] static constexpr u32 cmpi_shl16(u8 dest, u16 immediate) {
-    return iimmediate(dest, NGP_CMP_IMMEDIATE_SHL16, immediate);
-}
-
 [[nodiscard]] static constexpr u32 movi(u8 dest, u16 immediate) {
     return iimmediate(dest, NGP_MOV_IMMEDIATE, immediate);
 }
@@ -56,8 +66,8 @@
     return iimmediate(dest, NGP_MOVT_IMMEDIATE, immediate);
 }
 
-[[nodiscard]] static constexpr u32 fmovi(u8 dest, u16 immediate) {
-    return iimmediate(dest, NGP_FMOV_IMMEDIATE, immediate);
+[[nodiscard]] static constexpr u32 ldpc(u8 dest, u8 opcode, i32 disp) {
+    return pcrel(opcode, dest, disp);
 }
 
 [[nodiscard]] static constexpr u32 adr(u8 dest, i32 disp) {

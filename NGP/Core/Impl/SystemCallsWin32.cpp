@@ -2,5 +2,5 @@
 #include "Core/VirtualMachine.h"
 
 void draw_text(VirtualMachine* vm) {
-    vm->display.draw_text(0, 0, (char*)vm->data + vm->reg[0], vm->reg[1]);
+    vm->display.draw_text(vm->ireg[0], vm->ireg[1], (char*)vm->ram + vm->ureg[2], vm->ureg[3]);
 }

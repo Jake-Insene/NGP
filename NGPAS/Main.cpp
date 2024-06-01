@@ -1,6 +1,6 @@
 #include <Header.h>
-#include "Backend/Assembler.h"
 #include <string>
+#include "Backend/Assembler.h"
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -9,10 +9,9 @@ int main(int argc, char** argv) {
 
     Assembler as{};
 
-    std::string output = {argv[1]};
-    output = output.substr(0, output.find_last_of("s"));
+    std::string output = { argv[1] };
+    output = output.substr(0, output.find_last_of(".") + 1);
     output += "ngp";
-    as.assemble_file(argv[1], output.c_str());
 
-    return 0;
+    return as.assemble_file(argv[1], output.c_str());
 }

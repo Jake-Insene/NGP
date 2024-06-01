@@ -3,6 +3,7 @@
 #include <string_view>
 
 enum TokenType : u8 {
+    TOKEN_ERROR,
     TOKEN_END_OF_FILE,
 
     TOKEN_IMMEDIATE,
@@ -15,6 +16,8 @@ enum TokenType : u8 {
 
     TOKEN_NEW_LINE,
     TOKEN_COMMA,
+    TOKEN_LEFT_KEY,
+    TOKEN_RIGHT_KEY,
 
     TOKEN_REGISTER,
 };
@@ -85,6 +88,39 @@ enum TokenRegister : u8 {
     TOKEN_S29,
     TOKEN_S30,
     TOKEN_S31,
+
+    TOKEN_D0,
+    TOKEN_D1,
+    TOKEN_D2,
+    TOKEN_D3,
+    TOKEN_D4,
+    TOKEN_D5,
+    TOKEN_D6,
+    TOKEN_D7,
+    TOKEN_D8,
+    TOKEN_D9,
+    TOKEN_D10,
+    TOKEN_D11,
+    TOKEN_D12,
+    TOKEN_D13,
+    TOKEN_D14,
+    TOKEN_D15,
+    TOKEN_D16,
+    TOKEN_D17,
+    TOKEN_D18,
+    TOKEN_D19,
+    TOKEN_D20,
+    TOKEN_D21,
+    TOKEN_D22,
+    TOKEN_D23,
+    TOKEN_D24,
+    TOKEN_D25,
+    TOKEN_D26,
+    TOKEN_D27,
+    TOKEN_D28,
+    TOKEN_D29,
+    TOKEN_D30,
+    TOKEN_D31,
 };
 
 enum TokenDirective : u8 {
@@ -99,6 +135,7 @@ enum TokenDirective : u8 {
 
 enum TokenInstruction : u8 {
     TI_MOV,
+    TI_MOVT,
 
     TI_ADD,
     TI_SUB,
@@ -115,15 +152,18 @@ enum TokenInstruction : u8 {
 
     TI_FMOV,
     TI_FMOVNC,
-    TI_FMOV_S2I,
-    TI_FMOV_I2S,
-    TI_FMOV_S2U,
-    TI_FMOV_U2S,
+    TI_FCVTZS,
+    TI_FCVTZU,
+    TI_SCVTF,
+    TI_UCVTF,
 
     TI_FADD,
     TI_FSUB,
     TI_FMUL,
     TI_FDIV,
+
+    TI_FNEG,
+    TI_FABS,
 
     TI_LD,
     TI_LDH,
@@ -136,6 +176,10 @@ enum TokenInstruction : u8 {
     TI_STB,
 
     TI_CMP,
+    TI_NOT,
+    TI_NEG,
+    TI_ABS,
+
     TI_BEQ,
     TI_BEZ = TI_BEQ,
     TI_BNE,
@@ -144,6 +188,14 @@ enum TokenInstruction : u8 {
     TI_BLE,
     TI_BGT,
     TI_BGE,
+    TI_BCS,
+    TI_BNC,
+    TI_BSS,
+    TI_BNS,
+    TI_BOS,
+    TI_BNO,
+    TI_BHI,
+    TI_BLS,
 
     TI_CALL,
     TI_B,
@@ -155,25 +207,35 @@ enum TokenInstruction : u8 {
 };
 
 struct Token {
-    TokenType type;
-    u8 subtype;
-    const char* source_file;
-    u32 line;
-    u32 column;
+    TokenType type = TOKEN_ERROR;
+    u8 subtype = 0;
+    const char* source_file = nullptr;
+    u32 line = 0;
+    u32 column = 0;
 
-    std::string_view str;
+    std::string_view str = {};
     union {
-        u16 ushort[4];
-        u64 u;
-        i64 i;
-        f32 f;
-        f64 d;
+        u16 ishort[2] = {};
+        u16 ushort[2];
+        i32 i;
+        u32 u;
+        f32 single;
     };
 
     [[nodiscard]] constexpr bool is(TokenType tk) const { return type == tk; }
     [[nodiscard]] constexpr bool is_one_of(TokenType tk1, TokenType tk2) const { return type == tk1 || type == tk2; }
 
     [[nodiscard]] constexpr bool is_not(TokenType tk) const { return type != tk; }
+
+    [[nodiscard]] constexpr bool is_single() const 
+    { 
+        return is(TOKEN_REGISTER) && (subtype >= TOKEN_S0 && subtype <= TOKEN_S31); 
+    }
+
+    [[nodiscard]] constexpr bool is_double() const
+    {
+        return is(TOKEN_REGISTER) && (subtype >= TOKEN_D0 && subtype <= TOKEN_D31);
+    }
 
 };
 
@@ -185,7 +247,6 @@ struct Lexer {
     Token get_next();
 
     void skip_white_space();
-    void skip_comment();
     char peek(u8 offset);
     void advance();
 
@@ -199,12 +260,12 @@ struct Lexer {
     bool is_alnum() const;
     bool is_hex() const;
 
-    const char* file_path;
-    u8* content;
-    u32 size;
+    const char* file_path = nullptr;
+    u8* content = nullptr;
+    u32 size = 0;
 
-    char current;
-    u32 line;
-    u32 column;
-    u32 index;
+    char current = 0;
+    u32 line = 0;
+    u32 column = 0;
+    u32 index = 0;
 };

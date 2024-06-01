@@ -30,13 +30,13 @@ i32 Assembler::assemble_file(const char* file_path, const char* output_path)
     std::ofstream output{ output_path, std::ios::binary };
 
     auto it = labels.find(entry_point.symbol);
-    if (it == labels.map.end()) {
+    if (it == labels.end()) {
         ErrorManager::error(entry_point.source_file, entry_point.line, entry_point.column, "the entry point was not defined");
         current_status = ERROR;
         return current_status;
     }
     
-    entry_point_address = labels.get(it->second).address;
+    entry_point_address = it->second.address;
     RoomHeader header = {
         .size_of_raw_data = (u32)program.size(),
         .address_of_entry_point = entry_point_address/4,
@@ -82,7 +82,7 @@ void Assembler::assemble_program()
 
 void Assembler::assemble_label()
 {
-    auto& l = labels.create(current.str);
+    auto& l = labels.emplace(current.str, Label()).first->second;
 
     l.symbol = current.str;
     l.address = u32(program.size());
@@ -131,9 +131,8 @@ void Assembler::resolve_labels()
         u32& inst = *(u32*)&program[tr.address];
 
         auto it = labels.find(tr.symbol);
-        if (it != labels.map.end()) {
-            u32 ra = labels.get(it->second).address - (tr.address);
-            ra /= 4;
+        if (it != labels.end()) {
+            u32 ra = (it->second.address - (tr.address+4))/4;
 
             if (tr.type == TI_CALL) {
                 inst = call(ra);
@@ -143,6 +142,12 @@ void Assembler::resolve_labels()
             }
             else if (tr.type == TI_ADR) {
                 inst = adr((inst >> 6) & 0x1F, ra);
+            }
+            else if (tr.type == TI_LD) {
+                inst = ldpc((inst >> 6) & 0x1F, inst & 0x3F, ra);
+            }
+            else if (tr.type >= TI_BEQ && tr.type <= TI_BGE) {
+                inst = bcond((inst >> 6) & 0xF, ra);
             }
         }
         else {
@@ -208,6 +213,9 @@ u8 Assembler::get_register(Token tk)
     }
     else if (tk.subtype >= TOKEN_S0 && tk.subtype <= TOKEN_S31) {
         return u8(tk.subtype - TOKEN_S0);
+    }
+    else if (tk.subtype >= TOKEN_D0 && tk.subtype <= TOKEN_D31) {
+        return u8(tk.subtype - TOKEN_D0);
     }
 
     return u8(-1);

@@ -97,11 +97,46 @@ SymbolInfo symbols[] = {
     {.symbol = "s30", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S30},
     {.symbol = "s31", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_S31},
 
+    // double precision
+    {.symbol = "d0", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_D0},
+    {.symbol = "d1", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_D1},
+    {.symbol = "d2", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_D2},
+    {.symbol = "d3", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_D3},
+    {.symbol = "d4", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_D4},
+    {.symbol = "d5", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_D5},
+    {.symbol = "d6", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_D6},
+    {.symbol = "d7", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_D7},
+    {.symbol = "d8", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_D8},
+    {.symbol = "d9", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_D9},
+    {.symbol = "d10", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D10},
+    {.symbol = "d11", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D11},
+    {.symbol = "d12", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D12},
+    {.symbol = "d13", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D13},
+    {.symbol = "d14", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D14},
+    {.symbol = "d15", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D15},
+    {.symbol = "d16", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D16},
+    {.symbol = "d17", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D17},
+    {.symbol = "d18", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D18},
+    {.symbol = "d19", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D19},
+    {.symbol = "d20", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D20},
+    {.symbol = "d21", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D21},
+    {.symbol = "d22", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D22},
+    {.symbol = "d23", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D23},
+    {.symbol = "d24", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D24},
+    {.symbol = "d25", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D25},
+    {.symbol = "d26", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D26},
+    {.symbol = "d27", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D27},
+    {.symbol = "d28", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D28},
+    {.symbol = "d29", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D29},
+    {.symbol = "d30", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D30},
+    {.symbol = "d31", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D31},
+
     // extra registers
     {.symbol = "sp", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R31 },
 
     // instructions
     {.symbol = "mov", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MOV },
+    {.symbol = "movt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_MOVT },
     {.symbol = "add", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ADD },
     {.symbol = "sub", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SUB },
     {.symbol = "mul", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MUL },
@@ -114,47 +149,62 @@ SymbolInfo symbols[] = {
     {.symbol = "xor", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_XOR },
     {.symbol = "shl", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SHL },
     {.symbol = "shr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SHR },
+    {.symbol = "not", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_NOT },
+    {.symbol = "neg", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_NEG },
+    {.symbol = "abs", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ABS },
 
     {.symbol = "cmp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_CMP },
 
-    { .symbol = "ld", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_LD },
+    {.symbol = "ld", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_LD },
     {.symbol = "ldsh", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_LDSH },
     {.symbol = "ldh", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDH },
     {.symbol = "ldsb", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_LDSB },
     {.symbol = "ldb", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDB },
 
-    { .symbol = "st", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_ST },
+    {.symbol = "st", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_ST },
     {.symbol = "sth", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STH },
     {.symbol = "stb", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STB },
 
     {.symbol = "adr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ADR },
 
-    { .symbol = "fmov", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV },
-    { .symbol = "fmovnc", .size = 6, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOVNC },
-    { .symbol = "fmovs2i", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV_S2I },
-    { .symbol = "fmovi2s", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV_I2S },
-    { .symbol = "fmovs2u", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV_S2U },
-    {.symbol = "fmovu2s", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV_U2S },
+    {.symbol = "fmov", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV },
+    {.symbol = "fmovnc", .size = 6, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOVNC },
+    {.symbol = "fcvts", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FCVTZS },
+    {.symbol = "fcvtu", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FCVTZU },
+    {.symbol = "scvtf", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_SCVTF },
+    {.symbol = "ucvtf", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_UCVTF },
 
-    { .symbol = "fadd", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FADD },
-    { .symbol = "fsub", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FSUB },
-    { .symbol = "fmul", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FMUL },
-    { .symbol = "fdiv", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FDIV },
+    {.symbol = "fadd", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FADD },
+    {.symbol = "fsub", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FSUB },
+    {.symbol = "fmul", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FMUL },
+    {.symbol = "fdiv", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FDIV },
+    {.symbol = "fneg", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FNEG },
+    {.symbol = "fabs", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FABS },
 
-    {.symbol = "beq", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BEQ },
-    {.symbol = "bez", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BEZ },
-    {.symbol = "bne", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BNE },
-    {.symbol = "bnz", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BNZ },
-    {.symbol = "blt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BLT },
-    {.symbol = "ble", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BLE },
-    {.symbol = "bgt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BGT },
-    {.symbol = "bge", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_BGE },
+    {.symbol = "beq", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BEQ },
+    {.symbol = "bez", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BEQ },
+    {.symbol = "bne", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNE },
+    {.symbol = "bnz", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNE },
+    {.symbol = "blt", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLT },
+    {.symbol = "ble", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLE },
+    {.symbol = "bgt", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BGT },
+    {.symbol = "bge", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BGE },
+    {.symbol = "bcs", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BCS },
+    {.symbol = "bhs", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BCS },
+    {.symbol = "bnc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNC },
+    {.symbol = "blo", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNC },
+    {.symbol = "bss", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BSS },
+    {.symbol = "bns", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNS },
+    {.symbol = "bos", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BOS },
+    {.symbol = "bno", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNO },
+    {.symbol = "bhi", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BHI },
+    {.symbol = "bls", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLS },
 
     {.symbol = "call", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_CALL },
-    { .symbol = "b", .size = 1, .type = TOKEN_INSTRUCTION, .subtype = TI_B },
-    { .symbol = "sc", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_SC },
-    { .symbol = "ret", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_RET },
-    { .symbol = "halt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_HALT },
+    {.symbol = "b", .size = 1, .type = TOKEN_INSTRUCTION, .subtype = TI_B },
+    {.symbol = "sc", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_SC },
+    {.symbol = "ret", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_RET },
+    {.symbol = "halt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_HALT },
 };
 
 #define MAKE_TOKEN(TYPE) { \
@@ -167,7 +217,6 @@ SymbolInfo symbols[] = {
 
 Token Lexer::get_next()
 {
-begin:
     Token tk = {};
 
     skip_white_space();
@@ -175,8 +224,13 @@ begin:
     switch (current)
     {
     case ';':
-        skip_comment();
-        goto begin;
+    {
+        MAKE_TOKEN(TOKEN_NEW_LINE);
+        u32 last_line = tk.line;
+        while (last_line == line) {
+            advance();
+        }
+    }
         break;
     case '.':
         tk = get_directive();
@@ -186,6 +240,12 @@ begin:
         break;
     case '#':
         tk = get_immediate();
+        break;
+    case '[':
+        MAKE_TOKEN(TOKEN_LEFT_KEY);
+        break;
+    case ']':
+        MAKE_TOKEN(TOKEN_RIGHT_KEY);
         break;
     case '"':
         tk = get_string();
@@ -202,6 +262,7 @@ begin:
         }
         else {
             ErrorManager::error(file_path, line, column, "invalid token '%c'", current);
+            MAKE_TOKEN(TOKEN_ERROR);
         }
         break;
     }
@@ -215,16 +276,6 @@ void Lexer::skip_white_space()
         || current == '\r'
         || current == '\t') {
         advance();
-    }
-}
-
-void Lexer::skip_comment()
-{
-    if (current == ';') {
-        u32 last_line = line;
-        while (last_line == line) {
-            advance();
-        }
     }
 }
 
@@ -245,6 +296,7 @@ void Lexer::advance()
         current = content[++index];
     }
     else {
+        index = size;
         current = '\0';
     }
 }
@@ -343,7 +395,7 @@ Token Lexer::get_immediate()
         base = 2;
     }
     
-    tk.u = std::stoull(str, nullptr, base);
+    tk.u = std::stoul(str, nullptr, base);
 
     return tk;
 }

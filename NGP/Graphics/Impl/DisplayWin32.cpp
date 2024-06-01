@@ -39,6 +39,13 @@ LRESULT wnd_proc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp)
         break;
     case WM_DESTROY:
         return 0;
+    case WM_SIZE:
+        if (display)
+        {
+            display->width = LOWORD(lp);
+            display->height = HIWORD(lp);
+        }
+        break;
     }
 
     return DefWindowProcA(wnd, msg, wp, lp);
@@ -78,12 +85,26 @@ void Display::update()
     }
 }
 
-void Display::draw_text(i32 x, i32 y, char* text, u32 count)
+void Display::clear(u32 rgba)
 {
     RECT source = {};
     GetClientRect((HWND)handle, &source);
 
-    FillRect((HDC)native_graphics_context, &source, (HBRUSH)GetStockObject(BLACK_BRUSH));
+    u8 r = (rgba >> 24) & 0xFF;
+    u8 g = (rgba >> 16) & 0xFF;
+    u8 b = (rgba >> 8) & 0xFF;
+    u8 a = rgba & 0xFF;
+    HBRUSH br = CreateSolidBrush(RGB(r / a, g / a, b / a));
+
+    FillRect((HDC)native_graphics_context, &source, br);
+
+    DeleteObject(br);
+}
+
+void Display::draw_text(i32 x, i32 y, char* text, u32 count)
+{
+    RECT source = {};
+    GetClientRect((HWND)handle, &source);
 
     source.left = x;
     source.top = y;

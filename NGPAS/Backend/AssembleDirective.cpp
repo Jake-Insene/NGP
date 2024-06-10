@@ -6,7 +6,7 @@ void Assembler::assemble_directive()
     advance();
     switch (last.subtype)
     {
-    case TD_ENTRY_POINT:
+    case TD_ENTRY:
         if (!expected(TOKEN_SYMBOL, "a symbol was expected")) {
             current_status = ERROR;
             return;
@@ -20,7 +20,7 @@ void Assembler::assemble_directive()
     {
         if (!expected(TOKEN_STRING, "a string was expected")) {
             current_status = ERROR;
-            return;
+            break;
         }
 
         u32 size = u32(align_up(u32(last.str.size()), 4));
@@ -30,26 +30,29 @@ void Assembler::assemble_directive()
         break;
     }
     case TD_BYTE:
+        ErrorManager::error(last.source_file, last.line, last.column, "not implemented yet");
         break;
     case TD_HALF:
+        ErrorManager::error(last.source_file, last.line, last.column, "not implemented yet");
         break;
     case TD_WORD:
     {
         if (!expected(TOKEN_IMMEDIATE, "a immediate value was expected")) {
             current_status = ERROR;
-            return;
+            break;
         }
 
         new_word() = (u32)last.u;
     }
         break;
     case TD_DWORD:
+        ErrorManager::error(last.source_file, last.line, last.column, "not implemented yet");
         break;
     case TD_ZERO:
     {
         if (!expected(TOKEN_IMMEDIATE, "a immediate value was expected")) {
             current_status = ERROR;
-            return;
+            break;
         }
 
         reserve(align_up(u32(last.u), 4));

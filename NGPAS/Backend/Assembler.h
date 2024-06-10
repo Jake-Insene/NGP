@@ -2,7 +2,7 @@
 #include "Frontend/Lexer.h"
 #include "Backend/AssemblerUtility.h"
 #include <FileFormat/ISA.h>
-#include <FileFormat/Room.h>
+#include <FileFormat/Rom.h>
 #include <unordered_map>
 #include <map>
 

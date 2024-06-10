@@ -7,7 +7,7 @@
 // Call/Branch
 // 6 - 31 | disp26
 
-// SC/Ret
+// SWI
 // 6 - 31 | imm26
 
 // Binary (Immediate)
@@ -22,7 +22,7 @@
 enum NGPInstructionClass : u8 {
     NGP_CALL,
     NGP_BRANCH,
-    NGP_SC,
+    NGP_SWI,
     NGP_RET,
     NGP_HALT,
 
@@ -30,23 +30,32 @@ enum NGPInstructionClass : u8 {
     NGP_BINARY,
     NGP_FBINARY,
     NGP_MEMORY_IMMEDIATE,
+    NGP_FMEMORY_IMMEDIATE,
+    NGP_MEMORY_PAIR,
 
     NGP_LD_PC,
     NGP_LD_S_PC,
     NGP_LD_D_PC,
+    NGP_LD_Q_PC,
 
     NGP_ADR_PC,
 
     NGP_IMMEDIATE,
 
     NGP_ADD_IMMEDIATE,
+    NGP_ADDS_IMMEDIATE,
     NGP_SUB_IMMEDIATE,
+    NGP_SUBS_IMMEDIATE,
+    NGP_RSB_IMMEDIATE,
 
     NGP_AND_IMMEDIATE,
+    NGP_ANDS_IMMEDIATE,
     NGP_OR_IMMEDIATE,
-    NGP_XOR_IMMEDIATE,
-    NGP_SHL_IMMEDIATE,
-    NGP_SHR_IMMEDIATE,
+    NGP_ORN_IMMEDIATE,
+    NGP_EOR_IMMEDIATE,
+
+    NGP_TEST_AND_BRANCH,
+    NGP_COMPARE_AND_BRANCH,
 };
 
 // Branch (Conditional)
@@ -73,35 +82,102 @@ enum NGPBranchConditional {
 // 6 - 10 | dest 
 // 11 - 15 | src1
 // 16 - 20 | src2
-// 21 - 31 | opcode
+// 21 - 25 | imm5/src2
+// 26 - 31 | opcode
 
 // Memory (register)
 // 6 - 10 | dest/src
 // 11 - 15 | base
 // 16 - 20 | index
-// 21 - 31 | xxx
+// 21 - 25 | 0
+// 26 - 31 | xxx
 enum NGPBinary {
-    // src2 = imm5
-    // mov Rd, Rs, #shl #imm5
-    NGP_MOV,
+    // OPC Rd, Rfs, Rss
+    NGP_ADC,
+    NGP_SBC,
 
-    NGP_ADD,
-    NGP_SUB,
+    // OPC Rd, Rfs, Rss, SHL/SHR/ASR #imm5
+    NGP_ADD_SHL,
+    NGP_ADD_SHR,
+    NGP_ADD_ASR,
+    NGP_SUB_SHL,
+    NGP_SUB_SHR,
+    NGP_SUB_ASR,
+    // OPC Rd, Rfs, Rss
     NGP_MUL,
     NGP_UMUL,
     NGP_DIV,
     NGP_UDIV,
 
-    NGP_AND,
-    NGP_OR,
-    NGP_XOR,
+    // OPC Rd, Rfs, Rss, SHL/SHR/ASR #imm5
+    NGP_RSB_SHL,
+    NGP_RSB_SHR,
+    NGP_RSB_ASR,
+
+    // MVN Rd, Rs, SHL/SHR/ASR/ROR #imm5
+    NGP_MVN_SHL,
+    NGP_MVN_SHR,
+    NGP_MVN_ASR,
+    NGP_MVN_ROR,
+
+    // OPC Rd, Rs, SHL/SHR/ASR #imm5
+    NGP_AND_SHL,
+    NGP_AND_SHR,
+    NGP_AND_ASR,
+    NGP_OR_SHL,
+    NGP_OR_SHR,
+    NGP_OR_ASR,
+    NGP_ORN_SHL,
+    NGP_ORN_SHR,
+    NGP_ORN_ASR,
+    NGP_EOR_SHL,
+    NGP_EOR_SHR,
+    NGP_EOR_ASR,
+
+    // imm5 dont affect
     NGP_SHL,
     NGP_SHR,
+    NGP_ASR,
+    NGP_ROR,
 
-    // src2 = imm5
-    // cmp Rd, Rs, #shl #imm5
-    NGP_CMP,
+    // OP Rd, Rfs, Rss, SHL/SHR/ASR imm5
+    NGP_ADDS_SHL,
+    NGP_ADDS_SHR,
+    NGP_ADDS_ASR,
+    NGP_SUBS_SHL,
+    NGP_SUBS_SHR,
+    NGP_SUBS_ASR,
+    NGP_ANDS_SHL,
+    NGP_ANDS_SHR,
+    NGP_ANDS_ASR,
 
+    // OP Rd, Rfs, Rss, Rts
+    NGP_MADD,
+    NGP_MSUB,
+    NGP_UMADD,
+    NGP_UMSUB,
+
+    // SHL Rd, Rs, #imm5
+    NGP_SHL_IMMEDIATE,
+    // SHR Rd, Rs, #imm5
+    NGP_SHR_IMMEDIATE,
+    // ASR Rd, Rs, #imm5
+    NGP_ASR_IMMEDIATE,
+    // ROR Rd, Rs, #imm5
+    NGP_ROR_IMMEDIATE,
+
+    // OP Rd, Rs, SHL/SHR/ASR #imm5
+    NGP_CMP_SHL,
+    NGP_CMP_SHR,
+    NGP_CMP_ASR,
+    NGP_CMN_SHL,
+    NGP_CMN_SHR,
+    NGP_CMN_ASR,
+    NGP_TST_SHL,
+    NGP_TST_SHR,
+    NGP_TST_ASR,
+
+    // LDX/STX Rd/Rs {, Rd2/Rs2}, [Rb, Ri]
     NGP_LD,
     NGP_LDSH,
     NGP_LDH,
@@ -112,14 +188,7 @@ enum NGPBinary {
     NGP_STH,
     NGP_STB,
 
-    // src2 = imm5
-    // not Rd, Rs, #shl #imm5
-    NGP_NOT,
-    // src2 = imm5
-    // neg Rd, Rs, #shl #imm5
-    NGP_NEG,
-    // src2 = imm5
-    // abs Rd, Rs, #shl #imm5
+    // ABS Rd, Rs
     NGP_ABS,
 };
 
@@ -127,6 +196,7 @@ enum NGPBinary {
 // 6 - 10 | dest
 // 11 - 15 | src1
 // 16 - 20 | src2
+// 21 - 25 | imm5/src3
 // 21 - 31 | opcode
 enum NGPFBinary {
     NGP_FMOV_S,
@@ -163,8 +233,9 @@ enum NGPFBinary {
     NGP_ST_D,
 
     NGP_FNEG_S,
-    NGP_FABS_S,
     NGP_FNEG_D,
+
+    NGP_FABS_S,
     NGP_FABS_D,
 };
 
@@ -172,7 +243,7 @@ enum NGPFBinary {
 // 6 - 10 | dest/src
 // 11 - 15 | base
 // 16 - 18 | opcode
-// 19 | add - sub
+// 19 | sub
 // 20 - 31 | disp12
 enum NGPMemoryImmediate {
     NGP_LD_IMMEDIATE,
@@ -184,12 +255,42 @@ enum NGPMemoryImmediate {
     NGP_ST_IMMEDIATE,
     NGP_STH_IMMEDIATE,
     NGP_STB_IMMEDIATE,
+};
 
+// FMemory (Immediate)
+// 6 - 10 | dest/src
+// 11 - 15 | base
+// 16 - 18 | opcode
+// 19 | sub
+// 20 - 31 | disp12
+enum NGPFMemoryImmediate {
     NGP_LD_S_IMMEDIATE,
-    NGP_ST_S_IMMEDIATE,
-
     NGP_LD_D_IMMEDIATE,
+    NGP_LD_Q_IMMEDIATE,
+
+    NGP_ST_S_IMMEDIATE,
     NGP_ST_D_IMMEDIATE,
+    NGP_ST_Q_IMMEDIATE,
+};
+
+// Memory Pair
+// 6 - 10 | dest1/src1
+// 11 - 15 | dest2/src2
+// 16 - 20 | base
+// 21 - 23 | opcode
+// 24 | add - sub
+// 25 - 31 | imm8
+enum NGPMemoryPair {
+    // LDP Rd, [Rb, #[-/+]imm8]
+    NGP_LDP,
+    NGP_LDP_S,
+    NGP_LDP_D,
+    NGP_LDP_Q,
+
+    NGP_STP,
+    NGP_STP_S,
+    NGP_STP_D,
+    NGP_STP_Q,
 };
 
 // Immediate
@@ -197,12 +298,35 @@ enum NGPMemoryImmediate {
 // 11 - 15 | opcode
 // 16 - 31 | imm16
 enum NGPImmediate {
-    NGP_CMP_IMMEDIATE,
-    
     NGP_MOV_IMMEDIATE,
     NGP_MOVT_IMMEDIATE,
+
+    NGP_MVN_IMMEDIATE,
+    NGP_MVNT_IMMEDIATE,
+
+    NGP_CMP_IMMEDIATE,
+    NGP_CMN_IMMEDIATE,
+    NGP_TST_IMMEDIATE,
+
     NGP_FMOV_S_IMMEDIATE,
     NGP_FMOV_D_IMMEDIATE,
+};
 
-    NGP_MOVN_IMMEDIATE,
+// Test and branch
+// 6 - 10 | src
+// 11 - 15 | imm5
+// 16 | opc
+// 17 - 31 | disp15
+enum NGPTestBranch {
+    NGP_TBZ,
+    NGP_TBNZ,
+};
+
+// Compare and branch
+// 6 - 10 | src
+// 11 | opc
+// 12 - 31 | disp20
+enum NGPCompareBranch {
+    NGP_CBZ,
+    NGP_CBNZ,
 };

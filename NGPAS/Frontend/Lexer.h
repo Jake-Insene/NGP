@@ -124,7 +124,7 @@ enum TokenRegister : u8 {
 };
 
 enum TokenDirective : u8 {
-    TD_ENTRY_POINT,
+    TD_ENTRY,
     TD_STRING,
     TD_BYTE,
     TD_HALF,
@@ -146,7 +146,7 @@ enum TokenInstruction : u8 {
 
     TI_AND,
     TI_OR,
-    TI_XOR,
+    TI_EOR,
     TI_SHL,
     TI_SHR,
 
@@ -199,7 +199,7 @@ enum TokenInstruction : u8 {
 
     TI_CALL,
     TI_B,
-    TI_SC,
+    TI_SWI,
     TI_RET,
     TI_HALT,
 

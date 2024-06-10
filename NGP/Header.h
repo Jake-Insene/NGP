@@ -28,6 +28,10 @@ enum ErrorCodes : i32 {
     return (size + alignment - 1) & -(alignment);
 }
 
+[[nodiscard]] constexpr u32 align_down(u32 size, u16 alignment) {
+    return size & ~(alignment - 1);
+}
+
 [[nodiscard]] constexpr u32 sign_ext(u32 imm, u8 imm_width, u8 extend_size) {
     u8 sign = (imm >> (imm_width - 1)) & 1;
     u32 extended = imm;
@@ -39,4 +43,3 @@ enum ErrorCodes : i32 {
 
     return extended;
 }
-

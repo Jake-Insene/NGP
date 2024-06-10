@@ -8,8 +8,8 @@ my_var: ; global variable
 	.word #0
 main:
 	; setting up the sp pointer
-	mov sp, #FFFFh
-	movt sp, #7FFh
+	mov sp, #0
+	movt sp, #800h
 	
 	; stack allocation
 	sub sp, sp, #16

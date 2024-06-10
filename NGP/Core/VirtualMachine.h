@@ -1,11 +1,12 @@
 #pragma once
-#include "FileFormat/Room.h"
+#include "FileFormat/Rom.h"
 #include "Graphics/Display.h"
+#include <vector>
 
 #define SP_INDEX 31
 
 #define DISPLAY_WIDTH 620
-#define DISPLAY_HEIGHT 512
+#define DISPLAY_HEIGHT 480
 
 struct VirtualMachine {
     VirtualMachine();
@@ -17,19 +18,11 @@ struct VirtualMachine {
     void push(u32 word);
     u32 pop();
 
-    union {
-        u32* ureg;
-        i32* ireg;
-    };
-    union {
-        f32* dreg;
-        f32* sreg;
-    };
-
-    RoomHeader header;
+    RomHeader* header;
 
     Display display;
 
-    u8* ram;
     u32 pc;
+    u32 inst;
+    bool is_halt;
 };

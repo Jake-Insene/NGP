@@ -21,7 +21,7 @@ struct SymbolInfo {
 };
 
 SymbolInfo symbols[] = {
-    {.symbol = "entry_point", .size = 11, .type = TOKEN_DIRECTIVE, .subtype = TD_ENTRY_POINT },
+    {.symbol = "entry", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_ENTRY },
     {.symbol = "string", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_STRING },
     {.symbol = "byte", .size = 4, .type = TOKEN_DIRECTIVE, .subtype = TD_BYTE },
     {.symbol = "half", .size = 4, .type = TOKEN_DIRECTIVE, .subtype = TD_HALF },
@@ -146,7 +146,7 @@ SymbolInfo symbols[] = {
 
     {.symbol = "and", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_AND },
     {.symbol = "or", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_OR },
-    {.symbol = "xor", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_XOR },
+    {.symbol = "eor", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_EOR },
     {.symbol = "shl", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SHL },
     {.symbol = "shr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SHR },
     {.symbol = "not", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_NOT },
@@ -202,7 +202,7 @@ SymbolInfo symbols[] = {
 
     {.symbol = "call", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_CALL },
     {.symbol = "b", .size = 1, .type = TOKEN_INSTRUCTION, .subtype = TI_B },
-    {.symbol = "sc", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_SC },
+    {.symbol = "swi", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_SWI },
     {.symbol = "ret", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_RET },
     {.symbol = "halt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_HALT },
 };
@@ -225,11 +225,12 @@ Token Lexer::get_next()
     {
     case ';':
     {
-        MAKE_TOKEN(TOKEN_NEW_LINE);
-        u32 last_line = tk.line;
+        u32 last_line = line;
         while (last_line == line) {
             advance();
         }
+
+        tk = get_next();
     }
         break;
     case '.':
@@ -259,6 +260,9 @@ Token Lexer::get_next()
     default:
         if (is_alpha() || current == '_') {
             tk = get_symbol_or_label();
+        }
+        else if (is_num()) {
+            tk = get_immediate();
         }
         else {
             ErrorManager::error(file_path, line, column, "invalid token '%c'", current);
@@ -378,6 +382,30 @@ Token Lexer::get_immediate()
 
     advance(); // #
 
+    bool negate = false;
+    int base = 10;
+    if (current == '-') {
+        negate = true;
+        advance();
+        if (!is_hex()) {
+            tk.type = TOKEN_ERROR;
+            return tk;
+        }
+    }
+
+    if (current == '0') {
+        if (peek(1) == 'X' || peek(1) == 'x') {
+            base = 16;
+            advance();
+            advance();
+        }
+        else if (peek(1) == 'b' || peek(1) == 'B') {
+            base = 2;
+            advance();
+            advance();
+        }
+    }
+
     u64 start = index;
     while (is_hex()) {
         advance();
@@ -385,17 +413,11 @@ Token Lexer::get_immediate()
     tk.str = std::string_view((char*)content + start, index - start);
 
     std::string str = { tk.str.data(), tk.str.size() };
-    int base = 10;
-    if (current == 'h' || current == 'H') {
-        advance();
-        base = 16;
-    }
-    else if (current == 'b' || current == 'B') {
-        advance();
-        base = 2;
-    }
     
     tk.u = std::stoul(str, nullptr, base);
+    if (negate) {
+        tk.i = -tk.i;
+    }
 
     return tk;
 }

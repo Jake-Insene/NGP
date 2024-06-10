@@ -1,6 +1,5 @@
 #include "Backend/Assembler.h"
 #include "ErrorManager.h"
-#include <FileFormat/Room.h>
 #include <fstream>
 
 i32 Assembler::assemble_file(const char* file_path, const char* output_path)
@@ -37,9 +36,9 @@ i32 Assembler::assemble_file(const char* file_path, const char* output_path)
     }
     
     entry_point_address = it->second.address;
-    RoomHeader header = {
-        .size_of_raw_data = (u32)program.size(),
-        .address_of_entry_point = entry_point_address/4,
+    RomHeader header = {
+        .address_of_entry_point = (entry_point_address + sizeof(RomHeader)) / 4,
+        .check_sum = u32(sizeof(RomHeader) + program.size()),
     };
 
     output.write((char*)&header, sizeof(header));

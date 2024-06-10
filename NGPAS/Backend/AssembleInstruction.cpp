@@ -2,7 +2,6 @@
 #include "Backend/AssemblerUtility.h"
 #include "ErrorManager.h"
 
-
 #define EXPECTED_COMMA() \
     if (!expected(TOKEN_COMMA, "',' was expected")) {\
         current_status = ERROR;\
@@ -84,7 +83,7 @@ void Assembler::assemble_instruction()
         EXPECTED_COMMA();
 
         if (current.is(TOKEN_REGISTER)) {
-            inst = binary(NGP_MOV, dest, get_register(current), 0);
+            inst = binaryi(NGP_OR_IMMEDIATE, dest, get_register(current), 0);
             advance();
         }
         else if (current.is(TOKEN_IMMEDIATE)) {
@@ -132,7 +131,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_ADD, dest, src1, get_register(current));
+            inst = binary(NGP_ADD_SHL, dest, src1, get_register(current), 0);
             advance();
         }
         else if (current.is(TOKEN_IMMEDIATE)) {
@@ -160,7 +159,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_SUB, dest, src1, get_register(current));
+            inst = binary(NGP_SUB_SHL, dest, src1, get_register(current), 0);
             advance();
         }
         else if (current.is(TOKEN_IMMEDIATE)) {
@@ -189,7 +188,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_MUL, dest, src1, get_register(current));
+            inst = binary(NGP_MUL, dest, src1, get_register(current), 0);
             advance();
         }
         else {
@@ -213,7 +212,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_UMUL, dest, src1, get_register(current));
+            inst = binary(NGP_UMUL, dest, src1, get_register(current), 0);
             advance();
         }
         else {
@@ -237,7 +236,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_DIV, dest, src1, get_register(current));
+            inst = binary(NGP_DIV, dest, src1, get_register(current), 0);
             advance();
         }
         else {
@@ -261,7 +260,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_UDIV, dest, src1, get_register(current));
+            inst = binary(NGP_UDIV, dest, src1, get_register(current), 0);
             advance();
         }
         else {
@@ -285,7 +284,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_AND, dest, src1, get_register(current));
+            inst = binary(NGP_AND_SHL, dest, src1, get_register(current), 0);
             advance();
         }
         else if (current.is(TOKEN_IMMEDIATE)) {
@@ -305,7 +304,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_OR, dest, src1, get_register(current));
+            inst = binary(NGP_OR_SHL, dest, src1, get_register(current), 0);
             advance();
         }
         else if (current.is(TOKEN_IMMEDIATE)) {
@@ -314,7 +313,7 @@ void Assembler::assemble_instruction()
         }
     }
     break;
-    case TI_XOR:
+    case TI_EOR:
     {
         GET_REG(dest, "expected destination register");
         INVALIDATE_FP(last);
@@ -325,11 +324,11 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_XOR, dest, src1, get_register(current));
+            inst = binary(NGP_EOR_SHL, dest, src1, get_register(current), 0);
             advance();
         }
         else if (current.is(TOKEN_IMMEDIATE)) {
-            inst = binaryi(NGP_XOR_IMMEDIATE, dest, src1, current.ushort[0]);
+            inst = binaryi(NGP_EOR_IMMEDIATE, dest, src1, current.ushort[0]);
             advance();
         }
     }
@@ -345,11 +344,11 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_SHL, dest, src1, get_register(current));
+            inst = binary(NGP_SHL, dest, src1, get_register(current), 0);
             advance();
         }
         else if (current.is(TOKEN_IMMEDIATE)) {
-            inst = binaryi(NGP_SHL_IMMEDIATE, dest, src1, current.ushort[0]);
+            inst = binary(NGP_SHL_IMMEDIATE, dest, src1, (u8)current.ushort[0], 0);
             advance();
         }
     }
@@ -364,11 +363,11 @@ void Assembler::assemble_instruction()
         EXPECTED_COMMA();
 
         if (current.is(TOKEN_REGISTER)) {
-            inst = binary(NGP_SHR, dest, src1, get_register(current));
+            inst = binary(NGP_SHR, dest, src1, get_register(current), 0);
             advance();
         }
         else if (current.is(TOKEN_IMMEDIATE)) {
-            inst = binaryi(NGP_SHR_IMMEDIATE, dest, src1, current.ushort[0]);
+            inst = binary(NGP_SHR_IMMEDIATE, dest, src1, (u8)current.ushort[0], 0);
             advance();
         }
     }
@@ -507,7 +506,7 @@ void Assembler::assemble_instruction()
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
             u8 src2 = get_register(current);
-            inst = binary(NGP_CMP, src1, src2, 0);
+            inst = binary(NGP_CMP_SHL, 0, src1, src2, 0);
             advance();
         }
         else if(current.is(TOKEN_IMMEDIATE)) {
@@ -533,7 +532,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_NOT, dest, get_register(current), 0);
+            inst = binary(NGP_MVN_SHL, dest, get_register(current), 0, 0);
             advance();
         }
         else {
@@ -554,7 +553,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_NEG, dest, get_register(current), 0);
+            inst = binaryi(NGP_RSB_IMMEDIATE, dest, get_register(current), 0);
             advance();
         }
         else {
@@ -575,7 +574,7 @@ void Assembler::assemble_instruction()
 
         if (current.is(TOKEN_REGISTER)) {
             INVALIDATE_FP(current);
-            inst = binary(NGP_ABS, dest, get_register(current), 0);
+            inst = binary(NGP_ABS, dest, get_register(current), 0, 0);
             advance();
         }
         else {
@@ -656,14 +655,14 @@ void Assembler::assemble_instruction()
             break;
         }
         break;
-    case TI_SC:
+    case TI_SWI:
     {
         if (!expected(TOKEN_IMMEDIATE, "a immediate value was expected!")) {
             current_status = ERROR;
             break;
         }
 
-        inst = sc((u32)last.u);
+        inst = swi((u32)last.u);
     }
         break;
     case TI_RET:
@@ -737,42 +736,62 @@ bool Assembler::assemble_load_store(u32& inst, u8 dest, u8 imm_opcode,
         return false;
     }
 
-    if (current.is(TOKEN_COMMA) && current.is_not(TOKEN_RIGHT_KEY)) {
+    if (current.is(TOKEN_COMMA)) {
         advance(); // ,
 
         if (current.is(TOKEN_IMMEDIATE)) {
-            u32 aligned = align_up(current.u, alignment);
-            if (aligned != current.u) {
-                ErrorManager::error(
-                    current.source_file, current.line, current.column,
-                    "immediate value must be a multiple of %d", alignment
-                );
-                return false;
+            if (current.i >= 0) {
+                u32 aligned = align_up(current.u, alignment);
+                if (aligned != current.u) {
+                    ErrorManager::error(
+                        current.source_file, current.line, current.column,
+                        "immediate value must be a multiple of %d", alignment
+                    );
+                    return false;
+                }
+
+                if (current.u > 0xFFF) {
+                    ErrorManager::error(
+                        current.source_file, current.line, current.column,
+                        "immediate offset to long"
+                    );
+                    return false;
+                }
+            }
+            else if (current.i < 0) {
+                u32 aligned = align_down(current.u, alignment);
+                if (aligned != current.u) {
+                    ErrorManager::error(
+                        current.source_file, current.line, current.column,
+                        "immediate value must be a multiple of %d", alignment
+                    );
+                    return false;
+                }
+
+                if (current.i < -0xFFF) {
+                    ErrorManager::error(
+                        current.source_file, current.line, current.column,
+                        "immediate offset to long"
+                    );
+                    return false;
+                }
             }
 
-            if (current.u > 0xFFF) {
-                ErrorManager::error(
-                    current.source_file, current.line, current.column,
-                    "immediate offset to long"
-                );
-                return false;
-            }
-            else {
-                // check if we need to subtract or add
-                bool sub = current.i < 0 ? 1 : 0;
-                if (is_fp) {
-                    if (is_single) {
-                        inst = memoryi(NGP_LD_S_IMMEDIATE, dest, base, current.ushort[0] / alignment, sub);
-                    }
-                    else {
-                        inst = memoryi(NGP_LD_D_IMMEDIATE, dest, base, current.ushort[0] / alignment, sub);
-                    }
+            // check if we need to subtract or add
+            bool sub = current.i < 0 ? 1 : 0;
+            u16 offset = (u16)abs(current.i);
+            if (is_fp) {
+                if (is_single) {
+                    inst = fmemoryi(NGP_LD_S_IMMEDIATE, dest, base, offset / alignment, sub);
                 }
                 else {
-                    inst = memoryi(imm_opcode, dest, base, current.ushort[0]/alignment, sub);
+                    inst = fmemoryi(NGP_LD_D_IMMEDIATE, dest, base, offset / alignment, sub);
                 }
-                advance(); // imm
             }
+            else {
+                inst = memoryi(imm_opcode, dest, base, offset / alignment, sub);
+            }
+            advance(); // imm
         }
         else if (current.is(TOKEN_REGISTER)) {
             u8 index = get_register(last);
@@ -787,14 +806,14 @@ bool Assembler::assemble_load_store(u32& inst, u8 dest, u8 imm_opcode,
 
             if(is_fp) {
                 if (is_single) {
-                    inst = fbinary(NGP_LD_S, dest, base, index);
+                    inst = fbinary(NGP_LD_S, dest, base, index, 0);
                 }
                 else {
-                    inst = fbinary(NGP_LD_D, dest, base, index);
+                    inst = fbinary(NGP_LD_D, dest, base, index, 0);
                 }
             }
             else {
-                inst = binary(index_opc, dest, base, index);
+                inst = binary(index_opc, dest, base, index, 0);
             }
             advance(); // index
         }

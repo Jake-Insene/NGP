@@ -13,8 +13,8 @@
     return one_arg(NGP_BRANCH, disp);
 }
 
-[[nodiscard]] static constexpr u32 sc(u32 code) {
-    return one_arg(NGP_SC, code);
+[[nodiscard]] static constexpr u32 swi(u32 code) {
+    return one_arg(NGP_SWI, code);
 }
 
 [[nodiscard]] static constexpr u32 bcond(u8 cond, i32 disp) {
@@ -27,12 +27,26 @@
 
 // Binary
 
-[[nodiscard]] static constexpr u32 binary(u16 opcode, u8 dest, u8 src1, u8 src2) {
-    return u32(NGP_BINARY | (dest << 6) | (src1 << 11) | (src2 << 16) | (opcode << 21));
+[[nodiscard]] static constexpr u32 binary(u16 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
+    return u32(
+        NGP_BINARY
+        | (dest << 6)
+        | (src1 << 11)
+        | (src2 << 16)
+        | (src3 << 21)
+        | (opcode << 26)
+    );
 }
 
-[[nodiscard]] static constexpr u32 fbinary(u16 opcode, u8 dest, u8 src1, u8 src2) {
-    return u32(NGP_FBINARY | (dest << 6) | (src1 << 11) | (src2 << 16) | (opcode << 21));
+[[nodiscard]] static constexpr u32 fbinary(u16 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
+    return u32(
+        NGP_FBINARY 
+        | (dest << 6) 
+        | (src1 << 11) 
+        | (src2 << 16) 
+        | (src3 << 21)
+        | (opcode << 26)
+    );
 }
 
 [[nodiscard]] static constexpr u32 binaryi(u8 opcode, u8 dest, u8 src1, u16 imm) {
@@ -40,12 +54,23 @@
 }
 
 // Memory Immediate
-[[nodiscard]] static constexpr u32 memoryi(u8 opcode, u8 dest_src, u8 base, u16 offset, u8 add_sub) {
+[[nodiscard]] static constexpr u32 memoryi(u8 opcode, u8 dest_src, u8 base, u16 offset, u8 sub) {
     return u32(
         NGP_MEMORY_IMMEDIATE 
-        | (dest_src << 6) | (base << 11) 
-        | (opcode << 16) | (add_sub << 19) 
+        | (dest_src << 6) 
+        | (base << 11) 
+        | (opcode << 16) 
+        | (sub << 19) 
         | (offset<<20)
+    );
+}
+
+[[nodiscard]] static constexpr u32 fmemoryi(u8 opcode, u8 dest_src, u8 base, u16 offset, u8 add_sub) {
+    return u32(
+        NGP_FMEMORY_IMMEDIATE
+        | (dest_src << 6) | (base << 11)
+        | (opcode << 16) | (add_sub << 19)
+        | (offset << 20)
     );
 }
 

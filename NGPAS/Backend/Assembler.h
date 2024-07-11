@@ -1,94 +1,84 @@
 #pragma once
-#include "Frontend/Lexer.h"
+#include "Frontend/PreProcessor.h"
 #include "Backend/AssemblerUtility.h"
 #include <FileFormat/ISA.h>
 #include <FileFormat/Rom.h>
-#include <unordered_map>
-#include <map>
 
-struct Constant {
-    i32 i;
-    u32 u;
-    f32 f;
-};
+#define MAKE_ERROR(TOKEN, BREAKER, ...) \
+    ErrorManager::error(TOKEN.source_file, TOKEN.line, __VA_ARGS__);\
+    current_status = ERROR;\
+    BREAKER;
 
-struct InstructionToResolve {
-    u32 address;
-    TokenInstruction type;
-    std::string_view symbol;
-
-    const char* source_file;
-    u32 line;
-    u32 column;
-
-    [[nodiscard]] constexpr bool is_branch() const 
-    {
-        return
-            type == TI_B ||
-            type == TI_BEQ ||
-            type == TI_BNE ||
-            type == TI_BLT ||
-            type == TI_BLE ||
-            type == TI_BGT ||
-            type == TI_BGE;
-    }
-};
-
-struct Label {
-    std::string_view symbol;
-    u32 address;
-
-    const char* source_file;
-    u32 line;
-    u32 column;
+enum class ParsePrecedence {
+    None,
+    Assignment, // =
+    Equality, // == !=
+    Comparision, // < > <= >=
+    Term, // + -
+    Factor, // * /
+    Unar, // ! -
+    Primary,
 };
 
 struct Assembler {
-    Assembler() 
-        : lexer(), last(), current(), next(),
-        entry_point(), entry_point_address(0), current_status(0)
-    {}
-    ~Assembler() {}
+    i32 assemble_file(const char* file_path, const char* output_path, u32 origin);
 
-    i32 assemble_file(const char* file_path, const char* output_path);
-
-    // first fase
-    void assemble_program();
-    void assemble_directive();
+    // First face: search labels
+    void phase1();
     void assemble_label();
+    void assemble_global_label();
+
+    // Second fase: assembly
+    void phase2();
+    
+    void assemble_directive();
     void assemble_instruction();
 
     // assemble_instruction();
-    bool assemble_load_store(u32& inst, u8 dest, u8 imm_opcode, 
-        u16 index_opc, u8 alignment, bool is_fp, bool is_single);
+    void assemble_load_store(u32& inst, u8 imm_opcode, u8 index_opc, u8 alignment, bool handle_symbol);
 
-    void encode_string(u8* mem, const std::string_view& str);
+    void assemble_binary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit, bool is_additional_opc, bool use_amount);
+    
+    void assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit);
 
-    // second fase
-    void resolve_labels();
+    void assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8));
+
+    void assemble_one_operand(u32& inst, u32(*)(u8, u8));
+    
+    void assemble_shift(u32& inst, u8 opcode);
+
+    void check_for_amount(u8& adder, u8& amount);
 
     void advance();
     void syncronize();
     bool expected(TokenType tk, const char* format, ...);
-    void skip_whitespaces();
+    void goto_next_line();
 
     // Utility
     u8 get_register(Token tk);
     u32& new_word();
+    u16& new_half();
+    u8& new_byte();
     u8* reserve(u32 count);
 
-    Lexer lexer;
+    // Parser
+    Token parse_expresion(ParsePrecedence precedence);
 
-    Token last;
-    Token current;
-    Token next;
+    // expresions
 
-    std::unordered_map<std::string_view, Constant> constants;
-    std::unordered_map<std::string_view, Label> labels;
-    std::vector<InstructionToResolve> to_resolve;
+    std::unordered_map<std::string_view, Label>::iterator find_in_scope(SourceScope& scope, 
+        const TokenView& label, bool& founded);
+
+    PreProcessor pre_processor;
+
+    Token* last;
+    Token* current;
+    Token* next;
+
     std::vector<u8> program;
 
     Label entry_point;
     u32 entry_point_address;
+    u32 origin_address;
     i32 current_status;
 };

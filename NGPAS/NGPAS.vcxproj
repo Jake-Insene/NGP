@@ -60,7 +60,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)NGP;$(ProjectDir);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)NGP-Core;$(ProjectDir);</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>Sync</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -83,7 +83,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)NGP;$(ProjectDir);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)NGP-Core;$(ProjectDir);</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>Sync</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -100,10 +100,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Backend\AssembleDirective.cpp" />
-    <ClCompile Include="Backend\AssembleInstruction.cpp" />
     <ClCompile Include="Backend\Assembler.cpp" />
+    <ClCompile Include="Backend\Directive.cpp" />
+    <ClCompile Include="Backend\Eval.cpp" />
+    <ClCompile Include="Backend\Instruction.cpp" />
     <ClCompile Include="Frontend\Lexer.cpp" />
+    <ClCompile Include="Frontend\PreProcessor.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -111,6 +113,13 @@
     <ClInclude Include="Backend\AssemblerUtility.h" />
     <ClInclude Include="ErrorManager.h" />
     <ClInclude Include="Frontend\Lexer.h" />
+    <ClInclude Include="Frontend\PreProcessor.h" />
+    <ClInclude Include="Frontend\Token.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NGP-Core\NGP-Core.vcxproj">
+      <Project>{22419bcf-e37a-430e-97c3-774696ba8e09}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

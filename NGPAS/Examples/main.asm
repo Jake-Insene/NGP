@@ -1,8 +1,11 @@
-.entry main
+ENTRY main
+
+INCLUDE "another.asm"
 
 main:
 	; Setting up the stack
-	mov sp, #0
-	movt sp, #0x0800
+	MOV SP, #0x0000
+	MOVT SP, #0x1000
+	BL another
 
-	halt
+	HLT

@@ -3,15 +3,15 @@
 #include <stdarg.h>
 
 struct ErrorManager {
-    static inline void error(const char* file_path, u32 line, u32 column, const char* format, ...) {
+    static inline void error(const char* file_path, u32 line, const char* format, ...) {
         va_list args;
         va_start(args, format);
-        errorV(file_path, line, column, format, args);
+        errorV(file_path, line, format, args);
         va_end(args);
     }
     
-    static inline void errorV(const char* file_path, u32 line, u32 column, const char* format, va_list args) {
-        printf("Error at %s:[%d, %d]:\n\t", file_path, line, column);
+    static inline void errorV(const char* file_path, u32 line, const char* format, va_list args) {
+        printf("Error at %s:[%d]:\n\t", file_path, line);
         vprintf(format, args);
         putchar('\n');
         error_count++;
@@ -37,15 +37,15 @@ struct ErrorManager {
         must_syncronize = true;
     }
 
-    static inline void warn(const char* file_path, u32 line, u32 column, const char* format, ...) {
+    static inline void warn(const char* file_path, u32 line, const char* format, ...) {
         va_list args;
         va_start(args, format);
-        errorV(file_path, line, column, format, args);
+        errorV(file_path, line, format, args);
         va_end(args);
     }
 
-    static inline void warnV(const char* file_path, u32 line, u32 column, const char* format, va_list args) {
-        printf("Warn at %s:[%d, %d]:\n\t", file_path, line, column);
+    static inline void warnV(const char* file_path, u32 line, const char* format, va_list args) {
+        printf("Warn at %s:[%d]:\n\t", file_path, line);
         vprintf(format, args);
         putchar('\n');
         error_count++;

@@ -1,7 +1,7 @@
 
 ; entry point of the program
 ; this will be my main function
-.entry_point main
+entry main
 
 main:
 	mov r0, #255
@@ -16,8 +16,8 @@ main:
 	div r0, r0, r1
 	udiv r0, r0, r1
 
-	and r0, r1, #FFh
-	or r0, r1, #10h
+	and r0, r1, #0xFF
+	or r0, r1, #0x10
 	xor r0, r1, r0
 	shl r0, r1, #2
 	shr r0, r1, #6
@@ -27,7 +27,7 @@ main:
 	abs r0, r1
 
 	cmp r0, r1
-	cmp r0, #FFh
+	cmp r0, #0xFF
 	
 	mov r0, #1
 	mov r1, #2

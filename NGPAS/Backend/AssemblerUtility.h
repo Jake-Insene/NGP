@@ -1,12 +1,13 @@
 #pragma once
+#include "Frontend/Token.h"
 #include <FileFormat/ISA.h>
 
 [[nodiscard]] static constexpr u32 one_arg(u8 opcode, u32 arg) {
     return u32(opcode | (arg << 6));
 }
 
-[[nodiscard]] static constexpr u32 call(i32 disp) {
-    return one_arg(NGP_CALL, disp);
+[[nodiscard]] static constexpr u32 bl(i32 disp) {
+    return one_arg(NGP_BL, disp);
 }
 
 [[nodiscard]] static constexpr u32 b(i32 disp) {
@@ -27,25 +28,47 @@
 
 // Binary
 
-[[nodiscard]] static constexpr u32 binary(u16 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
+[[nodiscard]] static constexpr u32 logical_add_sub(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
     return u32(
-        NGP_BINARY
-        | (dest << 6)
-        | (src1 << 11)
-        | (src2 << 16)
-        | (src3 << 21)
-        | (opcode << 26)
+        NGP_LOGICAL_ADD_SUB
+        | (opcode << 6)
+        | (dest << 12)
+        | (src1 << 17)
+        | (src2 << 22)
+        | (src3 << 27)
+    );
+}
+
+[[nodiscard]] static constexpr u32 additional(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
+    return u32(
+        NGP_ADDITIONAL
+        | (opcode << 6)
+        | (dest << 12)
+        | (src1 << 17)
+        | (src2 << 22)
+        | (src3 << 27)
+    );
+}
+
+[[nodiscard]] static constexpr u32 non_binary(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
+    return u32(
+        NGP_NON_BINARY
+        | (opcode << 6)
+        | (dest << 12)
+        | (src1 << 17)
+        | (src2 << 22)
+        | (src3 << 27)
     );
 }
 
 [[nodiscard]] static constexpr u32 fbinary(u16 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
     return u32(
         NGP_FBINARY 
-        | (dest << 6) 
-        | (src1 << 11) 
-        | (src2 << 16) 
-        | (src3 << 21)
-        | (opcode << 26)
+        | (opcode << 6)
+        | (dest << 12)
+        | (src1 << 17)
+        | (src2 << 22)
+        | (src3 << 27)
     );
 }
 
@@ -57,9 +80,9 @@
 [[nodiscard]] static constexpr u32 memoryi(u8 opcode, u8 dest_src, u8 base, u16 offset, u8 sub) {
     return u32(
         NGP_MEMORY_IMMEDIATE 
-        | (dest_src << 6) 
-        | (base << 11) 
-        | (opcode << 16) 
+        | (opcode << 6) 
+        | (dest_src << 11)
+        | (base << 16) 
         | (sub << 19) 
         | (offset<<20)
     );
@@ -68,33 +91,44 @@
 [[nodiscard]] static constexpr u32 fmemoryi(u8 opcode, u8 dest_src, u8 base, u16 offset, u8 add_sub) {
     return u32(
         NGP_FMEMORY_IMMEDIATE
-        | (dest_src << 6) | (base << 11)
-        | (opcode << 16) | (add_sub << 19)
+        | (opcode << 6)
+        | (dest_src << 11) | (base << 16)
+        | (add_sub << 19)
         | (offset << 20)
     );
 }
 
 // Immediate
-[[nodiscard]] static constexpr u32 iimmediate(u8 dest, u8 opcode, u16 immediate) {
-    return u32(NGP_IMMEDIATE | (dest << 6) | (opcode << 11) | (immediate << 16));
+[[nodiscard]] static constexpr u32 iimmediate(u8 opcode, u8 dest, u16 immediate) {
+    return u32(NGP_IMMEDIATE | (opcode << 6) | (dest << 11) | (immediate << 16));
 }
 
-[[nodiscard]] static constexpr u32 cmpi(u8 dest, u16 immediate) {
-    return iimmediate(dest, NGP_CMP_IMMEDIATE, immediate);
-}
-
-[[nodiscard]] static constexpr u32 movi(u8 dest, u16 immediate) {
-    return iimmediate(dest, NGP_MOV_IMMEDIATE, immediate);
-}
-
-[[nodiscard]] static constexpr u32 movt(u8 dest, u16 immediate) {
-    return iimmediate(dest, NGP_MOVT_IMMEDIATE, immediate);
-}
-
-[[nodiscard]] static constexpr u32 ldpc(u8 dest, u8 opcode, i32 disp) {
-    return pcrel(opcode, dest, disp);
-}
-
-[[nodiscard]] static constexpr u32 adr(u8 dest, i32 disp) {
-    return pcrel(NGP_ADR_PC, dest, disp);
+// String
+inline void encode_string(u8* mem, const TokenView& str) {
+    u32 i = 0;
+    u32 memi = 0;
+    while (i < str.len) {
+        switch (str.ptr[i]) {
+        case '\\':
+        {
+            i++;
+            if (str.ptr[i] == '0') {
+                mem[memi] = '\0';
+                memi++;
+                i++;
+            }
+            else if (str.ptr[i] == 'n') {
+                mem[memi] = '\n';
+                memi++;
+                i++;
+            }
+        }
+        break;
+        default:
+            mem[memi] = str.ptr[i];
+            memi++;
+            i++;
+            break;
+        }
+    }
 }

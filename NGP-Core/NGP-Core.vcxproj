@@ -10,22 +10,58 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="CPU\Asm\Windows\AdditionalWIN64.inc" />
+    <None Include="CPU\Asm\Windows\BranchConditionalWIN64.inc" />
+    <None Include="CPU\Asm\Windows\FBinaryWIN64.inc" />
+    <None Include="CPU\Asm\Windows\ImmediateWIN64.inc" />
+    <None Include="CPU\Asm\Windows\LogicalAddSubWIN64.inc" />
+    <None Include="CPU\Asm\Windows\MacrosWIN64.inc" />
+    <None Include="CPU\Asm\Windows\MemoryWIN64.inc" />
+    <None Include="CPU\Asm\Windows\NonBinaryWIN64.inc" />
+    <None Include="CPU\Asm\Windows\UtilityWIN64.inc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Core\Constants.h" />
+    <ClInclude Include="CPU\CPU.h" />
+    <ClInclude Include="Core\Header.h" />
+    <ClInclude Include="Memory\MemoryBus.h" />
+    <ClInclude Include="FileFormat\ISA.h" />
+    <ClInclude Include="FileFormat\Rom.h" />
+    <ClInclude Include="GPU\Display.h" />
+    <ClInclude Include="GPU\GPU.h" />
+    <ClInclude Include="GPU\Impl\GPUD12.h" />
+    <ClInclude Include="Platform\OS.h" />
+    <ClInclude Include="Platform\Time.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="CPU\CPU.cpp" />
+    <ClCompile Include="Memory\MemoryBus.cpp" />
+    <ClCompile Include="GPU\GPU.cpp" />
+    <ClCompile Include="GPU\Impl\DisplayWin32.cpp" />
+    <ClCompile Include="GPU\Impl\GPUD12.cpp" />
+    <ClCompile Include="Platform\Impl\Win32OS.cpp" />
+    <ClCompile Include="Platform\Impl\Win32Time.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="CPU\Asm\Windows\InterpreterWIN64.asm" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{03780bf6-70f9-406a-9702-17da527c3e5f}</ProjectGuid>
-    <RootNamespace>NGP</RootNamespace>
+    <ProjectGuid>{22419bcf-e37a-430e-97c3-774696ba8e09}</ProjectGuid>
+    <RootNamespace>NGPCore</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -45,36 +81,36 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\</OutDir>
+    <OutDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\_IN\$(ProjectName)\</OutDir>
     <IntDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\_IN\$(ProjectName)\</IntDir>
-    <TargetName>ngp</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\</OutDir>
+    <OutDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\_IN\$(ProjectName)\</OutDir>
     <IntDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\_IN\$(ProjectName)\</IntDir>
-    <TargetName>ngp</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)NGP-Core;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointModel>Fast</FloatingPointModel>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>
+      </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);d3d12.lib;</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -83,35 +119,29 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)NGP-Core;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointModel>Fast</FloatingPointModel>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>
+      </SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);d3d12.lib;</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="Main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\NGP-Core\NGP-Core.vcxproj">
-      <Project>{22419bcf-e37a-430e-97c3-774696ba8e09}</Project>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />

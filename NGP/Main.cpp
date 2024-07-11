@@ -1,35 +1,41 @@
-#include "Core/VirtualMachine.h"
+#include <CPU/CPU.h>
+#include <GPU/Display.h>
+#include <Platform/Time.h>
 #include <stdio.h>
 
 #ifdef _WIN32
 #include <Windows.h>
+#include <GPU/Impl/GPUD12.h>
+#endif // _WIN32
 
-int wWinMain(HINSTANCE, HINSTANCE, LPWSTR cmdline, int cmdShow) {
-    initialize_display();
-
-#ifndef NDEBUG
-    AllocConsole();
-#endif // NDEBUG
-
+int main(int argc, char** argv) {
     if (system("\"..\\Build\\Debug-x64\\ngpas.exe\" ../NGPAS/Examples/main.asm") != 0) {
-        system("pause");
         return -1;
     }
 
-    int argc = 0;
-    wchar_t** argv = CommandLineToArgvW(cmdline, &argc);
+    Time::initialize();
+    CPU::initialize();
+
+    Display::initialize(800, 600);
+    if (CPU::load("../NGPAS/Examples/main.ngp") != STATUS_OK) {
+        return -1;
+    }
+
+#ifdef _WIN32
+    GPU::initialize(new GPUD12());
+#endif
+
+    while (Display::is_open) {
+        Display::update();
+
+        CPU::dispatch();
+        CPU::delay_for_timing();
+    }
     
-    VirtualMachine vm{};
-    if (vm.load("../NGPAS/Examples/main.ngp") != STATUS_OK) {
-        return -1;
-    }
-    vm.start();
-
-    while (vm.display.is_open) {
-        vm.display.update();
-    }
+    GPU::shutdown();
+    Display::shutdown();
+    CPU::shutdown();
+    Time::initialize();
 
     return 0;
 }
-
-#endif // _WIN32

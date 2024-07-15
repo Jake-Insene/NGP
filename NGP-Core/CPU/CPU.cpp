@@ -11,7 +11,7 @@
 #define get_flag(f) bool(CPU::registers.flags & (1 << (f)))
 #define set_flag(f, v) (CPU::registers.flags |= (v ? 1 << (f) : 0 ))
 
-static constexpr void set_flags(u32 src1, u32 src2, u64 res) {
+static inline void setFlags(u32 src1, u32 src2, u64 res) {
     CPU::registers.flags = 0;
 
     // Set S flag (sign flag)
@@ -32,28 +32,28 @@ extern "C" u32 compare(u32 src1, u32 src2) {
     u64 res = (u64)src1 - (u64)src2;
     
     CPU::registers.cycle_counter++; // setting flags
-    set_flags(src1, src2, res);
+    setFlags(src1, src2, res);
 
     return (u32)res;
 }
 
-extern "C" u32 compare_add(u32 src1, u32 src2) {
+extern "C" u32 compareAdd(u32 src1, u32 src2) {
     CPU::registers.cycle_counter++; // addition
     u64 res = (u64)src1 + (u64)src2;
     CPU::registers.cycle_counter++; // setting flags
-    set_flags(src1, src2, res);
+    setFlags(src1, src2, res);
     return (u32)res;
 }
 
-extern "C" u32 compare_and(u32 src1, u32 src2) {
+extern "C" u32 compareAnd(u32 src1, u32 src2) {
     CPU::registers.cycle_counter++; // bitwise and
     u64 res = (u64)src1 & (u64)src2;
     CPU::registers.cycle_counter++; // setting flags
-    set_flags(src1, src2, res);
+    setFlags(src1, src2, res);
     return (u32)res;
 }
 
-extern "C" void InterpreterMain(u32 inst, u32* registers);
+extern "C" void interpreterMain(u32 inst, u32* registers);
 
 // Type:
 // 0 - Word
@@ -61,106 +61,219 @@ extern "C" void InterpreterMain(u32 inst, u32* registers);
 // 2 - SHalf
 // 3 - Byte
 // 4 - SByte
-// 5 - DWord
-// 6 - QWord
-// 7 - Single
-// 8 - Double
+// 5 - QWord
+// 6 - Single
+// 7 - Double
 
-extern "C" void memory_read(u32 dest, u32 address, u32 type) {
+extern "C" void memoryRead(u32 dest, u32 address, u32 type) {
     CPU::registers.cycle_counter++; // address calculation
-    void* ptr = MemoryBus::get_real_address(address, true);
+    void* ptr = MemoryBus::getAddress(address, true);
     CPU::registers.cycle_counter++; // read memory
     if (!ptr) {
         // Emit a exeception if you can't read the address
     }
+
+    union {
+        u32* ulist = (u32*)&CPU::registers;
+        i32* ilist;
+    };
+
+
+    switch (type) {
+    case 0:
+        ulist[dest] = *(u32*)ptr;
+        break;
+    case 1:
+        ulist[dest] = *(u16*)ptr;
+        break;
+    case 2:
+        ilist[dest] = *(i16*)ptr;
+        break;
+    case 3:
+        ulist[dest] = *(u8*)ptr;
+        break;
+    case 4:
+        ilist[dest] = *(i8*)ptr;
+        break;
+    case 5:
+        CPU::simd.qfp[dest] = *(QWord*)ptr;
+        break;
+    case 6:
+        CPU::simd.ncsfp[dest << 2] = *(u32*)ptr;
+        break;
+    case 7:
+        CPU::simd.ncdfp[dest << 1] = *(u64*)ptr;
+        break;
+    }
 }
 
-extern "C" void memory_write(u32 source, u32 address, u32 type) {
+extern "C" void memoryWrite(u32 source, u32 address, u32 type) {
     CPU::registers.cycle_counter++; // address calculation
-    void* ptr = MemoryBus::get_real_address(address, false);
+    void* ptr = MemoryBus::getAddress(address, false);
     CPU::registers.cycle_counter++; // write memory
     if (!ptr) {
     // Emit a exeception if you can't write the address
     }
+
+    union {
+        u32* ulist = (u32*)&CPU::registers;
+        i32* ilist;
+    };
+
+
+    switch (type) {
+    case 0:
+        *(u32*)ptr = ulist[source];
+        break;
+    case 1:
+        *(u16*)ptr = (u16)ulist[source];
+        break;
+    case 2:
+        *(i16*)ptr = (i16)ilist[source];
+        break;
+    case 3:
+        *(u8*)ptr = (u8)ulist[source];
+        break;
+    case 4:
+        *(i8*)ptr = (i8)ilist[source];
+        break;
+    case 5:
+        *(QWord*)ptr = CPU::simd.qfp[source];
+        break;
+    case 6:
+        *(u32*)ptr = CPU::simd.ncsfp[source << 2];
+        break;
+    case 7:
+        *(u64*)ptr = CPU::simd.ncdfp[source << 1];
+        break;
+    }
 }
 
-extern "C" void memory_read_pair(u32 dest1, u32 dest2, u32 address, u32 type) {
+extern "C" void memoryReadPair(u32 dest1, u32 dest2, u32 address, u32 type) {
     CPU::registers.cycle_counter++; // address calculation
-    void* ptr = MemoryBus::get_real_address(address, true);
+    void* ptr = MemoryBus::getAddress(address, true);
     CPU::registers.cycle_counter++; // read memory
     if (!ptr) {
         // Emit a exeception if you can't read the address
     }
+
+    union {
+        u32* ulist = (u32*)&CPU::registers;
+        i32* ilist;
+    };
+
+    switch (type) {
+    case 0:
+        ulist[dest1] = *((u32*)ptr);
+        ulist[dest2] = *((u32*)ptr + 1);
+        break;
+    case 5:
+        CPU::simd.qfp[dest1] = *((QWord*)ptr);
+        CPU::simd.qfp[dest2] = *((QWord*)ptr + 1);
+        break;
+    case 6:
+        CPU::simd.ncsfp[dest1<<2] = *((u32*)ptr);
+        CPU::simd.ncsfp[dest2<<2] = *((u32*)ptr + 1);
+        break;
+    case 7:
+        CPU::simd.ncdfp[dest1 << 1] = *((u64*)ptr);
+        CPU::simd.ncdfp[dest2 << 1] = *((u64*)ptr + 1);
+        break;
+    }
 }
 
-extern "C" void memory_write_pair(u32 source1, u32 source2, u32 address, u32 type) {
+extern "C" void memoryWritePair(u32 source1, u32 source2, u32 address, u32 type) {
     CPU::registers.cycle_counter++; // address calculation
-    void* ptr = MemoryBus::get_real_address(address, false);
+    void* ptr = MemoryBus::getAddress(address, false);
     CPU::registers.cycle_counter++; // write memory
     if (!ptr) {
         // Emit a exeception if you can't write the address
+    }
+
+    union {
+        u32* ulist = (u32*)&CPU::registers;
+        i32* ilist;
+    };
+
+    switch (type) {
+    case 0:
+        *((u32*)ptr) = ulist[source1];
+        *((u32*)ptr + 1) = ulist[source2];
+        break;
+    case 5:
+        *((QWord*)ptr) = CPU::simd.qfp[source1];
+        *((QWord*)ptr + 1) = CPU::simd.qfp[source2];
+        break;
+    case 6:
+        *((u32*)ptr) = CPU::simd.ncsfp[source1];
+        *((u32*)ptr + 1) = CPU::simd.ncsfp[source2];
+        break;
+    case 7:
+        *((u64*)ptr) = CPU::simd.ncdfp[source1];
+        *((u64*)ptr + 1) = CPU::simd.ncdfp[source2];
+        break;
     }
 }
 
 i64 start;
 i64 frequency;
 void CPU::initialize() {
-    start = Time::get_counter();
-    frequency = Time::get_timer_frequency();
+    start = Time::getCounter();
+    frequency = Time::getTimerFrequency();
 }
 
 void CPU::shutdown() {}
 
-i32 CPU::load(const char* room_path)
+bool CPU::load(const char* room_path)
 {
     std::ifstream file{ room_path, std::ios::binary | std::ios::ate };
     if (!file.is_open()) {
-        return INVALID_ARGUMENTS;
+        return false;
     }
 
     u32 size = (u32)file.tellg();
     file.seekg(0);
     if (size < sizeof(RomHeader)) {
         file.close();
-        return CORRUPT;
+        return false;
     }
 
     u8* rom = new u8[size];
     file.read((char*)rom, size);
-    MemoryBus::emplace_rom(rom, size);
+    MemoryBus::emplaceRom(rom, size);
     delete[] rom;
 
-    header = (RomHeader*)MemoryBus::rom_address();
+    header = (RomHeader*)MemoryBus::romAddress();
 
     if (header->magic != RomSignature || header->check_sum != size) {
         file.close();
-        return CORRUPT;
+        return false;
     }
     file.close();
     
-    CPU::registers.pc = RomBaseAddress + (header->address_of_entry_point << 2);
-    return STATUS_OK;
+    CPU::registers.pc = header->address_of_entry_point << 2;
+    return true;
 }
 
 void CPU::dispatch() {
     if (CPU::registers.halt == 0) {
 #if PROFILE == 1
-        f64 start_tmp = Time::get_time();
+        f64 start_tmp = Time::getTime();
 #endif
-        MemoryBus::read_word(CPU::registers.pc, registers.ir);
+        MemoryBus::readWord(CPU::registers.pc, registers.ir);
         CPU::registers.pc += 4;
 
-        InterpreterMain(CPU::registers.ir, CPU::registers.list);
+        interpreterMain(CPU::registers.ir, &CPU::registers.r0);
 #if PROFILE == 1
-        f64 elapsed = Time::get_time() - start_tmp;
+        f64 elapsed = Time::getTime() - start_tmp;
         printf("Executing instruction, Cycles: %d, tooks %fs\n", CPU::registers.cycle_counter, elapsed);
 #endif
     }
 
 }
 
-void CPU::delay_for_timing() {
-    f64 elapsed = f64(Time::get_counter() - start) / frequency;
+void CPU::delayForTiming() {
+    f64 elapsed = f64(Time::getCounter() - start) / frequency;
     f64 target_time = f64(CPU::registers.cycle_counter) / ClockSpeed;
     f64 to_wait = target_time - elapsed;
 

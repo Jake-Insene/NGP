@@ -1,17 +1,19 @@
 #pragma once
 #include <Core/Header.h>
+#include <string_view>
 
 enum TokenType : u8 {
     TOKEN_ERROR,
     TOKEN_END_OF_FILE,
 
     TOKEN_IMMEDIATE,
+    TOKEN_IMMEDIATE_SINGLE,
+    TOKEN_IMMEDIATE_DOUBLE,
     TOKEN_STRING,
 
     TOKEN_DIRECTIVE,
     TOKEN_INSTRUCTION,
     TOKEN_LABEL,
-    TOKEN_LABEL_LOCAL,
     TOKEN_SYMBOL,
 
     TOKEN_NEW_LINE,
@@ -286,18 +288,12 @@ enum TokenInstruction : u8 {
     TI_ADR,
 };
 
-struct TokenView {
-    u8* ptr;
-    u64 len;
-};
-
-struct SourceScope;
 struct Token {
-    const char* source_file = nullptr;
-    TokenView str;
-    TokenType type = TOKEN_ERROR;
-    u8 subtype = 0;
-    u32 line = 0;
+    const char* source_file;
+    std::string_view str;
+    TokenType type;
+    u8 subtype;
+    u32 line;
 
     union {
         u8 byte[8] = {};
@@ -309,25 +305,24 @@ struct Token {
         u64 u;
         f32 s;
         f64 d;
-        u32 include;
     };
 
     [[nodiscard]] constexpr bool is(TokenType tk) const { return type == tk; }
-    [[nodiscard]] constexpr bool is_one_of(TokenType tk1, TokenType tk2) const { return type == tk1 || type == tk2; }
+    [[nodiscard]] constexpr bool isOneOf(TokenType tk1, TokenType tk2) const { return type == tk1 || type == tk2; }
 
-    [[nodiscard]] constexpr bool is_not(TokenType tk) const { return type != tk; }
+    [[nodiscard]] constexpr bool isNot(TokenType tk) const { return type != tk; }
 
-    [[nodiscard]] constexpr bool is_fp() const { return is_single() || is_double() || is_qword(); }
+    [[nodiscard]] constexpr bool isFPReg() const { return isSingleReg() || isDoubleReg() || isQwordReg(); }
 
-    [[nodiscard]] constexpr bool is_single() const {
+    [[nodiscard]] constexpr bool isSingleReg() const {
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_S0 && subtype <= TOKEN_S31);
     }
 
-    [[nodiscard]] constexpr bool is_double() const {
+    [[nodiscard]] constexpr bool isDoubleReg() const {
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_D0 && subtype <= TOKEN_D31);
     }
 
-    [[nodiscard]] constexpr bool is_qword() const {
+    [[nodiscard]] constexpr bool isQwordReg() const {
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_Q0 && subtype <= TOKEN_Q31);
     }
 

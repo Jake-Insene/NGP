@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
     CPU::initialize();
 
     Display::initialize(800, 600);
-    if (CPU::load("../NGPAS/Examples/main.ngp") != STATUS_OK) {
+    if (!CPU::load("../NGPAS/Examples/main.ngp")) {
         return -1;
     }
 
@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
         Display::update();
 
         CPU::dispatch();
-        CPU::delay_for_timing();
+        CPU::delayForTiming();
     }
     
     GPU::shutdown();

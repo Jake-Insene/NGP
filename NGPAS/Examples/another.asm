@@ -1,2 +1,2 @@
 another:
-	HLT
+	RET

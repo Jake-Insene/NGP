@@ -6,10 +6,10 @@ struct Time {
     static void initialize();
     static void shutdown();
     
-    static f64 get_time();
+    static f64 getTime();
 
-    static i64 get_counter();
+    static i64 getCounter();
 
-    static i64 get_timer_frequency();
+    static i64 getTimerFrequency();
 
 };

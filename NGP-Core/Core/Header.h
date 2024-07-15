@@ -20,13 +20,6 @@ using f64 = double;
 
 using Word = u32;
 
-enum ERROR_CODES : i32 {
-    STATUS_OK = 0,
-    INVALID_ARGUMENTS = -1,
-    ERROR = -2,
-    CORRUPT = -3,
-};
-
 [[nodiscard]] constexpr u32 align_up(u32 size, u16 alignment) {
     return (size + alignment - 1) & -(alignment);
 }

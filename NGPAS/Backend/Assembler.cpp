@@ -2,116 +2,97 @@
 #include "ErrorManager.h"
 #include <fstream>
 
-i32 Assembler::assemble_file(const char* file_path, const char* output_path, u32 origin)
+bool Assembler::assembleFile(const char* file_path, const char* output_path, u32 origin)
 {
     origin_address = origin;
     pre_processor.process(file_path);
     if (ErrorManager::is_panic_mode) {
-        return ERROR;
+        return false;
     }
-
-    pre_processor.source_index = 0;
 
     reserve(sizeof(RomHeader));
 
-    u32 initial_size = (u32)program.size();
     phase1();
-    program.resize(size_t(initial_size));
     
-    phase2();
+    if(!ErrorManager::is_panic_mode)
+    {
+        phase2();
+        if (!ErrorManager::is_panic_mode) {
+            return false;
+        }
 
-    // write
-    std::ofstream output{ output_path, std::ios::binary };
+        // write
+        std::ofstream output{ output_path, std::ios::binary };
 
-    auto it = pre_processor.global_scope().labels.find(
-        std::string_view((char*)entry_point.symbol.ptr, entry_point.symbol.len)
-    );
-    if (it == pre_processor.global_scope().labels.end()) {
-        ErrorManager::error(
-            entry_point.source_file, entry_point.line,
-            "the entry point was not defined"
+        auto it = symbols.find(
+            std::string(entry_point.symbol)
         );
-        return ERROR;
+        if (it == symbols.end()) {
+            ErrorManager::error(
+                entry_point.source_file, entry_point.line,
+                "the entry point was not defined"
+            );
+        }
+
+        entry_point_address = it->second.address;
+        RomHeader* header = (RomHeader*)program.data();
+        header->magic = RomSignature;
+        header->check_sum = u32(program.size());
+        header->address_of_entry_point = entry_point_address / 4;
+
+        output.write((char*)program.data(), program.size());
+
+        output.close();
+
+        return true;
     }
-    
-    entry_point_address = it->second.address;
-    RomHeader* header = (RomHeader*)program.data();
-    header->magic = RomSignature;
-    header->check_sum = u32(program.size());
-    header->address_of_entry_point = entry_point_address / 4;
-
-    output.write((char*)program.data(), program.size());
-
-    output.close();
-
-    return current_status;
+     
+    return false;
 }
 
 void Assembler::phase1() {
-    pre_processor.current_scope().token_index = 0;
+    token_index = 0;
 
     advance();
     advance();
 
-    while (current->is_not(TOKEN_END_OF_FILE)) {
+    while (current->isNot(TOKEN_END_OF_FILE)) {
         if (ErrorManager::must_syncronize) {
             syncronize();
         }
 
         switch (current->type) {
-        case TOKEN_DIRECTIVE:
+        case TOKEN_SYMBOL:
+        {
+            Token* name = current;
             advance();
-            switch (last->subtype) {
-            case TD_INCLUDE:
-            {
-                Token* last_current = current;
-                Token* last_next = next;
 
-                u32 last_scope = pre_processor.current_scope_index;
-                pre_processor.current_scope_index = last->include;
+            if (current->is(TOKEN_EQUAL)) {
+                advance();
 
-                phase1();
+                Token value = parseExpresion(ParsePrecedence::Start);
 
-                pre_processor.current_scope_index = last_scope;
-                current = last_current;
-                next = last_next;
+                std::string str_name = std::string(name->str);
+                auto it = symbols.find(str_name);
+                if (it != symbols.end()) {
+                    MAKE_ERROR((*name), return, "%.*s", name->str.size(), name->str.data());
+                }
+                else {
+                    auto& symbol = symbols.emplace(
+                        str_name, Symbol()
+                    ).first->second;
+
+                    symbol.uvalue = value.u;
+                    symbol.symbol = str_name;
+                }
             }
-                break;
-            case TD_STRING:
-            {
-                Token string = parse_expresion(ParsePrecedence::Assignment);
-                program.resize(program.size() + string.str.len);
+            else {
+                MAKE_ERROR((*name), return, "invalid expresion");
             }
-                break;
-            case TD_BYTE:
-                new_byte();
-                break;
-            case TD_HALF:
-                new_half();
-                break;
-            case TD_WORD:
-                new_word();
-                break;
-            case TD_DWORD:
-                new_word();
-                new_word();
-                break;
-            case TD_ZERO:
-            {
-                Token count = parse_expresion(ParsePrecedence::Assignment);
-                program.resize(program.size() + count.u);
-            }
-                break;
-            }
-            break;
-        case TOKEN_LABEL_LOCAL:
-            assemble_label();
+        }
             break;
         case TOKEN_LABEL:
-            assemble_global_label();
-            break;
-        case TOKEN_INSTRUCTION:
-            new_word();
+            makeLabel(current->str, u32(-1), current->source_file, current->line);
             advance();
             break;
         default:
@@ -122,63 +103,65 @@ void Assembler::phase1() {
 
 }
 
-void Assembler::assemble_label()
-{
-    auto& l = pre_processor.current_scope().labels.emplace(
-        std::string_view((char*)current->str.ptr, current->str.len),
-        Label()
-    ).first->second;
+void Assembler::makeLabel(std::string_view label, u32 address, const char* source_file, u32 line) {
+    std::string composed = {};
 
-    l.symbol = current->str;
-    l.address = origin_address + u32(program.size());
-    l.source_file = current->source_file;
-    l.line = current->line;
+    if (label[0] == '.') {
+        composed = std::string(last_label) + std::string(label);
+    }
+    else {
+        composed = label;
+        last_label = label;
+    }
 
-    advance();
-}
+    auto it = symbols.find(composed);
+    if (it != symbols.end()) {
+        it->second.address = address;
+    }
+    else {
+        auto& l = symbols.emplace(
+            label,
+            Symbol()
+        ).first->second;
 
-void Assembler::assemble_global_label() {
-    auto& l = pre_processor.global_scope().labels.emplace(
-        std::string_view((char*)current->str.ptr, current->str.len),
-        Label()
-    ).first->second;
+        l.symbol = std::move(composed);
+        l.address = address;
+        l.source_file = source_file;
+        l.line = line;
+    }
 
-    l.symbol = current->str;
-    l.address = origin_address + u32(program.size());
-    l.source_file = current->source_file;
-    l.line = current->line;
-
-    advance();
 }
 
 void Assembler::phase2() {
-    pre_processor.current_scope().token_index = 0;
+    token_index = 0;
 
     advance();
     advance();
 
-    while (current->is_not(TOKEN_END_OF_FILE)) {
+    while (current->isNot(TOKEN_END_OF_FILE)) {
         if (ErrorManager::must_syncronize) {
             syncronize();
         }
 
         switch (current->type) {
         case TOKEN_DIRECTIVE:
-            assemble_directive();
+            assembleDirective();
             break;
         case TOKEN_NEW_LINE:
             advance();
             break;
         case TOKEN_LABEL:
-        case TOKEN_LABEL_LOCAL:
+        {
+            u32 address = u32(origin_address + program.size()) - last_size;
+            symbols.find(std::string(current->str))->second.address = address;
             advance();
+        }
             break;
         case TOKEN_INSTRUCTION:
-            assemble_instruction();
+            assembleInstruction();
             break;
         default:
             ErrorManager::error(current->source_file, current->line, "invalid token");
-            current_status = ERROR;
             return;
         }
     }
@@ -188,8 +171,8 @@ void Assembler::advance()
 {
     last = current;
     current = next;
-    if (pre_processor.current_scope().token_index < pre_processor.current_scope().tokens.size()) {
-        next = &pre_processor.current_scope().tokens[pre_processor.current_scope().token_index++];
+    if (token_index < pre_processor.tokens.size()) {
+        next = &pre_processor.tokens[token_index++];
     }
     else {
         static Token end_of_file = Token{
@@ -227,22 +210,21 @@ bool Assembler::expected(TokenType tk, const char* format, ...) {
         va_start(args, format);
         ErrorManager::errorV(last->source_file, last->line, format, args);
         va_end(args);
-        current_status = ERROR;
         return false;
     }
 
     return true;
 }
 
-void Assembler::goto_next_line()
+void Assembler::gotoNextLine()
 {
     u32 line = current->line;
-    while (line == current->line && current->is_not(TOKEN_END_OF_FILE)) {
+    while (line == current->line && current->isNot(TOKEN_END_OF_FILE)) {
         advance();
     }
 }
 
-u8 Assembler::get_register(Token tk)
+u8 Assembler::getRegister(Token tk)
 {
     if (tk.subtype >= TOKEN_R0 && tk.subtype <= TOKEN_R31) {
         return u8(tk.subtype);
@@ -257,7 +239,7 @@ u8 Assembler::get_register(Token tk)
     return u8(-1);
 }
 
-u32& Assembler::new_word()
+u32& Assembler::newWord()
 {
     program.emplace_back();
     program.emplace_back();
@@ -266,13 +248,13 @@ u32& Assembler::new_word()
     return *(u32*)(&program[program.size() - 4]);
 }
 
-u16& Assembler::new_half() {
+u16& Assembler::newHalf() {
     program.emplace_back();
     program.emplace_back();
     return *(u16*)(&program[program.size() - 2]);
 }
 
-u8& Assembler::new_byte() {
+u8& Assembler::newByte() {
     return program.emplace_back();
 }
 
@@ -283,16 +265,12 @@ u8* Assembler::reserve(u32 count)
     return &program[program.size() - count];
 }
 
-std::unordered_map<std::string_view, Label>::iterator Assembler::find_in_scope(SourceScope& scope,
-    const TokenView& label, bool& founded) {
-    auto it = scope.labels.find(std::string_view((char*)label.ptr, label.len));
+std::unordered_map<std::string, Symbol>::iterator Assembler::findLabel(std::string_view label, bool& founded) {
+    auto it = symbols.find(std::string(label));
     founded = true;
-    if (it == scope.labels.end()) {
+    if (it == symbols.end()) {
         founded = false;
-
-        if (scope.parent_scope_index < pre_processor.sources.size()) {
-            return find_in_scope(pre_processor.sources[scope.parent_scope_index], label, founded);
-        }
+        return symbols.end();
     }
 
     return it;

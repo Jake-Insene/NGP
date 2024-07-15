@@ -16,10 +16,8 @@ LD_OPC:
 
     MOV ECX, R10D
     MOV R8, 0
-    CALL memory_read
+    CALL memoryRead
 
-    RESTORE_ARGS
-    
     JMP CONTINUE_ADDRESS
 LDSH_OPC:
     GET_REGISTER EDX, R11
@@ -28,9 +26,7 @@ LDSH_OPC:
 
     MOV ECX, R10D
     MOV R8, 2
-    CALL memory_read
-
-    RESTORE_ARGS
+    CALL memoryRead
 
     JMP CONTINUE_ADDRESS
 LDH_OPC:
@@ -40,9 +36,7 @@ LDH_OPC:
 
     MOV ECX, R10D
     MOV R8, 1
-    CALL memory_read
-
-    RESTORE_ARGS
+    CALL memoryRead
 
     JMP CONTINUE_ADDRESS
 LDSB_OPC:
@@ -52,9 +46,7 @@ LDSB_OPC:
 
     MOV ECX, R10D
     MOV R8, 4
-    CALL memory_read
-
-    RESTORE_ARGS
+    CALL memoryRead
 
     JMP CONTINUE_ADDRESS
 LDB_OPC:
@@ -64,9 +56,7 @@ LDB_OPC:
 
     MOV ECX, R10D
     MOV R8, 3
-    CALL memory_read
-
-    RESTORE_ARGS
+    CALL memoryRead
 
     JMP CONTINUE_ADDRESS
 ST_OPC:
@@ -76,9 +66,7 @@ ST_OPC:
 
     MOV ECX, R10D
     MOV R8, 0
-    CALL memory_write
-
-    RESTORE_ARGS
+    CALL memoryWrite
 
     JMP CONTINUE_ADDRESS
 STH_OPC:
@@ -88,9 +76,8 @@ STH_OPC:
 
     MOV ECX, R10D
     MOV R8, 1
-    CALL memory_write
+    CALL memoryWrite
 
-    RESTORE_ARGS
 
     JMP CONTINUE_ADDRESS
 STB_OPC:
@@ -100,9 +87,7 @@ STB_OPC:
 
     MOV ECX, R10D
     MOV R8, 3
-    CALL memory_write
-
-    RESTORE_ARGS
+    CALL memoryWrite
 
     JMP CONTINUE_ADDRESS
 MADD_OPC:

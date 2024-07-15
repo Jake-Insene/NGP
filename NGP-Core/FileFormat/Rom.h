@@ -2,9 +2,6 @@
 #include "Core/Header.h"
 
 inline constexpr u32 RomSignature = 	0x0050474E;
-inline constexpr u32 BiosBaseAddress = 	0x00000000;
-inline constexpr u32 RamBaseAddress = 	0x01000000;
-inline constexpr u32 RomBaseAddress = 	0x08200000;
 
 struct RomHeader {
     u32 magic = RomSignature;

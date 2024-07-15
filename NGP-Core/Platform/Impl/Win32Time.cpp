@@ -10,17 +10,17 @@ void Time::initialize() {
 
 void Time::shutdown() {}
 
-f64 Time::get_time() {
-    return f64(get_counter() - start) / frequency;
+f64 Time::getTime() {
+    return f64(getCounter() - start) / frequency;
 }
 
-i64 Time::get_counter() {
+i64 Time::getCounter() {
     i64 counter = 0;
     QueryPerformanceCounter((LARGE_INTEGER*)&counter);
     return counter;
 }
 
-i64 Time::get_timer_frequency() {
+i64 Time::getTimerFrequency() {
     return frequency;
 }
 

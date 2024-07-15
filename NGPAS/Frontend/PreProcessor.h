@@ -2,30 +2,48 @@
 #include "Frontend/Lexer.h"
 #include <unordered_map>
 #include <string>
-#include <string_view>
 
-struct Label {
-    TokenView symbol;
-    u32 address;
+struct SourceFile {
+    SourceFile() {}
 
-    const char* source_file;
-    u32 line;
-    u32 column;
-};
+    SourceFile(SourceFile&& s) {
+        file_path = std::move(s.file_path);
+        source_code = s.source_code;
+        source_len = s.source_len;
+        index = s.index;
 
-struct SourceScope {
+        s.file_path = {};
+        s.source_code = nullptr;
+        s.source_len = 0;
+        s.index = u32(-1);
+    }
+
+    SourceFile& operator=(SourceFile&& s) {
+        file_path = std::move(s.file_path);
+        source_code = s.source_code;
+        source_len = s.source_len;
+        index = s.index;
+
+        s.file_path = {};
+        s.source_code = nullptr;
+        s.source_len = 0;
+        s.index = u32(-1);
+
+        return *this;
+    }
+    
+    ~SourceFile() {
+        delete[] source_code;
+    }
+
     std::string file_path;
-    std::unordered_map<std::string_view, Label> labels;
-    TokenList tokens;
 
     u8* source_code;
     u32 source_len;
-
-    u32 token_index;
-    u32 parent_scope_index;
+    u32 index;
 };
 
-using SourceScopeList = std::vector<SourceScope>;
+using SourceFileList = std::vector<SourceFile>;
 
 struct PreProcessor {
     PreProcessor() {}
@@ -33,14 +51,11 @@ struct PreProcessor {
     
     void process(const char* file_path);
 
-    void process_source();
-    void process_directive();
+    void processSource();
+    void processDirective();
 
     void advance();
     bool expected(TokenType type, const char* format, ...);
-
-    [[nodiscard]] constexpr SourceScope& global_scope() { return sources[global_scope_index]; }
-    [[nodiscard]] constexpr SourceScope& current_scope() { return sources[current_scope_index]; }
 
     Lexer lexer;
 
@@ -48,8 +63,6 @@ struct PreProcessor {
     Token current;
     Token next;
 
-    SourceScopeList sources;
-    u32 global_scope_index = 0;
-    u32 current_scope_index = 0;
-    u32 source_index = 0;
+    SourceFileList sources;
+    TokenList tokens;
 };

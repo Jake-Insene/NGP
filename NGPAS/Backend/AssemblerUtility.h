@@ -2,20 +2,20 @@
 #include "Frontend/Token.h"
 #include <FileFormat/ISA.h>
 
-[[nodiscard]] static constexpr u32 one_arg(u8 opcode, u32 arg) {
+[[nodiscard]] static constexpr u32 oneArg(u8 opcode, u32 arg) {
     return u32(opcode | (arg << 6));
 }
 
 [[nodiscard]] static constexpr u32 bl(i32 disp) {
-    return one_arg(NGP_BL, disp);
+    return oneArg(NGP_BL, disp);
 }
 
 [[nodiscard]] static constexpr u32 b(i32 disp) {
-    return one_arg(NGP_BRANCH, disp);
+    return oneArg(NGP_BRANCH, disp);
 }
 
 [[nodiscard]] static constexpr u32 swi(u32 code) {
-    return one_arg(NGP_SWI, code);
+    return oneArg(NGP_SWI, code);
 }
 
 [[nodiscard]] static constexpr u32 bcond(u8 cond, i32 disp) {
@@ -28,7 +28,7 @@
 
 // Binary
 
-[[nodiscard]] static constexpr u32 logical_add_sub(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
+[[nodiscard]] static constexpr u32 logicalAddSub(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
     return u32(
         NGP_LOGICAL_ADD_SUB
         | (opcode << 6)
@@ -50,7 +50,7 @@
     );
 }
 
-[[nodiscard]] static constexpr u32 non_binary(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
+[[nodiscard]] static constexpr u32 nonBinary(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3) {
     return u32(
         NGP_NON_BINARY
         | (opcode << 6)
@@ -104,20 +104,20 @@
 }
 
 // String
-inline void encode_string(u8* mem, const TokenView& str) {
+inline void encodeString(u8* mem, std::string_view str) {
     u32 i = 0;
     u32 memi = 0;
-    while (i < str.len) {
-        switch (str.ptr[i]) {
+    while (i < str.size()) {
+        switch (str[i]) {
         case '\\':
         {
             i++;
-            if (str.ptr[i] == '0') {
+            if (str[i] == '0') {
                 mem[memi] = '\0';
                 memi++;
                 i++;
             }
-            else if (str.ptr[i] == 'n') {
+            else if (str[i] == 'n') {
                 mem[memi] = '\n';
                 memi++;
                 i++;
@@ -125,7 +125,7 @@ inline void encode_string(u8* mem, const TokenView& str) {
         }
         break;
         default:
-            mem[memi] = str.ptr[i];
+            mem[memi] = str[i];
             memi++;
             i++;
             break;

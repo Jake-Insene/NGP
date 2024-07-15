@@ -6,20 +6,20 @@ using TokenList = std::vector<Token>;
 
 struct Lexer {
     void set(const char* source_file, u8* ctn, u32 s);
-    Token get_next();
+    Token getNext();
 
-    void skip_white_space();
+    void skipWhiteSpace();
     char peek(u8 offset);
     void advance();
 
-    Token get_symbol_or_label();
-    Token get_immediate();
-    Token get_string();
+    Token getSymbolOrLabel();
+    Token getImmediate();
+    Token getString();
 
-    bool is_alpha() const;
-    bool is_num() const;
-    bool is_alnum() const;
-    bool is_hex() const;
+    bool isAlpha(u8 c) const;
+    bool isNum(u8 c) const;
+    bool isAlnum(u8 c) const;
+    bool isHex(u8 c) const;
 
     const char* file_path = nullptr;
     u8* content = nullptr;

@@ -2,21 +2,21 @@
 #include "Core/Header.h"
 
 struct MemoryBus {
-    static u8* ram_address();
-    static u8* bios_address();
-    static u8* rom_address();
+    static u8* biosAddress();
+    static u8* ramAddress();
+    static u8* romAddress();
 
-    static void emplace_bios(u8* bios, u32 bios_size);
-    static void emplace_rom(u8* rom, u32 rom_size);
+    static void emplaceBios(u8* bios, u32 bios_size);
+    static void emplaceRom(u8* rom, u32 rom_size);
 
-    static void* get_real_address(u32 addr, bool read);
+    static void* getAddress(u32 addr, bool read);
 
-    static bool read_word(u32 addr, u32& Word);
-    static bool read_half(u32 addr, u16& half);
-    static bool read_byte(u32 addr, u8& byte);
+    static bool readWord(u32 addr, u32& Word);
+    static bool readHalf(u32 addr, u16& half);
+    static bool readByte(u32 addr, u8& byte);
 
-    static bool write_word(u32 addr, u32 Word);
-    static bool write_half(u32 addr, u16 half);
-    static bool write_byte(u32 addr, u8 byte);
+    static bool writeWord(u32 addr, u32 Word);
+    static bool writeHalf(u32 addr, u16 half);
+    static bool writeByte(u32 addr, u8 byte);
 
 };

@@ -6,79 +6,120 @@
 
 #define MAKE_ERROR(TOKEN, BREAKER, ...) \
     ErrorManager::error(TOKEN.source_file, TOKEN.line, __VA_ARGS__);\
-    current_status = ERROR;\
     BREAKER;
 
 enum class ParsePrecedence {
     None,
-    Assignment, // =
+    Start,
+    BitwiseOr,
+    BitwiseXor,
+    BitwiseAnd,
     Equality, // == !=
     Comparision, // < > <= >=
+    Shift, // >> <<
     Term, // + -
     Factor, // * /
-    Unar, // ! -
+    Unary, // ! -
     Primary,
 };
 
-struct Assembler {
-    i32 assemble_file(const char* file_path, const char* output_path, u32 origin);
+struct Symbol {
+    std::string symbol;
 
-    // First face: search labels
+    const char* source_file;
+    u32 line;
+
+    union {
+        u32 address;
+        u64 uvalue;
+        i64 ivalue;
+        f32 svalue;
+        f64 dvalue;
+    };
+};
+
+struct Assembler {
+    bool assembleFile(const char* file_path, const char* output_path, u32 origin);
+
+    // First face: search labels and constants
     void phase1();
-    void assemble_label();
-    void assemble_global_label();
+    void makeLabel(std::string_view label, u32 address, const char* source_file, u32 line);
 
     // Second fase: assembly
     void phase2();
-    
-    void assemble_directive();
-    void assemble_instruction();
+
+    void assembleDirective();
+    void assembleInstruction();
 
     // assemble_instruction();
-    void assemble_load_store(u32& inst, u8 imm_opcode, u8 index_opc, u8 alignment, bool handle_symbol);
+    void assembleLoadStore(u32& inst, u8 imm_opcode, u8 index_opc, u8 alignment, bool handle_symbol);
 
-    void assemble_binary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit, bool is_additional_opc, bool use_amount);
-    
-    void assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit);
+    void assembleBinary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit, bool is_additional_opc, bool use_amount);
 
-    void assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8));
+    void assembleComparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit);
 
-    void assemble_one_operand(u32& inst, u32(*)(u8, u8));
-    
-    void assemble_shift(u32& inst, u8 opcode);
+    void assembleTwoOperands(u32& inst, u32(*fn)(u8, u8, u8));
 
-    void check_for_amount(u8& adder, u8& amount);
+    void assembleOneOperand(u32& inst, u32(*)(u8, u8));
+
+    void assembleShift(u32& inst, u8 opcode);
+
+    void checkForAmount(u8& adder, u8& amount);
 
     void advance();
     void syncronize();
     bool expected(TokenType tk, const char* format, ...);
-    void goto_next_line();
+    void gotoNextLine();
 
     // Utility
-    u8 get_register(Token tk);
-    u32& new_word();
-    u16& new_half();
-    u8& new_byte();
+    u8 getRegister(Token tk);
+    u32& newWord();
+    u16& newHalf();
+    u8& newByte();
     u8* reserve(u32 count);
 
     // Parser
-    Token parse_expresion(ParsePrecedence precedence);
+
+    // Prefix
+    Token parseMinus(Token, Token);
+    Token parseNot(Token, Token);
+    Token parseInteger(Token, Token);
+    Token parseSingle(Token, Token);
+    Token parseDouble(Token, Token);
+    Token parseSymbol(Token, Token);
+    Token parseRegister(Token, Token);
+
+    // Infix
+    Token parseAdd(Token lsh, Token rhs);
+    Token parseSub(Token lsh, Token rhs);
+    Token parseAnd(Token lsh, Token rhs);
+    Token parseOr(Token lsh, Token rhs);
+    Token parseXor(Token lsh, Token rhs);
+    Token parseShl(Token lsh, Token rhs);
+    Token parseShr(Token lsh, Token rhs);
+    Token parseAsr(Token lsh, Token rhs);
+    Token parseMul(Token lsh, Token rhs);
+    Token parseDiv(Token lsh, Token rhs);
+
+    Token parseExpresion(ParsePrecedence precedence);
 
     // expresions
 
-    std::unordered_map<std::string_view, Label>::iterator find_in_scope(SourceScope& scope, 
-        const TokenView& label, bool& founded);
+    std::unordered_map<std::string, Symbol>::iterator findLabel(std::string_view label, bool& founded);
 
     PreProcessor pre_processor;
 
     Token* last;
     Token* current;
     Token* next;
+    u32 token_index;
 
     std::vector<u8> program;
+    std::string_view last_label;
+    std::unordered_map<std::string, Symbol> symbols;
 
-    Label entry_point;
+    Symbol entry_point;
     u32 entry_point_address;
     u32 origin_address;
-    i32 current_status;
+    u32 last_size;
 };

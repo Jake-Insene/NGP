@@ -11,7 +11,7 @@ struct ErrorManager {
     }
     
     static inline void errorV(const char* file_path, u32 line, const char* format, va_list args) {
-        printf("Error at %s:[%d]:\n\t", file_path, line);
+        printf("error at %s:[%d]:\n\t", file_path, line);
         vprintf(format, args);
         putchar('\n');
         error_count++;
@@ -28,7 +28,7 @@ struct ErrorManager {
     }
 
     static inline void global_errorV(const char* file_path, const char* format, va_list args) {
-        printf("Error at %s:\n\t", file_path);
+        printf("error at %s:\n\t", file_path);
         vprintf(format, args);
         putchar('\n');
         error_count++;
@@ -45,7 +45,7 @@ struct ErrorManager {
     }
 
     static inline void warnV(const char* file_path, u32 line, const char* format, va_list args) {
-        printf("Warn at %s:[%d]:\n\t", file_path, line);
+        printf("warning %s:[%d]:\n\t", file_path, line);
         vprintf(format, args);
         putchar('\n');
         error_count++;

@@ -277,10 +277,10 @@ SymbolInfo symbols[] = {
     advance();\
 }
 
-Token Lexer::get_next() {
+Token Lexer::getNext() {
     Token tk = {};
 
-    skip_white_space();
+    skipWhiteSpace();
 
     switch (current) {
     case ';':
@@ -290,11 +290,11 @@ Token Lexer::get_next() {
             advance();
         }
 
-        tk = get_next();
+        tk = getNext();
     }
     break;
     case '#':
-        tk = get_immediate();
+        tk = getImmediate();
         break;
     case '=':
         if (peek(1) == '=') {
@@ -363,7 +363,7 @@ Token Lexer::get_next() {
         MAKE_TOKEN(TOKEN_OR);
         break;
     case '"':
-        tk = get_string();
+        tk = getString();
         break;
     case '\n':
         MAKE_TOKEN(TOKEN_NEW_LINE);
@@ -372,11 +372,11 @@ Token Lexer::get_next() {
         MAKE_TOKEN(TOKEN_END_OF_FILE);
         break;
     default:
-        if (is_alpha() || current == '_' || current == '.') {
-            tk = get_symbol_or_label();
+        if (isAlpha(current) || current == '_' || current == '.') {
+            tk = getSymbolOrLabel();
         }
-        else if (is_num()) {
-            tk = get_immediate();
+        else if (isNum(current)) {
+            tk = getImmediate();
         }
         else {
             ErrorManager::error(file_path, line, "invalid token '%c'", current);
@@ -387,7 +387,7 @@ Token Lexer::get_next() {
     return tk;
 }
 
-void Lexer::skip_white_space() {
+void Lexer::skipWhiteSpace() {
     while (current == ' '
         || current == '\r'
         || current == '\t') {
@@ -412,40 +412,31 @@ void Lexer::advance() {
     }
 }
 
-Token Lexer::get_symbol_or_label()
+Token Lexer::getSymbolOrLabel()
 {
     Token tk = {
         .source_file = file_path,
         .line = line,
     };
 
-    bool start_with_point = false;
-    if (current == '.') {
-        start_with_point = true;
-    }
-
     u64 start = index;
-    while (is_alnum() || current == '_' || current == '.') {
+    while (isAlnum(current) || current == '_' || current == '.') {
         advance();
     }
-    tk.str.ptr = content + start;
-    tk.str.len = index - start;
+    tk.str = std::string_view((char*)content + start, index - start);
 
     if (current == ':') {
         advance();
-        if(start_with_point)
-            tk.type = TOKEN_LABEL_LOCAL;
-        else
-            tk.type = TOKEN_LABEL;
+        tk.type = TOKEN_LABEL;
     }
     else {
         tk.type = TOKEN_SYMBOL;
     }
 
     for (auto& sym : symbols) {
-        if (sym.size == tk.str.len) {
+        if (sym.size == tk.str.size()) {
             for (u8 i = 0; i < sym.size; i++) {
-                if (sym.symbol[i] != std::tolower(tk.str.ptr[i])) {
+                if (sym.symbol[i] != std::tolower(tk.str[i])) {
                     goto next;
                 }
             }
@@ -460,7 +451,7 @@ Token Lexer::get_symbol_or_label()
     return tk;
 }
 
-Token Lexer::get_immediate() {
+Token Lexer::getImmediate() {
     Token tk = {
         .source_file = file_path,
         .type = TOKEN_IMMEDIATE,
@@ -472,11 +463,6 @@ Token Lexer::get_immediate() {
     }
 
     int base = 10;
-    u64 start = index;
-    if (current == '-') {
-        advance();
-    }
-
     if (current == '0') {
         if (peek(1) == 'X' || peek(1) == 'x') {
             base = 16;
@@ -490,46 +476,73 @@ Token Lexer::get_immediate() {
         }
     }
 
-    while (is_hex()) {
+    char buff[32] = {};
+
+    u32 i = 0;
+    while (isHex(current) && i < 32) {
+        buff[i] = current;
         advance();
+        i++;
     }
-    tk.str.ptr = content + start;
-    tk.str.len = index - start;
 
-    // We want to create a c string
-    // in large program with lot of immediate values, this can help to prevent
-    // a lot of memory allocations
-    content[index] = '\0';
+    if (i >= 32) {
+        ErrorManager::error(file_path, line, "constant number too long", current);
+    }
 
-    tk.u = std::stoull((char*)tk.str.ptr, nullptr, base);
+    bool is_single = false;
+    if (current == '.') {
+        if (peek(1) == 'f' || peek(1) == 'F') {
+            is_single = true;
+        }
 
-    // Restore, current contains content[index] so we only need to reassign it
-    content[index] = current;
+        while (isNum(current) && i < 32) {
+            buff[i] = current;
+            advance();
+            i++;
+        }
+
+        if (i >= 32) {
+            ErrorManager::error(file_path, line, "constant number too long", current);
+        }
+
+        if (is_single) {
+            tk.s = std::strtof(buff, nullptr);
+        }
+        else {
+            tk.d = std::strtod(buff, nullptr);
+        }
+    }
+    else {
+        tk.u = std::stoull(buff, nullptr, base);
+    }
+
+   
+    
 
     return tk;
 }
 
-bool Lexer::is_alpha() const {
-    return (current >= 'a' && current <= 'z')
-        || (current >= 'A' && current <= 'Z');
+bool Lexer::isAlpha(u8 c) const {
+    return (c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z');
 }
 
-bool Lexer::is_num() const {
-    return (current >= '0' && current <= '9');
+bool Lexer::isNum(u8 c) const {
+    return (c >= '0' && c <= '9');
 }
 
-bool Lexer::is_alnum() const {
-    return is_alpha() || is_num();
+bool Lexer::isAlnum(u8 c) const {
+    return isAlpha(c) || isNum(c);
 }
 
-bool Lexer::is_hex() const {
+bool Lexer::isHex(u8 c) const {
     return
-        is_num() ||
-        (current >= 'A' && current <= 'F') ||
-        (current >= 'a' && current <= 'f');
+        isNum(c) ||
+        (c >= 'A' && c <= 'F') ||
+        (c >= 'a' && c <= 'f');
 }
 
-Token Lexer::get_string() {
+Token Lexer::getString() {
     Token tk = {
         .source_file = file_path,
         .type = TOKEN_STRING,
@@ -541,8 +554,7 @@ Token Lexer::get_string() {
     while (current != '"' && current != '\0') {
         advance();
     }
-    tk.str.ptr = content + start;
-    tk.str.len = index - start;
+    tk.str = std::string_view((char*)content + start, index - start);
 
     if (current == '\0') {
         ErrorManager::error(file_path, line, "bad string");

@@ -205,12 +205,12 @@ INCLUDE NonBinaryWIN64.inc
 INCLUDE UtilityWIN64.inc
 
 EXTERN compare : PROC
-EXTERN compare_add : PROC
-EXTERN compare_and : PROC
-EXTERN memory_read : PROC
-EXTERN memory_write : PROC
-EXTERN memory_read_pair : PROC
-EXTERN memory_write_pair : PROC
+EXTERN compareAdd : PROC
+EXTERN compareAnd : PROC
+EXTERN memoryRead : PROC
+EXTERN memoryWrite : PROC
+EXTERN memoryReadPair : PROC
+EXTERN memoryWritePair : PROC
 
 BL_OPC:
     ; Saving the return address in the lr register
@@ -436,23 +436,23 @@ NON_BINARY_OPC:
     AND RBX, 3Fh
 
     ; Dest register
-    MOV R11, RCX
-    SHR R11, 12h
-    AND R11, 1Fh
+    MOV R10, RCX
+    SHR R10, 12
+    AND R10, 1Fh
 
     ; First Source
-    MOV R12, RCX
-    SHR R12, 17
-    AND R12, 1Fh
+    MOV R11, RCX
+    SHR R11, 17
+    AND R11, 1Fh
 
     ; Second Source
-    MOV R13, RCX
-    SHR R13, 22
-    AND R13, 1Fh
+    MOV R12, RCX
+    SHR R12, 22
+    AND R12, 1Fh
 
     ; Third Source
-    MOV R14, RCX
-    SHR R14, 27
+    MOV R13, RCX
+    SHR R13, 27
 
     LEA RAX, NON_BINARY_OPCODE
 	MOV RBX, QWORD PTR [RAX+RBX*8]
@@ -474,7 +474,7 @@ LD_PC_OPC:
     
     MOV ECX, R10D
     MOV R8, 0
-    CALL memory_read
+    CALL memoryRead
 
     RESTORE_ARGS
 
@@ -537,7 +537,7 @@ ADDS_IMMEDIATE_OPC:
 
     GET_REGISTER ECX, R11
     MOV EDX, R12D
-    CALL compare_add
+    CALL compareAdd
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -575,7 +575,7 @@ ANDS_IMMEDIATE_OPC:
 
     GET_REGISTER ECX, R11
     MOV EDX, R12D
-    CALL compare_and
+    CALL compareAnd
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -674,7 +674,7 @@ CBNZ_SKIP:
 ; RCX = Instruction
 ; RDX = Register List
 ; R8 = PC Pointer
-InterpreterMain PROC
+interpreterMain PROC
     MOV QWORD PTR[RSP+8], RCX
     MOV QWORD PTR[RSP+16], RDX
     MOV QWORD PTR[RSP+24], R8

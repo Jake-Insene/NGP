@@ -1,16 +1,14 @@
 
 ; entry point of the program
-; this will be my main function
-entry main
+ORG 0x20000000
+
+B main
 
 my_var: ; global variable
 	.word #0
 	.word #0
+; this will be my main function
 main:
-	; setting up the sp pointer
-	mov sp, #0x0000
-	movt sp, #0x1000
-	
 	; stack allocation
 	sub sp, sp, #16
 	

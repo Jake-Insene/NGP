@@ -1,3 +1,8 @@
+// --------------------
+// Instruction.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include "Backend/Assembler.h"
 #include "ErrorManager.h"
 
@@ -20,7 +25,7 @@
     if(!expected(TOKEN_REGISTER, message)) {\
         BREAKER;\
     }\
-    u8 var = getRegister(*last);
+    u8 var = getRegister(*last)
 
 #define INVALIDATE_FP(TOKEN, BREAKER) \
     if (TOKEN.isFPReg()) {\
@@ -28,37 +33,42 @@
     }
 
 #define BCOND(type_inst, ti)\
-    if (expected(TOKEN_SYMBOL, "a label was expected")) {\
-        bool founded = false;\
-        auto it = findLabel(last->str, founded);\
-        if (founded) {\
-            inst = bcond(type_inst, i32((it->second.address - program.size()) / 4));\
-        }\
-        else {\
-            ErrorManager::error(\
-                last->source_file, last->line,\
-                "undefined reference to %.*s", last->str.size(), last->str.data()\
-            );\
-        }\
+    {\
+    u32 index = token_index - 3;\
+    auto target = parseExpresion(ParsePrecedence::Start);\
+    if (context.undefined_label == false) {\
+        inst = bcond(type_inst, i32(target.u - program_index) / 4);\
     }\
+    else if(context.is_in_resolve == false) {\
+        auto& tr = to_resolve.emplace_back();\
+        tr.address = u32(program_index - 4);\
+        tr.index = index;\
+        advanceToNextLine();\
+    }\
+    }
 
-#define RELATIVE(tk, type_inst, ti) \
-        bool founded = false;\
-        auto it = findLabel(tk->str, founded);\
-        if (founded) {\
-            inst = type_inst(i32((it->second.address - program.size()) / 4));\
-        }\
-        else {\
-            ErrorManager::error(\
-                tk->source_file, tk->line,\
-                "undefined reference to %.*s", tk->str.size(), tk->str.data()\
-            );\
-        }\
+
+#define RELATIVE(type_inst, ti) \
+    {\
+    u32 index = token_index - 3;\
+    auto target = parseExpresion(ParsePrecedence::Start);\
+    if (context.undefined_label == false) {\
+        inst = bl(i32(target.u - program_index) / 4);\
+    }\
+    else if(context.is_in_resolve == false) {\
+        auto& tr = to_resolve.emplace_back();\
+        tr.address = u32(program_index - 4);\
+        tr.index = index;\
+        advanceToNextLine();\
+    }\
+    }
+
+
 
 void Assembler::assembleInstruction() {
     advance(); // inst
 
-    if (align_up(u32(program.size()), 4) != u32(program.size()) && !ErrorManager::is_panic_mode) {
+    if (align_up(u32(program_index), 4) != u32(program_index) && !ErrorManager::is_panic_mode) {
         MAKE_ERROR((*last), {}, "rom isn't aligned");
     }
     u32& inst = newWord();
@@ -279,7 +289,7 @@ void Assembler::assembleInstruction() {
         BCOND(NGP_BEQ, TI_BEQ);
         break;
     case TI_BNE:
-        BCOND(NGP_BEQ, TI_BNE);
+        BCOND(NGP_BNE, TI_BNE);
         break;
     case TI_BLT:
         BCOND(NGP_BLT, TI_BLT);
@@ -318,14 +328,12 @@ void Assembler::assembleInstruction() {
         BCOND(NGP_BGE, TI_BLS);
         break;
     case TI_BL:
-        if (expected(TOKEN_SYMBOL, "a label was expected")) {
-            RELATIVE(last, bl, TI_BL);
-        }
+    {
+        RELATIVE(bl, TI_BL);
+    };
         break;
     case TI_B:
-        if (expected(TOKEN_SYMBOL, "a label was expected")) {
-            RELATIVE(last, b, TI_B);
-        }
+        RELATIVE(b, TI_B);
         break;
     case TI_SWI:
     {
@@ -344,23 +352,20 @@ void Assembler::assembleInstruction() {
         break;
     case TI_ADR:
     {
+        u32 index = token_index - 3;
         GET_REG(dest, "a register was expected!", break);
         INVALIDATE_FP((*last), break);
         EXPECTED_COMMA(break);
 
         Token symbol = parseExpresion(ParsePrecedence::Start);
-        if (symbol.is(TOKEN_SYMBOL)) {
-            bool founded = false;
-            auto it = findLabel(last->str, founded);
-            if (founded) {
-                inst = pcrel(NGP_ADR_PC, dest, i32((it->second.address - program.size()) / 4));
-            }
-            else {
-                MAKE_ERROR((*last), {}, "undefined reference to %.*s", last->str.size(), last->str.data());
-            }
+        if (context.undefined_label == false) {
+            inst = pcrel(NGP_ADR_PC, dest, i32(symbol.u - program_index) / 4);
         }
-        else {
-            MAKE_ERROR((*last), {}, "a label was expected");
+        else if(context.is_in_resolve == false) {
+            auto& tr = to_resolve.emplace_back();
+            tr.address = u32(program_index - 4);
+            tr.index = index;
+            advanceToNextLine();
         }
     }
     break;
@@ -380,8 +385,10 @@ void Assembler::assembleInstruction() {
     }
 }
 
-void Assembler::assembleLoadStore(u32& inst, u8 imm_opcode,
+void Assembler::assembleLoadStore(u32 & inst, u8 imm_opcode,
     u8 index_opc, u8 alignment, bool handle_symbol) {
+    u32 index = token_index - 3;
+
     GET_REG(dest, "expected source register", return);
 
     u8 fp_type = 0;
@@ -400,31 +407,28 @@ void Assembler::assembleLoadStore(u32& inst, u8 imm_opcode,
 
     if (handle_symbol) {
         Token symbol = parseExpresion(ParsePrecedence::Start);
-        if (symbol.is(TOKEN_SYMBOL)) {
-            bool founded = false;
-            auto it = findLabel(last->str, founded);
-            if (founded) {
-                if (fp_type == 1) {
-                    inst = pcrel(NGP_LD_PC, dest, i32((it->second.address - program.size()) / 4));
-                }
-                else if (fp_type == 2) {
-                    inst = pcrel(NGP_LD_PC, dest, i32((it->second.address - program.size()) / 4));
-                }
-                else if (fp_type == 3) {
-                    inst = pcrel(NGP_LD_PC, dest, i32((it->second.address - program.size()) / 4));
-                }
-                else {
-                    inst = pcrel(NGP_LD_PC, dest, i32((it->second.address - program.size()) / 4));
-                }
+        if (context.undefined_label == false) {
+            if (fp_type == 1) {
+                inst = pcrel(NGP_LD_PC, dest, i32((symbol.u - program_index) / 4));
+            }
+            else if (fp_type == 2) {
+                inst = pcrel(NGP_LD_PC, dest, i32((symbol.u - program_index) / 4));
+            }
+            else if (fp_type == 3) {
+                inst = pcrel(NGP_LD_PC, dest, i32((symbol.u - program_index) / 4));
             }
             else {
-                ErrorManager::error(
-                    last->source_file, last->line,
-                    "undefined reference to %.*s", last->str.size(), last->str.data()
-                );
+                inst = pcrel(NGP_LD_PC, dest, i32((symbol.u - program_index) / 4));
             }
-
+        }
+        else if (context.is_in_resolve == false) {
+            auto& tr = to_resolve.emplace_back();
+            tr.address = u32(program_index - 4);
+            tr.index = index;
+            advanceToNextLine();
             return;
+        }
+        else {
         }
     }
 
@@ -485,20 +489,20 @@ void Assembler::assembleLoadStore(u32& inst, u8 imm_opcode,
             EXPECTED_KEY_RIGHT(return);
         }
         else if (indice.is(TOKEN_REGISTER)) {
-            u8 index = getRegister(indice);
+            u8 reg_index = getRegister(indice);
             INVALIDATE_FP(indice, return);
 
             if (fp_type == 1) {
-                inst = fbinary(NGP_LD_S, dest, base, index, 0);
+                inst = fbinary(NGP_LD_S, dest, base, reg_index, 0);
             }
             else if (fp_type == 2) {
-                inst = fbinary(NGP_LD_D, dest, base, index, 0);
+                inst = fbinary(NGP_LD_D, dest, base, reg_index, 0);
             }
             else if (fp_type == 3) {
-                inst = fbinary(NGP_LD_Q, dest, base, index, 0);
+                inst = fbinary(NGP_LD_Q, dest, base, reg_index, 0);
             }
             else {
-                inst = additional(index_opc, dest, base, index, 0);
+                inst = additional(index_opc, dest, base, reg_index, 0);
             }
             EXPECTED_KEY_RIGHT(return);
         }

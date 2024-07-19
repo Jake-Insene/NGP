@@ -1,10 +1,14 @@
+// --------------------
+// Header.h
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #pragma once
 
 #define KB(n) (1024*n)
 #define MB(n) (KB(1024)*n)
 
 #define MHZ(n) n * 1'000'000
-#define GHZ(n) n * 1'000'000'000
 
 using i8 = char;
 using u8 = unsigned char;

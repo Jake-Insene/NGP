@@ -1,3 +1,8 @@
+// --------------------
+// PreProcessor.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include "Frontend/PreProcessor.h"
 #include "Backend/AssemblerUtility.h"
 #include "ErrorManager.h"

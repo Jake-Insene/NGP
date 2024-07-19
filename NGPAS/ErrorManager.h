@@ -1,3 +1,8 @@
+// --------------------
+// ErrorManager.h
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #pragma once
 #include <stdio.h>
 #include <stdarg.h>

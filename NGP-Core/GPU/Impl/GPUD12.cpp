@@ -1,3 +1,8 @@
+// --------------------
+// GPUD12.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include "GPU/Impl/GPUD12.h"
 
 #include <stdio.h>
@@ -9,7 +14,7 @@
 
 void GPUD12::initialize() {
 #if NDEBUG == 0
-    ID3D12Debug4* debug = nullptr;
+    ID3D12Debug3* debug = nullptr;
     if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))))
     {
         debug->EnableDebugLayer();

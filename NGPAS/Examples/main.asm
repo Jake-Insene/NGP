@@ -1,12 +1,25 @@
-ENTRY main
 ORG 0x20000000
 
-INCLUDE "another.asm"
+RAM_START = 0x10000000
+RAM_END = 0x20000000
 
 main:
-	; Setting up the stack
-	MOV SP, 0x0000
-	MOVT SP, 0x2000
-	BL another
+	MOV R0, RAM_START & 0xFFFF
+	MOVT R0, (RAM_START >> 16)
+
+	MOV R1, RAM_END & 0xFFFF
+	MOVT R1, (RAM_END >> 16)
+
+	MOV R2, 0xFFFF
+	MOVT R2, 0xFFFF
+
+FillZero:
+	ST R2, [R0]
+	ADD R0, R0, 4
+	CMP R0, R1
+	BNE FillZero
 
 	HLT
+
+other:
+	RET

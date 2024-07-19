@@ -1,7 +1,7 @@
 
 ; entry point of the program
 ; this will be my main function
-entry main
+ORG 0x20000000
 
 main:
 	mov r0, #255

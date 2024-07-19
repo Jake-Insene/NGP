@@ -1,3 +1,8 @@
+// --------------------
+// AssemblerUtility.h
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #pragma once
 #include "Frontend/Token.h"
 #include <FileFormat/ISA.h>
@@ -81,8 +86,8 @@
     return u32(
         NGP_MEMORY_IMMEDIATE 
         | (opcode << 6) 
-        | (dest_src << 11)
-        | (base << 16) 
+        | (dest_src << 9)
+        | (base << 14) 
         | (sub << 19) 
         | (offset<<20)
     );

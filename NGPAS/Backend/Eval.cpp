@@ -1,3 +1,8 @@
+// --------------------
+// Eval.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include "Backend/Assembler.h"
 #include "ErrorManager.h"
 
@@ -5,45 +10,58 @@ struct ParseFn {
     Token(Assembler::* prefix)(Token, Token);
     Token(Assembler::* infix)(Token, Token);
 
-    TokenType tk;
     ParsePrecedence precedence;
 };
 
-static inline ParseFn rules[] = {
-    {&Assembler::parseMinus, &Assembler::parseSub, TOKEN_MINUS, ParsePrecedence::Term},
-    {&Assembler::parseNot, nullptr, TOKEN_NOT, ParsePrecedence::None},
-    {&Assembler::parseInteger, nullptr, TOKEN_IMMEDIATE, ParsePrecedence::None},
-    {&Assembler::parseSingle, nullptr, TOKEN_IMMEDIATE_SINGLE, ParsePrecedence::None},
-    {&Assembler::parseDouble, nullptr, TOKEN_IMMEDIATE_DOUBLE, ParsePrecedence::None},
-    {&Assembler::parseSymbol, nullptr, TOKEN_SYMBOL, ParsePrecedence::None},
-    {&Assembler::parseRegister, nullptr, TOKEN_REGISTER, ParsePrecedence::None},
+static inline ParseFn rules[TOKEN_COUNT] = {
+    {}, // ERROR
+    {}, // END OF FILE
+    {&Assembler::parseImmediate, nullptr, ParsePrecedence::None},
+    {&Assembler::parseString, nullptr, ParsePrecedence::None},
+    {}, // .directive
+    {}, // inst
+    {}, // label:
+    {&Assembler::parseSymbol, nullptr, ParsePrecedence::None},
 
-    {nullptr, &Assembler::parseAdd, TOKEN_PLUS, ParsePrecedence::Term},
-    {nullptr, &Assembler::parseAnd, TOKEN_AND, ParsePrecedence::BitwiseAnd},
-    {nullptr, &Assembler::parseOr, TOKEN_OR, ParsePrecedence::BitwiseOr},
-    {nullptr, &Assembler::parseXor, TOKEN_XOR, ParsePrecedence::BitwiseXor},
-    {nullptr, &Assembler::parseShl, TOKEN_SHL, ParsePrecedence::Shift},
-    {nullptr, &Assembler::parseShr, TOKEN_SHR, ParsePrecedence::Shift},
-    {nullptr, &Assembler::parseAsr, TOKEN_ASR, ParsePrecedence::Shift},
-    {nullptr, &Assembler::parseMul, TOKEN_STAR, ParsePrecedence::Term},
-    {nullptr, &Assembler::parseDiv, TOKEN_SLASH, ParsePrecedence::Factor},
+    {}, // \n
+
+    {&Assembler::parseGroup, nullptr, ParsePrecedence::None},
+    {}, // )
+    {}, // =
+    {}, // ==
+    {}, // !=
+    {}, // <
+    {}, // <=
+    {}, // >
+    {}, // >=
+    {}, // $
+    {}, // Comma
+    {}, // [
+    {}, // ]
+
+    {nullptr, &Assembler::parseAdd, ParsePrecedence::Term},
+    {&Assembler::parseMinus, &Assembler::parseSub, ParsePrecedence::Term},
+    {nullptr, &Assembler::parseMul, ParsePrecedence::Term},
+    {nullptr, &Assembler::parseDiv, ParsePrecedence::Factor},
+    
+    {nullptr, &Assembler::parseXor, ParsePrecedence::BitwiseXor},
+    {&Assembler::parseNot, nullptr, ParsePrecedence::None},
+    {nullptr, &Assembler::parseAnd, ParsePrecedence::BitwiseAnd},
+    {nullptr, &Assembler::parseOr, ParsePrecedence::BitwiseOr},
+    {nullptr, &Assembler::parseShl, ParsePrecedence::Shift},
+    {nullptr, &Assembler::parseShr, ParsePrecedence::Shift},
+    {}, // Asr
+    {nullptr, &Assembler::parseAsr, ParsePrecedence::Shift},
+    {&Assembler::parseRegister, nullptr, ParsePrecedence::None},
 };
 
 static inline ParseFn getRule(TokenType type) {
-    for (auto& fn : rules) {
-        if (fn.tk == type) {
-            return fn;
-        }
-    }
-
-    return {};
+    return rules[type];
 }
 
 // Prefix
 #define CHECK_IMMEDIATE(tk) \
-    if(tk.type != TOKEN_IMMEDIATE && \
-        tk.type != TOKEN_IMMEDIATE_SINGLE &&\
-        tk.type != TOKEN_IMMEDIATE_DOUBLE) {\
+    if(tk.type != TOKEN_IMMEDIATE) {\
         MAKE_ERROR(tk, return tk, "invalid expresion");\
     }
 
@@ -59,79 +77,61 @@ Token Assembler::parseNot(Token, Token) {
     return tk;
 }
 
-Token Assembler::parseInteger(Token, Token) {
-    return *last;
-}
-
-Token Assembler::parseSingle(Token, Token) {
-    return *last;
-}
-
-Token Assembler::parseDouble(Token, Token) {
+Token Assembler::parseImmediate(Token, Token) {
     return *last;
 }
 
 Token Assembler::parseSymbol(Token, Token) {
-    return *last;
+    auto it = findLabel(last->str);
+    if (it != symbols.end()) {
+        if (it->second.ivalue == -1) {
+            context.undefined_label = true;
+        }
+
+        return Token{
+            .source_file = last->source_file,
+            .line = last->line,
+            .type = TOKEN_IMMEDIATE,
+            .u = it->second.uvalue,
+        };
+    }
+
+    ErrorManager::error(
+        last->source_file, last->line, 
+        "undefined reference to %.*s", last->str.size(), last->str.data()
+    );
+    context.unknown_label = true;
+    return Token{
+        nullptr,
+        0,
+        TOKEN_ERROR,
+    };
 }
 
 Token Assembler::parseRegister(Token, Token) {
     return *last;
 }
 
-// Infix
-
-static inline Token convert(Token from, TokenType to) {
-    if (to == TOKEN_IMMEDIATE) {
-        from.type = TOKEN_IMMEDIATE;
-        if (from.is(TOKEN_IMMEDIATE_SINGLE)) {
-            from.i = (i64)from.s;
-        }
-        else if (from.is(TOKEN_IMMEDIATE_DOUBLE)) {
-            from.i = (i64)from.d;
-        }
-    }
-    else if(to == TOKEN_IMMEDIATE_SINGLE) {
-        from.type = TOKEN_IMMEDIATE_SINGLE;
-        if (from.is(TOKEN_IMMEDIATE)) {
-            from.s = (f32)from.i;
-        }
-        else if (from.is(TOKEN_IMMEDIATE_DOUBLE)) {
-            from.s = (f32)from.d;
-        }
-    }
-    else if (to == TOKEN_IMMEDIATE_DOUBLE) {
-        from.type = TOKEN_IMMEDIATE_DOUBLE;
-        if (from.is(TOKEN_IMMEDIATE)) {
-            from.d = (f64)from.i;
-        }
-        else if (from.is(TOKEN_IMMEDIATE_SINGLE)) {
-            from.d = (f64)from.s;
-        }
-    }
-
-    return from;
+Token Assembler::parseGroup(Token, Token) {
+    Token result = parseExpresion(ParsePrecedence::Start);
+    expected(TOKEN_RIGHT_PARENT, "')' was expected");
+    return result;
 }
+
+Token Assembler::parseString(Token, Token) {
+    return *last;
+}
+
+// Infix
 
 #define CHECK_INFIX() \
     ParseFn rule = getRule(last->type);\
     rhs = parseExpresion(ParsePrecedence(u32(rule.precedence) + 1));\
-    if(lhs.type != rhs.type) {\
-        rhs = convert(rhs, lhs.type);\
-    }\
     CHECK_IMMEDIATE(lhs);\
     CHECK_IMMEDIATE(rhs);\
 
 #define OP_IN_CASE(op) \
-    if (lhs.type == TOKEN_IMMEDIATE) {\
-        lhs.i = lhs.i op rhs.i;\
-    }\
-    else if (lhs.type == TOKEN_IMMEDIATE_SINGLE) {\
-        lhs.s = lhs.s op rhs.s;\
-    }\
-    else if (lhs.type == TOKEN_IMMEDIATE_DOUBLE) {\
-        lhs.d = lhs.d op rhs.d;\
-    }\
+        lhs.i = lhs.i op rhs.i;
 
 #define OP_IN_CASE_BIN(field, op) \
         lhs.field = lhs.field op rhs.field;\
@@ -203,6 +203,9 @@ Token Assembler::parseExpresion(ParsePrecedence precedence) {
     Token result = {};
     if (rule.prefix) {
         result = (this->*rule.prefix)(Token{}, Token{});
+    }
+    else         {
+        MAKE_ERROR((*last), return result, "invalid expresion");
     }
 
     while (u32(precedence) <= u32((rule = getRule(current->type)).precedence)) {

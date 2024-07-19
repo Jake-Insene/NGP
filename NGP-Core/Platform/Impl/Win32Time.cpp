@@ -1,3 +1,8 @@
+// --------------------
+// Win32Time.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include "Platform/Time.h"
 #include <Windows.h>
 

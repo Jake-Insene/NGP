@@ -1,3 +1,8 @@
+// --------------------
+// Main.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include <Core/Header.h>
 #include <Platform/Time.h>
 #include "Backend/Assembler.h"

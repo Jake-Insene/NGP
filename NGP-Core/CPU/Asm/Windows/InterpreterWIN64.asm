@@ -215,7 +215,7 @@ EXTERN memoryWritePair : PROC
 BL_OPC:
     ; Saving the return address in the lr register
     ; Jumping to the subroutine
-    ADD_REGISTER CYCLE_INDEX, 2
+    ADD_REGISTER 2, CYCLE_INDEX
 
     MOV R10, RCX
     SHR R10, 6
@@ -244,7 +244,7 @@ SWI_OPC:
 BRANCH_COND_OPC:
     ; Cond
     MOV R12, RCX
-    SHR R12, 6h
+    SHR R12, 6
     AND R12, 15
 
     ; Disp

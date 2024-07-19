@@ -1,3 +1,8 @@
+// --------------------
+// PreProcessor.h
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #pragma once
 #include "Frontend/Lexer.h"
 #include <unordered_map>

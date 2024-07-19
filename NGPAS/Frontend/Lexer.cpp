@@ -1,3 +1,8 @@
+// --------------------
+// Lexer.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include "Frontend/Lexer.h"
 #include "ErrorManager.h"
 #include <string>
@@ -23,7 +28,6 @@ SymbolInfo symbols[] = {
     // directives
     {.symbol = "org", .size = 3, .type = TOKEN_DIRECTIVE, .subtype = TD_ORG },
     {.symbol = "include", .size = 7, .type = TOKEN_DIRECTIVE, .subtype = TD_INCLUDE },
-    {.symbol = "entry", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_ENTRY },
     {.symbol = ".string", .size = 7, .type = TOKEN_DIRECTIVE, .subtype = TD_STRING },
     {.symbol = ".byte", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_BYTE },
     {.symbol = ".half", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_HALF },
@@ -299,6 +303,8 @@ Token Lexer::getNext() {
     case '=':
         if (peek(1) == '=') {
             MAKE_TOKEN_TWO(TOKEN_EQUALEQUAL);
+        }else{
+            MAKE_TOKEN(TOKEN_EQUAL);
         }
 
         break;
@@ -307,12 +313,15 @@ Token Lexer::getNext() {
             MAKE_TOKEN_TWO(TOKEN_NOTEQUAL);
         }
         else {
-            ErrorManager::error(file_path, line, "invalid token '%c'", current);
+            MAKE_TOKEN(TOKEN_NOT);
         }
         break;
     case '<':
         if (peek(1) == '=') {
             MAKE_TOKEN_TWO(TOKEN_LESSEQUAL);
+        }
+        else if (peek(1) == '<') {
+            MAKE_TOKEN_TWO(TOKEN_SHL);
         }
         else {
             MAKE_TOKEN(TOKEN_LESS);
@@ -321,6 +330,9 @@ Token Lexer::getNext() {
     case '>':
         if (peek(1) == '=') {
             MAKE_TOKEN_TWO(TOKEN_GREATEREQUAL);
+        }
+        else if (peek(1) == '>') {
+            MAKE_TOKEN_TWO(TOKEN_SHR);
         }
         else {
             MAKE_TOKEN(TOKEN_GREATER);
@@ -331,6 +343,12 @@ Token Lexer::getNext() {
         break;
     case ',':
         MAKE_TOKEN(TOKEN_COMMA);
+        break;
+    case '(':
+        MAKE_TOKEN(TOKEN_LEFT_PARENT);
+        break;
+    case ')':
+        MAKE_TOKEN(TOKEN_RIGHT_PARENT);
         break;
     case '[':
         MAKE_TOKEN(TOKEN_LEFT_KEY);
@@ -454,8 +472,8 @@ Token Lexer::getSymbolOrLabel()
 Token Lexer::getImmediate() {
     Token tk = {
         .source_file = file_path,
-        .type = TOKEN_IMMEDIATE,
         .line = line,
+        .type = TOKEN_IMMEDIATE,
     };
 
     if (current == '#') {
@@ -476,11 +494,9 @@ Token Lexer::getImmediate() {
         }
     }
 
-    char buff[32] = {};
-
+    u32 start = index;
     u32 i = 0;
     while (isHex(current) && i < 32) {
-        buff[i] = current;
         advance();
         i++;
     }
@@ -496,7 +512,6 @@ Token Lexer::getImmediate() {
         }
 
         while (isNum(current) && i < 32) {
-            buff[i] = current;
             advance();
             i++;
         }
@@ -506,18 +521,15 @@ Token Lexer::getImmediate() {
         }
 
         if (is_single) {
-            tk.s = std::strtof(buff, nullptr);
+            tk.s = std::strtof((char*)content +start, nullptr);
         }
         else {
-            tk.d = std::strtod(buff, nullptr);
+            tk.d = std::strtod((char*)content + start, nullptr);
         }
     }
     else {
-        tk.u = std::stoull(buff, nullptr, base);
+        tk.u = std::stoull((char*)content + start, nullptr, base);
     }
-
-   
-    
 
     return tk;
 }
@@ -545,8 +557,8 @@ bool Lexer::isHex(u8 c) const {
 Token Lexer::getString() {
     Token tk = {
         .source_file = file_path,
-        .type = TOKEN_STRING,
         .line = line,
+        .type = TOKEN_STRING,
     };
 
     advance(); // "

@@ -1,3 +1,8 @@
+// --------------------
+// GPUD12.h
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #pragma once
 #include "Core/Header.h"
 #include "GPU/GPU.h"

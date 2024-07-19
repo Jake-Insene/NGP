@@ -1,3 +1,8 @@
+// --------------------
+// GPU.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include "GPU/GPU.h"
 
 GPUDriver* driver_impl = nullptr;

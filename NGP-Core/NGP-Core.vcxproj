@@ -81,11 +81,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\_IN\$(ProjectName)\</OutDir>
+    <OutDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\_IN\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\_IN\$(ProjectName)\</OutDir>
+    <OutDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)Build\$(Configuration)-$(Platform)\_IN\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

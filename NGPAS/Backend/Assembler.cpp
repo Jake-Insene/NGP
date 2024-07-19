@@ -1,4 +1,10 @@
+// --------------------
+// Assembler.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include "Backend/Assembler.h"
+#include "Core/Constants.h"
 #include "ErrorManager.h"
 #include <fstream>
 
@@ -10,37 +16,34 @@ bool Assembler::assembleFile(const char* file_path, const char* output_path, u32
         return false;
     }
 
-    reserve(sizeof(RomHeader));
-
     phase1();
     
     if(!ErrorManager::is_panic_mode)
     {
+        program_index = 0;
+        program.resize(2046);
+
         phase2();
-        if (!ErrorManager::is_panic_mode) {
+        if (ErrorManager::is_panic_mode) {
+            return false;
+        }
+
+        resolve_instructions();
+        if (ErrorManager::is_panic_mode) {
             return false;
         }
 
         // write
         std::ofstream output{ output_path, std::ios::binary };
 
-        auto it = symbols.find(
-            std::string(entry_point.symbol)
-        );
-        if (it == symbols.end()) {
-            ErrorManager::error(
-                entry_point.source_file, entry_point.line,
-                "the entry point was not defined"
-            );
-        }
+        RomHeader header = {
+            .magic = RomSignature,
+            .check_sum = u32(program_index),
+            .target_address = ROMStart,
+        };
 
-        entry_point_address = it->second.address;
-        RomHeader* header = (RomHeader*)program.data();
-        header->magic = RomSignature;
-        header->check_sum = u32(program.size());
-        header->address_of_entry_point = entry_point_address / 4;
-
-        output.write((char*)program.data(), program.size());
+        output.write((char*)&header, sizeof(RomHeader));
+        output.write((char*)program.data(), program_index);
 
         output.close();
 
@@ -71,28 +74,25 @@ void Assembler::phase1() {
                 advance();
 
                 Token value = parseExpresion(ParsePrecedence::Start);
-
-                std::string str_name = std::string(name->str);
-                auto it = symbols.find(str_name);
-                if (it != symbols.end()) {
-                    MAKE_ERROR((*name), return, "%.*s", name->str.size(), name->str.data());
+                if (context.unknown_label) {
+                    break;
                 }
-                else {
-                    auto& symbol = symbols.emplace(
-                        str_name, Symbol()
-                    ).first->second;
 
-                    symbol.uvalue = value.u;
-                    symbol.symbol = str_name;
-                }
+                makeSymbol(name->str, value.u, name->source_file, name->line);
             }
             else {
                 MAKE_ERROR((*name), return, "invalid expresion");
             }
         }
             break;
+        case TOKEN_DIRECTIVE:
+            gotoNextLine();
+            break;
+        case TOKEN_INSTRUCTION:
+            gotoNextLine();
+            break;
         case TOKEN_LABEL:
-            makeLabel(current->str, u32(-1), current->source_file, current->line);
+            makeLabel(current->str, u64(-1), current->source_file, current->line).isDefined = false;
             advance();
             break;
         default:
@@ -103,7 +103,7 @@ void Assembler::phase1() {
 
 }
 
-void Assembler::makeLabel(std::string_view label, u32 address, const char* source_file, u32 line) {
+Symbol& Assembler::makeLabel(std::string_view label, u64 address, const char* source_file, u32 line) {
     std::string composed = {};
 
     if (label[0] == '.') {
@@ -116,20 +116,40 @@ void Assembler::makeLabel(std::string_view label, u32 address, const char* sourc
 
     auto it = symbols.find(composed);
     if (it != symbols.end()) {
-        it->second.address = address;
-    }
-    else {
-        auto& l = symbols.emplace(
-            label,
-            Symbol()
-        ).first->second;
-
-        l.symbol = std::move(composed);
-        l.address = address;
-        l.source_file = source_file;
-        l.line = line;
+        it->second.uvalue = address;
+        return it->second;
     }
 
+    auto& l = symbols.emplace(
+        label,
+        Symbol()
+    ).first->second;
+
+    l.symbol = std::move(composed);
+    l.uvalue = address;
+    l.source_file = source_file;
+    l.line = line;
+
+    return l;
+}
+
+Symbol& Assembler::makeSymbol(std::string_view label, u64 value, const char* source_file, u32 line) {
+    std::string str_name = std::string(label);
+    auto it = symbols.find(str_name);
+    if (it != symbols.end()) {
+        auto& symbol = it->second;
+        return symbol;
+    }
+ 
+    auto& symbol = symbols.emplace(
+        str_name, Symbol()
+    ).first->second;
+
+    symbol.uvalue = value;
+    symbol.symbol = str_name;
+    symbol.source_file = source_file;
+    symbol.line = line;
+    return symbol;
 }
 
 void Assembler::phase2() {
@@ -139,11 +159,40 @@ void Assembler::phase2() {
     advance();
 
     while (current->isNot(TOKEN_END_OF_FILE)) {
+        context.undefined_label = false;
+
         if (ErrorManager::must_syncronize) {
             syncronize();
         }
 
         switch (current->type) {
+        case TOKEN_SYMBOL:
+        {
+            Token* name = current;
+            advance();
+
+            auto it = findLabel(name->str);
+            if (it != symbols.end()) {
+                if (it->second.isDefined) {
+                    gotoNextLine();
+                }
+            }
+
+            if (current->is(TOKEN_EQUAL)) {
+                advance();
+
+                Token value = parseExpresion(ParsePrecedence::Start);
+                if (context.unknown_label) {
+                    break;
+                }
+
+                makeSymbol(name->str, value.u, name->source_file, name->line);
+            }
+            else {
+                MAKE_ERROR((*name), return, "invalid expresion");
+            }
+        }
+            break;
         case TOKEN_DIRECTIVE:
             assembleDirective();
             break;
@@ -152,8 +201,8 @@ void Assembler::phase2() {
             break;
         case TOKEN_LABEL:
         {
-            u32 address = u32(origin_address + program.size()) - last_size;
-            symbols.find(std::string(current->str))->second.address = address;
+            u32 address = u64(origin_address + program_index - last_size);
+            symbols.find(std::string(current->str))->second.uvalue = address;
             advance();
         }
             break;
@@ -165,6 +214,22 @@ void Assembler::phase2() {
             return;
         }
     }
+}
+
+void Assembler::resolve_instructions() {
+    u32 index = program_index;
+
+    for (auto& tr : to_resolve) {
+        program_index = tr.address;
+        
+        token_index = tr.index;
+        advance();
+        advance();
+
+        assembleInstruction();
+    }
+
+    program_index = index;
 }
 
 void Assembler::advance()
@@ -224,6 +289,12 @@ void Assembler::gotoNextLine()
     }
 }
 
+void Assembler::advanceToNextLine() {
+    while (current->isNot(TOKEN_NEW_LINE)) {
+        advance();
+    }
+}
+
 u8 Assembler::getRegister(Token tk)
 {
     if (tk.subtype >= TOKEN_R0 && tk.subtype <= TOKEN_R31) {
@@ -239,37 +310,45 @@ u8 Assembler::getRegister(Token tk)
     return u8(-1);
 }
 
-u32& Assembler::newWord()
-{
-    program.emplace_back();
-    program.emplace_back();
-    program.emplace_back();
-    program.emplace_back();
-    return *(u32*)(&program[program.size() - 4]);
+u32& Assembler::newWord() {
+    check_capacity(4);
+    program_index += 4;
+    return *(u32*)(&program[program_index - 4]);
 }
 
 u16& Assembler::newHalf() {
-    program.emplace_back();
-    program.emplace_back();
-    return *(u16*)(&program[program.size() - 2]);
+    check_capacity(2);
+    program_index += 2;
+    return *(u16*)(&program[program_index - 2]);
 }
 
 u8& Assembler::newByte() {
-    return program.emplace_back();
+    check_capacity(1);
+    program_index += 1;
+    return program[program_index-1];
 }
 
 u8* Assembler::reserve(u32 count)
 {
-    for (u32 i = 0; i < count; i++)
-        program.emplace_back();
-    return &program[program.size() - count];
+    check_capacity(count);
+
+    u8& address = newByte();
+    for (u32 i = 1; i < count; i++) {
+        newByte();
+    }
+
+    return &address;
 }
 
-std::unordered_map<std::string, Symbol>::iterator Assembler::findLabel(std::string_view label, bool& founded) {
+void Assembler::check_capacity(u32 count) {
+    if (program_index + count >= program.size()) {
+        program.resize(program.size() + (program.size()) / 2);
+    }
+}
+
+std::unordered_map<std::string, Symbol>::iterator Assembler::findLabel(std::string_view label) {
     auto it = symbols.find(std::string(label));
-    founded = true;
     if (it == symbols.end()) {
-        founded = false;
         return symbols.end();
     }
 

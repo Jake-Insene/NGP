@@ -1,8 +1,13 @@
+// --------------------
+// Assembler.h
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #pragma once
 #include "Frontend/PreProcessor.h"
 #include "Backend/AssemblerUtility.h"
-#include <FileFormat/ISA.h>
-#include <FileFormat/Rom.h>
+#include "FileFormat/ISA.h"
+#include "FileFormat/Rom.h"
 
 #define MAKE_ERROR(TOKEN, BREAKER, ...) \
     ErrorManager::error(TOKEN.source_file, TOKEN.line, __VA_ARGS__);\
@@ -28,6 +33,7 @@ struct Symbol {
 
     const char* source_file;
     u32 line;
+    bool isDefined;
 
     union {
         u32 address;
@@ -38,14 +44,21 @@ struct Symbol {
     };
 };
 
+struct InstructionToResolve {
+    // index to change
+    u32 index;
+    u32 address;
+};
+
 struct Assembler {
     bool assembleFile(const char* file_path, const char* output_path, u32 origin);
 
-    // First face: search labels and constants
+    // First phase: search labels and constants
     void phase1();
-    void makeLabel(std::string_view label, u32 address, const char* source_file, u32 line);
+    Symbol& makeLabel(std::string_view label, u64 address, const char* source_file, u32 line);
+    Symbol& makeSymbol(std::string_view label, u64 value, const char* source_file, u32 line);
 
-    // Second fase: assembly
+    // Second phase: assembly
     void phase2();
 
     void assembleDirective();
@@ -66,10 +79,14 @@ struct Assembler {
 
     void checkForAmount(u8& adder, u8& amount);
 
+    // Third phase: resolving instructions
+    void resolve_instructions();
+
     void advance();
     void syncronize();
     bool expected(TokenType tk, const char* format, ...);
     void gotoNextLine();
+    void advanceToNextLine();
 
     // Utility
     u8 getRegister(Token tk);
@@ -77,17 +94,18 @@ struct Assembler {
     u16& newHalf();
     u8& newByte();
     u8* reserve(u32 count);
+    void check_capacity(u32 count);
 
     // Parser
 
     // Prefix
     Token parseMinus(Token, Token);
     Token parseNot(Token, Token);
-    Token parseInteger(Token, Token);
-    Token parseSingle(Token, Token);
-    Token parseDouble(Token, Token);
+    Token parseImmediate(Token, Token);
     Token parseSymbol(Token, Token);
     Token parseRegister(Token, Token);
+    Token parseGroup(Token, Token);
+    Token parseString(Token, Token);
 
     // Infix
     Token parseAdd(Token lsh, Token rhs);
@@ -105,7 +123,7 @@ struct Assembler {
 
     // expresions
 
-    std::unordered_map<std::string, Symbol>::iterator findLabel(std::string_view label, bool& founded);
+    std::unordered_map<std::string, Symbol>::iterator findLabel(std::string_view label);
 
     PreProcessor pre_processor;
 
@@ -114,12 +132,19 @@ struct Assembler {
     Token* next;
     u32 token_index;
 
+    struct {
+        bool undefined_label;
+        bool unknown_label;
+        bool is_in_resolve;
+    } context;
+
     std::vector<u8> program;
+    u32 program_index;
+
     std::string_view last_label;
     std::unordered_map<std::string, Symbol> symbols;
+    std::vector<InstructionToResolve> to_resolve;
 
-    Symbol entry_point;
-    u32 entry_point_address;
     u32 origin_address;
     u32 last_size;
 };

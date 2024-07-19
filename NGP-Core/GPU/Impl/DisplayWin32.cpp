@@ -1,3 +1,8 @@
+// --------------------
+// DisplayWin32.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include "GPU/Display.h"
 #include <Windows.h>
 
@@ -68,7 +73,7 @@ void Display::shutdown() {
 void Display::update()
 {
     MSG msg = {};
-    while (PeekMessage(&msg, 0, 0, 0, PM_REMOVE)) {
+    while (PeekMessageA(&msg, 0, 0, 0, PM_REMOVE) == TRUE) {
         TranslateMessage(&msg);
         DispatchMessageA(&msg);
     }

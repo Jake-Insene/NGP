@@ -1,3 +1,8 @@
+// --------------------
+// Constants.h
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #pragma once
 #include "Core/Header.h"
 
@@ -10,4 +15,6 @@ static constexpr u32 RAMStart   =   0x1000'0000;
 static constexpr u32 RAMEnd     =   0x1FFF'FFFF;
 static constexpr u32 ROMStart   =   0x2000'0000;
 
-static constexpr u32 ClockSpeed = MHZ(300);
+static constexpr u32 CyclesPerSecond = MHZ(300);
+static constexpr u32 FramesPerSecond = 60;
+static constexpr u32 CyclesPerFrame = CyclesPerSecond / FramesPerSecond;

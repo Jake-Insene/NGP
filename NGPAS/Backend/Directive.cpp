@@ -1,3 +1,8 @@
+// --------------------
+// Directive.cpp
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #include "Backend/Assembler.h"
 #include "ErrorManager.h"
 #include <fstream>
@@ -17,20 +22,7 @@ void Assembler::assembleDirective() {
         }
 
         origin_address = result.uword;
-        last_size = (u32)program.size();
-    }
-    break;
-    case TD_ENTRY:
-    {
-        Token entry = parseExpresion(ParsePrecedence::Start);
-
-        if (entry.isNot(TOKEN_SYMBOL)) {
-            MAKE_ERROR(entry, break, "a symbol was expected")
-        }
-
-        entry_point.symbol = entry.str;
-        entry_point.source_file = entry.source_file;
-        entry_point.line = entry.line;
+        last_size = program_index;
     }
     break;
     case TD_STRING:

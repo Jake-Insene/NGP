@@ -1,5 +1,10 @@
+// --------------------
+// Token.h
+// --------------------
+// Copyright (c) 2024 jake
+// See the LICENSE in the project root.
 #pragma once
-#include <Core/Header.h>
+#include "Core/Header.h"
 #include <string_view>
 
 enum TokenType : u8 {
@@ -7,8 +12,6 @@ enum TokenType : u8 {
     TOKEN_END_OF_FILE,
 
     TOKEN_IMMEDIATE,
-    TOKEN_IMMEDIATE_SINGLE,
-    TOKEN_IMMEDIATE_DOUBLE,
     TOKEN_STRING,
 
     TOKEN_DIRECTIVE,
@@ -18,6 +21,8 @@ enum TokenType : u8 {
 
     TOKEN_NEW_LINE,
 
+    TOKEN_LEFT_PARENT,
+    TOKEN_RIGHT_PARENT,
     TOKEN_EQUAL,
     TOKEN_EQUALEQUAL,
     TOKEN_NOTEQUAL,
@@ -43,6 +48,8 @@ enum TokenType : u8 {
     TOKEN_ASR,
 
     TOKEN_REGISTER,
+
+    TOKEN_COUNT,
 };
 
 enum TokenRegister : u8 {
@@ -182,7 +189,6 @@ enum TokenRegister : u8 {
 enum TokenDirective : u8 {
     TD_ORG,
     TD_INCLUDE,
-    TD_ENTRY,
     TD_STRING,
     TD_BYTE,
     TD_HALF,
@@ -290,10 +296,11 @@ enum TokenInstruction : u8 {
 
 struct Token {
     const char* source_file;
-    std::string_view str;
+    u32 line;
     TokenType type;
     u8 subtype;
-    u32 line;
+    
+    std::string_view str;
 
     union {
         u8 byte[8] = {};

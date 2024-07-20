@@ -1,7 +1,0 @@
-C:\Dev\Projects\NGP\NGP-Core\CPU\CPU.cpp;C:\Dev\Projects\NGP\Build\Debug-x64\_IN\NGP-Core\CPU.obj
-C:\Dev\Projects\NGP\NGP-Core\Memory\MemoryBus.cpp;C:\Dev\Projects\NGP\Build\Debug-x64\_IN\NGP-Core\MemoryBus.obj
-C:\Dev\Projects\NGP\NGP-Core\GPU\GPU.cpp;C:\Dev\Projects\NGP\Build\Debug-x64\_IN\NGP-Core\GPU.obj
-C:\Dev\Projects\NGP\NGP-Core\GPU\Impl\DisplayWin32.cpp;C:\Dev\Projects\NGP\Build\Debug-x64\_IN\NGP-Core\DisplayWin32.obj
-C:\Dev\Projects\NGP\NGP-Core\GPU\Impl\GPUD12.cpp;C:\Dev\Projects\NGP\Build\Debug-x64\_IN\NGP-Core\GPUD12.obj
-C:\Dev\Projects\NGP\NGP-Core\Platform\Impl\Win32OS.cpp;C:\Dev\Projects\NGP\Build\Debug-x64\_IN\NGP-Core\Win32OS.obj
-C:\Dev\Projects\NGP\NGP-Core\Platform\Impl\Win32Time.cpp;C:\Dev\Projects\NGP\Build\Debug-x64\_IN\NGP-Core\Win32Time.obj

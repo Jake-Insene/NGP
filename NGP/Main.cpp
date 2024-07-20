@@ -14,6 +14,8 @@
 #include <GPU/Impl/GPUD12.h>
 #endif // _WIN32
 
+#define DEBUGGING 1
+
 int main(int argc, char** argv) {
     if (system("\"..\\Build\\Debug-x64\\ngpas.exe\" ../NGPAS/Examples/main.asm") != 0) {
         return -1;
@@ -32,6 +34,13 @@ int main(int argc, char** argv) {
 #endif
 
     while (Display::is_open) {
+        // For debugging
+#if DEBUGGING == 1
+        if (CPU::registers.psr.halt) {
+            break;
+        }
+#endif // DEBUGGING
+
         Display::update();
 
         CPU::dispatch();

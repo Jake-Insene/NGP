@@ -10,6 +10,33 @@
 void Assembler::assembleDirective() {
     advance();
     switch (last->subtype) {
+    case TD_FORMAT:
+    {
+        if (current->is(TOKEN_DIRECTIVE)) {
+            if (current->subtype != TD_FORMAT_RAW || current->subtype != TD_FORMAT_ROM) {
+                file_format = TokenDirective(current->subtype);
+
+                advance(); // file_format
+            }
+            else {
+                MAKE_ERROR((*current), return, "invalid format specifier");
+            }
+        }else{
+            MAKE_ERROR((*current), return, "a format directive was expected");
+        }
+
+        if (current->is(TOKEN_DIRECTIVE) && current->subtype == TD_AS) {
+            if (next->isNot(TOKEN_STRING)) {
+                MAKE_ERROR((*current), return, "a file extension was expected");
+            }
+
+            extension = next->str;
+            advance(); // as
+            advance(); // str
+        }
+
+    }
+    break;
     case TD_ORG:
     {
         Token result = parseExpresion(ParsePrecedence::Start);

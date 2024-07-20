@@ -51,7 +51,7 @@ struct InstructionToResolve {
 };
 
 struct Assembler {
-    bool assembleFile(const char* file_path, const char* output_path, u32 origin);
+    bool assembleFile(const char* file_path, const char* output_path);
 
     // First phase: search labels and constants
     void phase1();
@@ -141,6 +141,8 @@ struct Assembler {
     std::vector<u8> program;
     u32 program_index;
 
+    TokenDirective file_format;
+    std::string_view extension;
     std::string_view last_label;
     std::unordered_map<std::string, Symbol> symbols;
     std::vector<InstructionToResolve> to_resolve;

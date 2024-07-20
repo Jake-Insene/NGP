@@ -1,3 +1,4 @@
+FORMAT ROM AS 'ngp'
 
 ; entry point of the program
 ; this will be my main function

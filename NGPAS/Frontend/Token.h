@@ -187,6 +187,10 @@ enum TokenRegister : u8 {
 };
 
 enum TokenDirective : u8 {
+    TD_FORMAT,
+    TD_FORMAT_RAW,
+    TD_FORMAT_ROM,
+    TD_AS,
     TD_ORG,
     TD_INCLUDE,
     TD_STRING,

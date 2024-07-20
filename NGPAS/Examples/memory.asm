@@ -1,5 +1,5 @@
-
 ; entry point of the program
+FORMAT ROM AS 'ngp'
 ORG 0x20000000
 
 B main

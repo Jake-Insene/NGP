@@ -13,32 +13,28 @@
 
 #define PROFILE 1
 
-#define get_flag(f) bool(CPU::registers.psr & (1 << (f)))
-#define set_flag(f, v) (CPU::registers.psr |= (v ? 1 << (f) : 0 ))
 
 static inline void setFlags(u32 src1, u32 src2, u64 res) {
-    CPU::registers.psr = 0;
+    CPU::registers.psr = {};
 
-    // Set S flag (sign flag)
-    set_flag(CPU::NEGATIVE_FLAG, res & 0x8000'0000);
+    // Set N flag (negative flag)
+    CPU::registers.psr.n = res & 0x8000'0000;
 
     // Set Z flag (zero flag)
-    set_flag(CPU::ZERO_FLAG, res == 0);
+    CPU::registers.psr.z = res ? false : true;
 
     // Set C flag (carry flag)
-    set_flag(CPU::CARRY_FLAG, res > 0xFFFF'FFFF);
+    CPU::registers.psr.c = res > 0xFFFF'FFFF;
 
     // Set V flag (overflow flag)
-    set_flag(CPU::OVERFLOW_FLAG, (~((u64)src1 ^ (u64)src2) & ((u64)src1 ^ res)) & 0x8000'0000);
+    CPU::registers.psr.v = (~((u64)src1 ^ (u64)src2) & ((u64)src1 ^ res)) & 0x8000'0000;
 }
 
 extern "C" u32 compare(u32 src1, u32 src2) {
     CPU::registers.cycle_counter++; // subtraction
     u64 res = u64(src1) - u64(src2);
-
     CPU::registers.cycle_counter++; // setting flags
     setFlags(src1, src2, res);
-
     return u32(res);
 }
 
@@ -73,6 +69,7 @@ extern "C" void interpreterMain(u32 inst, u32* registers);
 extern "C" void memoryRead(u32 dest, u32 address, u32 type) {
     CPU::registers.cycle_counter++; // address calculation
     void* ptr = MemoryBus::getAddress(address, true);
+    CPU::registers.cycle_counter++; // memory fetch
     CPU::registers.cycle_counter++; // read memory
     if (!ptr) {
         // Emit a exeception if you can't read the address
@@ -157,6 +154,7 @@ extern "C" void memoryWrite(u32 source, u32 address, u32 type) {
 extern "C" void memoryReadPair(u32 dest1, u32 dest2, u32 address, u32 type) {
     CPU::registers.cycle_counter++; // address calculation
     void* ptr = MemoryBus::getAddress(address, true);
+    CPU::registers.cycle_counter++; // memory fetch
     CPU::registers.cycle_counter++; // read memory
     if (!ptr) {
         // Emit a exeception if you can't read the address
@@ -231,14 +229,14 @@ void CPU::shutdown() {}
 
 void CPU::dispatch() {
     while (CPU::registers.cycle_counter < CyclesPerFrame) {
-        if (CPU::registers.halt) {
+        if (CPU::registers.psr.halt) {
             break;
         }
      
         if (MemoryBus::readWord(CPU::registers.pc, registers.ir)) {
             CPU::registers.pc += 4;
 
-            interpreterMain(CPU::registers.ir, &CPU::registers.r0);
+            interpreterMain(CPU::registers.ir, CPU::registers.list);
         }
     }
 
@@ -263,13 +261,13 @@ void CPU::printRegisters() {
         "R20 = %08X R21 = %08X R22 = %08X R23 = %08X R24 = %08X\n"
         "R25 = %08X R26 = %08X R27 = %08X R28 = %08X\n"
         "SP  = %08X LR  = %08X PC  = %08X\n",
-        CPU::registers.r0, CPU::registers.r1, CPU::registers.r2, CPU::registers.r3, CPU::registers.r4,
-        CPU::registers.r5, CPU::registers.r6, CPU::registers.r7, CPU::registers.r8, CPU::registers.r9,
-        CPU::registers.r10, CPU::registers.r11, CPU::registers.r12, CPU::registers.r13, CPU::registers.r14,
-        CPU::registers.r15, CPU::registers.r16, CPU::registers.r17, CPU::registers.r18, CPU::registers.r19,
-        CPU::registers.r20, CPU::registers.r21, CPU::registers.r22, CPU::registers.r23, CPU::registers.r24,
-        CPU::registers.r25, CPU::registers.r26, CPU::registers.r27, CPU::registers.r28,
-        CPU::registers.sp, CPU::registers.lr, CPU::registers.pc
+        CPU::registers.gpr.r0, CPU::registers.gpr.r1, CPU::registers.gpr.r2, CPU::registers.gpr.r3, CPU::registers.gpr.r4,
+        CPU::registers.gpr.r5, CPU::registers.gpr.r6, CPU::registers.gpr.r7, CPU::registers.gpr.r8, CPU::registers.gpr.r9,
+        CPU::registers.gpr.r10, CPU::registers.gpr.r11, CPU::registers.gpr.r12, CPU::registers.gpr.r13, CPU::registers.gpr.r14,
+        CPU::registers.gpr.r15, CPU::registers.gpr.r16, CPU::registers.gpr.r17, CPU::registers.gpr.r18, CPU::registers.gpr.r19,
+        CPU::registers.gpr.r20, CPU::registers.gpr.r21, CPU::registers.gpr.r22, CPU::registers.gpr.r23, CPU::registers.gpr.r24,
+        CPU::registers.gpr.r25, CPU::registers.gpr.r26, CPU::registers.gpr.r27, CPU::registers.gpr.r28,
+        CPU::registers.gpr.sp, CPU::registers.gpr.lr, CPU::registers.pc
     );
 }
 

@@ -1,0 +1,7 @@
+C:\Dev\Projects\NGP\NGPAS\Backend\Assembler.cpp;C:\Dev\Projects\NGP\Build\Release-x64\_IN\NGPAS\Assembler.obj
+C:\Dev\Projects\NGP\NGPAS\Backend\Directive.cpp;C:\Dev\Projects\NGP\Build\Release-x64\_IN\NGPAS\Directive.obj
+C:\Dev\Projects\NGP\NGPAS\Backend\Eval.cpp;C:\Dev\Projects\NGP\Build\Release-x64\_IN\NGPAS\Eval.obj
+C:\Dev\Projects\NGP\NGPAS\Backend\Instruction.cpp;C:\Dev\Projects\NGP\Build\Release-x64\_IN\NGPAS\Instruction.obj
+C:\Dev\Projects\NGP\NGPAS\Frontend\Lexer.cpp;C:\Dev\Projects\NGP\Build\Release-x64\_IN\NGPAS\Lexer.obj
+C:\Dev\Projects\NGP\NGPAS\Frontend\PreProcessor.cpp;C:\Dev\Projects\NGP\Build\Release-x64\_IN\NGPAS\PreProcessor.obj
+C:\Dev\Projects\NGP\NGPAS\Main.cpp;C:\Dev\Projects\NGP\Build\Release-x64\_IN\NGPAS\Main.obj

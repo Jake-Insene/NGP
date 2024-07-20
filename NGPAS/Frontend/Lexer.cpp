@@ -26,6 +26,10 @@ struct SymbolInfo {
 
 SymbolInfo symbols[] = {
     // directives
+    {.symbol = "format", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_FORMAT },
+    {.symbol = "raw", .size = 3, .type = TOKEN_DIRECTIVE, .subtype = TD_FORMAT_RAW },
+    {.symbol = "rom", .size = 3, .type = TOKEN_DIRECTIVE, .subtype = TD_FORMAT_ROM },
+    {.symbol = "as", .size = 2, .type = TOKEN_DIRECTIVE, .subtype = TD_AS },
     {.symbol = "org", .size = 3, .type = TOKEN_DIRECTIVE, .subtype = TD_ORG },
     {.symbol = "include", .size = 7, .type = TOKEN_DIRECTIVE, .subtype = TD_INCLUDE },
     {.symbol = ".string", .size = 7, .type = TOKEN_DIRECTIVE, .subtype = TD_STRING },
@@ -383,6 +387,9 @@ Token Lexer::getNext() {
     case '"':
         tk = getString();
         break;
+    case '\'':
+        tk = getString();
+        break;
     case '\n':
         MAKE_TOKEN(TOKEN_NEW_LINE);
         break;
@@ -561,9 +568,14 @@ Token Lexer::getString() {
         .type = TOKEN_STRING,
     };
 
-    advance(); // "
+    bool cuot = current == '\'';
+
+    advance(); // " || '
     u32 start = index;
-    while (current != '"' && current != '\0') {
+    while ((cuot ? current != '\'' : current != '"') && current != '\0') {
+        if (current == '\'' || current == '"') {
+            ErrorManager::error(file_path, line, "inconsist string");
+        }
         advance();
     }
     tk.str = std::string_view((char*)content + start, index - start);
@@ -572,7 +584,7 @@ Token Lexer::getString() {
         ErrorManager::error(file_path, line, "bad string");
     }
     else {
-        advance(); // "
+        advance(); // " || '
     }
 
     return tk;

@@ -8,9 +8,10 @@
 #include "ErrorManager.h"
 #include <fstream>
 
-bool Assembler::assembleFile(const char* file_path, const char* output_path, u32 origin)
+bool Assembler::assembleFile(const char* file_path, const char* output_path)
 {
-    origin_address = origin;
+    origin_address = 0;
+    last_size = 0;
     pre_processor.process(file_path);
     if (ErrorManager::is_panic_mode) {
         return false;
@@ -34,15 +35,25 @@ bool Assembler::assembleFile(const char* file_path, const char* output_path, u32
         }
 
         // write
-        std::ofstream output{ output_path, std::ios::binary };
 
-        RomHeader header = {
-            .magic = RomSignature,
-            .check_sum = u32(program_index),
-            .target_address = ROMStart,
-        };
+        std::string output_file_name = { output_path };
+        if (!extension.empty()) {
+            output_file_name += '.';
+            output_file_name += extension;
+        }
 
-        output.write((char*)&header, sizeof(RomHeader));
+        std::ofstream output{ output_file_name, std::ios::binary };
+
+        if (file_format == TD_FORMAT_ROM) {
+            RomHeader header = {
+                .magic = RomSignature,
+                .check_sum = u32(program_index),
+                .target_address = ROMStart,
+            };
+         
+            output.write((char*)&header, sizeof(RomHeader));
+        }
+
         output.write((char*)program.data(), program_index);
 
         output.close();
@@ -256,7 +267,17 @@ void Assembler::syncronize()
         switch (current->type)
         {
         case TOKEN_DIRECTIVE:
+            if (current->subtype == TD_FORMAT) {
+                return;
+            }
+            break;
         case TOKEN_INSTRUCTION:
+            break;
+        case TOKEN_SYMBOL:
+            if (next->is(TOKEN_EQUAL)) {
+                return;
+            }
+            break;
         case TOKEN_LABEL:
         case TOKEN_END_OF_FILE:
             return;
@@ -313,19 +334,19 @@ u8 Assembler::getRegister(Token tk)
 u32& Assembler::newWord() {
     check_capacity(4);
     program_index += 4;
-    return *(u32*)(&program[program_index - 4]);
+    return *(u32*)(&program[(u64)program_index - 4]);
 }
 
 u16& Assembler::newHalf() {
     check_capacity(2);
     program_index += 2;
-    return *(u16*)(&program[program_index - 2]);
+    return *(u16*)(&program[(u64)program_index - 2]);
 }
 
 u8& Assembler::newByte() {
     check_capacity(1);
     program_index += 1;
-    return program[program_index-1];
+    return program[(u64)program_index-1];
 }
 
 u8* Assembler::reserve(u32 count)
@@ -341,7 +362,7 @@ u8* Assembler::reserve(u32 count)
 }
 
 void Assembler::check_capacity(u32 count) {
-    if (program_index + count >= program.size()) {
+    if (program_index + count >= (u32)program.size()) {
         program.resize(program.size() + (program.size()) / 2);
     }
 }

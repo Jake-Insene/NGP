@@ -1,0 +1,1 @@
+C:\Dev\Projects\NGP\Build\Debug-x64\_IN\NGP-Core\NGP-Core.lib

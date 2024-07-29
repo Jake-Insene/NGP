@@ -2,37 +2,45 @@
 
 MAIN_OPCODE:
 	dq BL_OPC
-    dq BRANCH_OPC
-    dq SWI_OPC
-    dq BRANCH_COND_OPC
+    dq B_OPC
+    dq B_COND_OPC
+
     dq LOGICAL_ADD_SUB_OPC
-    dq FBINARY_OPC
-    dq MEMORY_IMMEDIATE_OPC
-    dq FMEMORY_IMMEDIATE_OPC
-    dq MEMORY_PAIR_OPC
+    dq FP_OPC
+
+    dq LOAD_STORE_IMMEDIATE_OPC
+    dq LOAD_STORE_FP_IMMEDIATE_OPC
+    dq LOAD_STORE_REGISTER_OPC
+    dq LOAD_STORE_PAIR_OPC
+
     dq ADDITIONAL_OPC
     dq NON_BINARY_OPC
+
     dq LD_PC_OPC
     dq LD_S_PC_OPC
     dq LD_D_PC_OPC
     dq LD_Q_PC_OPC
     dq ADR_PC_OPC
+
     dq IMMEDIATE_OPC
+
     dq ADD_IMMEDIATE_OPC
     dq ADDS_IMMEDIATE_OPC
     dq SUB_IMMEDIATE_OPC
     dq SUBS_IMMEDIATE_OPC
+
     dq AND_IMMEDIATE_OPC
     dq ANDS_IMMEDIATE_OPC
     dq OR_IMMEDIATE_OPC
     dq ORN_IMMEDIATE_OPC
     dq EOR_IMMEDIATE_OPC
+
     dq TBZ_OPC
     dq TBNZ_OPC
     dq CBZ_OPC
     dq CBNZ_OPC
 
-BRANCH_CONDITIONAL_OPCODE:
+B_CONDITIONAL_OPCODE:
     dq BEQ_OPC
     dq BNE_OPC
     dq BLT_OPC
@@ -47,6 +55,8 @@ BRANCH_CONDITIONAL_OPCODE:
     dq BNO_OPC
     dq BHI_OPC
     dq BLS_OPC
+    dq BAL_OPC
+    dq BNV_OPC
 
 LOGICAL_ADD_SUB_OPCODE:
     dq ADD_SHL_OPC
@@ -96,7 +106,7 @@ LOGICAL_ADD_SUB_OPCODE:
     dq ADCS_OPC
     dq SBCS_OPC
 
-FBINARY_OPCODE:
+FP_OPCODE:
     dq FMOV_S_OPC
     dq FMOV_D_OPC
     dq FMOV_NC_W_S_OPC
@@ -119,18 +129,12 @@ FBINARY_OPCODE:
     dq FSUB_D_OPC
     dq FMUL_D_OPC
     dq FDIV_D_OPC
-    dq LD_S_OPC
-    dq LD_D_OPC
-    dq LD_Q_OPC
-    dq ST_S_OPC
-    dq ST_D_OPC
-    dq ST_Q_OPC
     dq FNEG_S_OPC
     dq FNEG_D_OPC
     dq FABS_S_OPC
     dq FABS_D_OPC
 
-MEMORY_IMMEDIATE_OPCODE:
+LOAD_STORE_IMMEDIATE_OPCODE:
     dq LD_IMMEDIATE_OPC
     dq LDSH_IMMEDIATE_OPC
     dq LDH_IMMEDIATE_OPC
@@ -140,7 +144,7 @@ MEMORY_IMMEDIATE_OPCODE:
     dq STH_IMMEDIATE_OPC
     dq STB_IMMEDIATE_OPC
 
-FMEMORY_IMMEDIATE_OPCODE:
+LOAD_STORE_FP_IMMEDIATE_OPCODE:
     dq LD_S_IMMEDIATE_OPC
     dq LD_D_IMMEDIATE_OPC
     dq LD_Q_IMMEDIATE_OPC
@@ -148,7 +152,23 @@ FMEMORY_IMMEDIATE_OPCODE:
     dq ST_D_IMMEDIATE_OPC
     dq ST_Q_IMMEDIATE_OPC
 
-MEMORY_PAIR_OPCODE:
+LOAD_STORE_REGISTER_OPCODE:
+    dq LD_OPC
+    dq LDSH_OPC
+    dq LDH_OPC
+    dq LDSB_OPC
+    dq LDB_OPC
+    dq ST_OPC
+    dq STH_OPC
+    dq STB_OPC
+    dq LD_S_OPC
+    dq LD_D_OPC
+    dq LD_Q_OPC
+    dq ST_S_OPC
+    dq ST_D_OPC
+    dq ST_Q_OPC
+
+LOAD_STORE_PAIR_OPCODE:
     dq LDP_OPC
     dq LDP_S_OPC
     dq LDP_D_OPC
@@ -169,8 +189,6 @@ ADDITIONAL_OPCODE:
     dq STB_OPC
     dq MADD_OPC
     dq MSUB_OPC
-    dq UMADD_OPC
-    dq UMSUB_OPC
     dq DIV_OPC
     dq UDIV_OPC
     dq SHL_OPC
@@ -181,7 +199,15 @@ ADDITIONAL_OPCODE:
 
 NON_BINARY_OPCODE:
     dq RET_OPC
-    dq HALT_OPC
+    dq BLR_OPC
+    dq BR_OPC
+    dq ERET_OPC
+    dq BRK_OPC
+    dq HLT_OPC
+    dq SIT_OPC
+    dq MSR_OPC
+    dq MRS_OPC
+    dq NOP_OPC
 
 IMMEDIATE_OPCODE:
     dq MOVT_IMMEDIATE_OPC
@@ -197,25 +223,24 @@ IMMEDIATE_OPCODE:
 INCLUDE MacrosWIN64.inc
 INCLUDE LogicalAddSubWIN64.inc
 INCLUDE BranchConditionalWIN64.inc
-INCLUDE FBinaryWIN64.inc
+INCLUDE FPWIN64.inc
 INCLUDE ImmediateWIN64.inc
-INCLUDE MemoryWIN64.inc
+INCLUDE LoadStoreWIN64.inc
 INCLUDE AdditionalWIN64.inc
 INCLUDE NonBinaryWIN64.inc
 INCLUDE UtilityWIN64.inc
 
 EXTERN compare : PROC
-EXTERN compareAdd : PROC
-EXTERN compareAnd : PROC
-EXTERN memoryRead : PROC
-EXTERN memoryWrite : PROC
-EXTERN memoryReadPair : PROC
-EXTERN memoryWritePair : PROC
+EXTERN compare_add : PROC
+EXTERN compare_and : PROC
+EXTERN memory_read : PROC
+EXTERN memory_write : PROC
+EXTERN memory_read_pair : PROC
+EXTERN memory_write_pair : PROC
 
 BL_OPC:
     ; Saving the return address in the lr register
     ; Jumping to the subroutine
-    ADD_REGISTER 2, CYCLE_INDEX
 
     MOV R10, RCX
     SHR R10, 6
@@ -229,7 +254,7 @@ BL_OPC:
     ADD_REGISTER R11D, PC_INDEX
 
 	JMP CONTINUE_ADDRESS
-BRANCH_OPC:
+B_OPC:
     MOV R10, RCX
     SHR R10, 6
 
@@ -239,9 +264,7 @@ BRANCH_OPC:
     ADD_REGISTER R11D, PC_INDEX
 
     JMP CONTINUE_ADDRESS
-SWI_OPC:
-    JMP CONTINUE_ADDRESS
-BRANCH_COND_OPC:
+B_COND_OPC:
     ; Cond
     MOV R12, RCX
     SHR R12, 6
@@ -256,11 +279,9 @@ BRANCH_COND_OPC:
 
     GET_REGISTER R11D, PSR_INDEX
 
-    LEA RAX, BRANCH_CONDITIONAL_OPCODE
+    LEA RAX, B_CONDITIONAL_OPCODE
     MOV RBX, QWORD PTR[RAX+R12*8]
     JMP RBX
-
-    JMP CONTINUE_ADDRESS
 LOGICAL_ADD_SUB_OPC:
     ; LogicalAddSub Opcode
     MOV RBX, RCX
@@ -289,12 +310,10 @@ LOGICAL_ADD_SUB_OPC:
     LEA RAX, LOGICAL_ADD_SUB_OPCODE
 	MOV RBX, QWORD PTR [RAX+RBX*8]
 	JMP RBX
-
+FP_OPC:
     JMP CONTINUE_ADDRESS
-FBINARY_OPC:
-    JMP CONTINUE_ADDRESS
-MEMORY_IMMEDIATE_OPC:
-    ; Memory opcode
+LOAD_STORE_IMMEDIATE_OPC:
+    ; Load Store Immediate opcode
     MOV RBX, RCX
     SHR RBX, 6
     AND RBX, 7h
@@ -322,13 +341,13 @@ MEMORY_IMMEDIATE_OPC:
     NEG R14
 MEMORY_SKI_SUB:
 
-    LEA RAX, MEMORY_IMMEDIATE_OPCODE
+    LEA RAX, LOAD_STORE_IMMEDIATE_OPCODE
 	MOV RBX, QWORD PTR [RAX+RBX*8]
 	JMP RBX
 
     JMP CONTINUE_ADDRESS
-FMEMORY_IMMEDIATE_OPC:
-    ; Memory opcode
+LOAD_STORE_FP_IMMEDIATE_OPC:
+    ; Load Store FP Immediate opcode
     MOV RBX, RCX
     SHR RBX, 6
     AND RBX, 7h
@@ -355,19 +374,40 @@ FMEMORY_IMMEDIATE_OPC:
     JNZ FMEMORY_SKI_SUB
     NEG R14
 FMEMORY_SKI_SUB:
-
-    LEA RAX, FMEMORY_IMMEDIATE_OPCODE
+    LEA RAX, LOAD_STORE_FP_IMMEDIATE_OPCODE
 	MOV RBX, QWORD PTR [RAX+RBX*8]
 	JMP RBX
+LOAD_STORE_REGISTER_OPC:
+    ; Load Store Register Opcode
+    MOV RBX, RCX
+    SHR RBX, 6
+    AND RBX, 7FFh
 
-    JMP CONTINUE_ADDRESS
-MEMORY_PAIR_OPC:
-    ; Memory Opcode
+    ;Dest/Source register
+    MOV R10, RCX
+    SHR R10, 17
+    AND R10, 3Fh
+    
+    ; Base register
+    MOV R11, RCX
+    SHR R11, 22
+    AND R11, 1Fh
+
+    ; Index register
+    MOV R12, RCX
+    SHR R12, 27
+    AND R12, 1Fh
+
+    LEA RAX, LOAD_STORE_REGISTER_OPCODE
+	MOV RBX, QWORD PTR [RAX+RBX*8]
+	JMP RBX
+LOAD_STORE_PAIR_OPC:
+    ; Load Store Pair Opcode
     MOV RBX, RCX
     SHR RBX, 6
     AND RBX, 7h
 
-    ; Dest register
+    ; Dest/Source register
     MOV R10, RCX
     SHR R10, 9
     AND R10, 1Fh
@@ -391,15 +431,12 @@ MEMORY_PAIR_OPC:
     SHR R14, 25
     
     TEST R13, R13
-    JZ MEMORY_PAIR_SKI_SUB
+    JZ LOAD_STORE_PAIR_SKI_SUB
     NEG R14
-MEMORY_PAIR_SKI_SUB:
-
-    LEA RAX, MEMORY_PAIR_OPCODE
+LOAD_STORE_PAIR_SKI_SUB:
+    LEA RAX, LOAD_STORE_PAIR_OPCODE
 	MOV RBX, QWORD PTR [RAX+RBX*8]
 	JMP RBX
-
-    JMP CONTINUE_ADDRESS
 ADDITIONAL_OPC:
     ; Additional Opcode
     MOV RBX, RCX
@@ -435,24 +472,20 @@ NON_BINARY_OPC:
     SHR RBX, 6
     AND RBX, 3Fh
 
-    ; Dest register
+    ; Op
     MOV R10, RCX
-    SHR R10, 12
-    AND R10, 1Fh
+    SHR R10, 16
+    AND R10, 3Fh
 
     ; First Source
     MOV R11, RCX
-    SHR R11, 17
+    SHR R11, 22
     AND R11, 1Fh
 
     ; Second Source
     MOV R12, RCX
-    SHR R12, 22
+    SHR R12, 27
     AND R12, 1Fh
-
-    ; Third Source
-    MOV R13, RCX
-    SHR R13, 27
 
     LEA RAX, NON_BINARY_OPCODE
 	MOV RBX, QWORD PTR [RAX+RBX*8]
@@ -474,7 +507,7 @@ LD_PC_OPC:
     
     MOV ECX, R10D
     MOV R8, 0
-    CALL memoryRead
+    CALL memory_read
 
     RESTORE_ARGS
 
@@ -537,7 +570,7 @@ ADDS_IMMEDIATE_OPC:
 
     GET_REGISTER ECX, R11
     MOV EDX, R12D
-    CALL compareAdd
+    CALL compare_add
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -575,7 +608,7 @@ ANDS_IMMEDIATE_OPC:
 
     GET_REGISTER ECX, R11
     MOV EDX, R12D
-    CALL compareAnd
+    CALL compare_and
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -674,20 +707,23 @@ CBNZ_SKIP:
 ; RCX = Instruction
 ; RDX = Register List
 ; R8 = PC Pointer
-interpreterMain PROC
+interpreter_main PROC
     MOV QWORD PTR[RSP+8], RCX
     MOV QWORD PTR[RSP+16], RDX
-    MOV QWORD PTR[RSP+24], R8
-    MOV QWORD PTR[RSP+32], R9
+    MOV QWORD PTR[RSP+24], RBX
 
     SUB RSP, 30h
+    MOV QWORD PTR[RSP], R10
+    MOV QWORD PTR[RSP+8h], R11
+    MOV QWORD PTR[RSP+10h], R12
+    MOV QWORD PTR[RSP+18h], R13
+    MOV QWORD PTR[RSP+20h], R14
+    MOV QWORD PTR[RSP+28h], R15
+    
 
 	; Interpreter zone
 	MOV RBX, RCX
 	AND RBX, 3Fh
-
-    ; One cycle for decoding and simple operations
-    ADD_REGISTER 1, CYCLE_INDEX
 
 	LEA RAX, MAIN_OPCODE
 	MOV RBX, QWORD PTR [RAX+RBX*8]
@@ -695,8 +731,17 @@ interpreterMain PROC
 CONTINUE:
 CONTINUE_ADDRESS EQU $
 
+    MOV R10, QWORD PTR[RSP]
+    MOV R11, QWORD PTR[RSP+8h]
+    MOV R12, QWORD PTR[RSP+10h]
+    MOV R13, QWORD PTR[RSP+18h]
+    MOV R14, QWORD PTR[RSP+20h]
+    MOV R15, QWORD PTR[RSP+28h]
+
+    MOV RBX, QWORD PTR[RSP+30h+24] 
+
     ADD RSP, 30h
 	RET
-InterpreterMain ENDP
+interpreter_main ENDP
 
 END

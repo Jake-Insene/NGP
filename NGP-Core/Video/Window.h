@@ -4,10 +4,18 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "Platform/OS.h"
-#include <Windows.h>
+#pragma once
+#include "Core/Header.h"
 
+struct Window {
+    static void initialize(u32 width, u32 height);
+    static void shutdown();
 
-void OS::sleep(i32 milisec) {
-    Sleep(milisec);
-}
+    static void update();
+
+    static inline u32 current_width = 0;
+    static inline u32 current_height = 0;
+
+    static inline bool is_open = false;
+    static inline void* handle = nullptr;
+};

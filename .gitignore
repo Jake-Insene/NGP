@@ -17,6 +17,7 @@
 mono_crash.*
 
 # Build results
+Build/
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
@@ -361,3 +362,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Assembler/Compiler generated files
+*.ngp
+*.bin

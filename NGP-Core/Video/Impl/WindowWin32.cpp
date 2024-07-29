@@ -1,9 +1,10 @@
-// --------------------
-// DisplayWin32.cpp
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
-#include "GPU/Display.h"
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
+#include "Video/Window.h"
 #include <Windows.h>
 
 LRESULT wnd_proc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp);
@@ -11,21 +12,21 @@ LRESULT wnd_proc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp);
 LRESULT wnd_proc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
     case WM_CLOSE:
-        Display::is_open = false;
+        Window::is_open = false;
         PostQuitMessage(0);
         break;
     case WM_DESTROY:
         return 0;
     case WM_SIZE:
-        Display::current_height = LOWORD(lp);
-        Display::current_height = HIWORD(lp);
+        Window::current_height = LOWORD(lp);
+        Window::current_height = HIWORD(lp);
         break;
     }
 
     return DefWindowProcA(wnd, msg, wp, lp);
 }
 
-void Display::initialize(u32 width, u32 height)
+void Window::initialize(u32 width, u32 height)
 {
     current_width = width;
     current_height = height;
@@ -66,11 +67,11 @@ void Display::initialize(u32 width, u32 height)
     is_open = true;
 }
 
-void Display::shutdown() {
+void Window::shutdown() {
     DestroyWindow((HWND)handle);
 }
 
-void Display::update()
+void Window::update()
 {
     MSG msg = {};
     while (PeekMessageA(&msg, 0, 0, 0, PM_REMOVE) == TRUE) {

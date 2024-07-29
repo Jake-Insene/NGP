@@ -1,8 +1,9 @@
-// --------------------
-// PreProcessor.h
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #pragma once
 #include "Frontend/Lexer.h"
 #include <unordered_map>
@@ -11,32 +12,9 @@
 struct SourceFile {
     SourceFile() {}
 
-    SourceFile(SourceFile&& s) {
-        file_path = std::move(s.file_path);
-        source_code = s.source_code;
-        source_len = s.source_len;
-        index = s.index;
+    SourceFile(SourceFile&&) = default;
+    SourceFile& operator=(SourceFile&&) = default;
 
-        s.file_path = {};
-        s.source_code = nullptr;
-        s.source_len = 0;
-        s.index = u32(-1);
-    }
-
-    SourceFile& operator=(SourceFile&& s) {
-        file_path = std::move(s.file_path);
-        source_code = s.source_code;
-        source_len = s.source_len;
-        index = s.index;
-
-        s.file_path = {};
-        s.source_code = nullptr;
-        s.source_len = 0;
-        s.index = u32(-1);
-
-        return *this;
-    }
-    
     ~SourceFile() {
         delete[] source_code;
     }
@@ -56,8 +34,8 @@ struct PreProcessor {
     
     void process(const char* file_path);
 
-    void processSource();
-    void processDirective();
+    void process_source();
+    void process_directive();
 
     void advance();
     bool expected(TokenType type, const char* format, ...);

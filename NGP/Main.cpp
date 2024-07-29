@@ -1,22 +1,23 @@
-// --------------------
-// Main.cpp
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #include "CPU/CPU.h"
 #include "Memory/MemoryBus.h"
-#include "GPU/Display.h"
+#include "Video/Window.h"
 #include "Platform/Time.h"
 #include <stdio.h>
+#include <math.h>
 
 #ifdef _WIN32
-#include <Windows.h>
-#include <GPU/Impl/GPUD12.h>
+#include <Video/Impl/GPUD12.h>
 #endif // _WIN32
 
 #define DEBUGGING 1
 
-int main(int argc, char** argv) {
+int main(int /*argc*/, char** /*argv*/) {
     if (system("\"..\\Build\\Debug-x64\\ngpas.exe\" ../NGPAS/Examples/main.asm") != 0) {
         return -1;
     }
@@ -24,16 +25,20 @@ int main(int argc, char** argv) {
     Time::initialize();
     CPU::initialize();
 
-    Display::initialize(800, 600);
-    if (!MemoryBus::loadRom("../NGPAS/Examples/main.ngp")) {
+    Window::initialize(960, 544);
+    if (!MemoryBus::load_rom("../NGPAS/Examples/main.ngp")) {
         return -1;
     }
 
 #ifdef _WIN32
-    GPU::initialize(new GPUD12());
+    GPU::initialize(GPUD12::get());
 #endif
 
-    while (Display::is_open) {
+    f64 elapsed = Time::get_time();
+    u32 fps = 0;
+
+    while (Window::is_open) {
+        f64 start = Time::get_time();
         // For debugging
 #if DEBUGGING == 1
         if (CPU::registers.psr.halt) {
@@ -41,18 +46,25 @@ int main(int argc, char** argv) {
         }
 #endif // DEBUGGING
 
-        Display::update();
-
+        Window::update();
         CPU::dispatch();
-        CPU::delayForTiming();
-        
-        CPU::registers.cycle_counter = 0;
+
+        elapsed += Time::get_time() - start;
+        fps += 1;
+
+        if (elapsed >= 1.0) {
+            printf("Frame Rate: %f, FPS: %d, MIPS: %d\n", elapsed, fps, CPU::instruction_counter);
+
+            fps = 0;
+            elapsed = 0.0;
+            CPU::instruction_counter = 0;
+        }
     }
 
-    CPU::printRegisters();
-    
+    CPU::print_pegisters();
+
     GPU::shutdown();
-    Display::shutdown();
+    Window::shutdown();
     CPU::shutdown();
     Time::initialize();
 

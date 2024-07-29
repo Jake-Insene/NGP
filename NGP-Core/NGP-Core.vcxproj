@@ -13,11 +13,11 @@
   <ItemGroup>
     <None Include="CPU\Asm\Windows\AdditionalWIN64.inc" />
     <None Include="CPU\Asm\Windows\BranchConditionalWIN64.inc" />
-    <None Include="CPU\Asm\Windows\FBinaryWIN64.inc" />
+    <None Include="CPU\Asm\Windows\FPWIN64.inc" />
     <None Include="CPU\Asm\Windows\ImmediateWIN64.inc" />
     <None Include="CPU\Asm\Windows\LogicalAddSubWIN64.inc" />
     <None Include="CPU\Asm\Windows\MacrosWIN64.inc" />
-    <None Include="CPU\Asm\Windows\MemoryWIN64.inc" />
+    <None Include="CPU\Asm\Windows\LoadStoreWIN64.inc" />
     <None Include="CPU\Asm\Windows\NonBinaryWIN64.inc" />
     <None Include="CPU\Asm\Windows\UtilityWIN64.inc" />
   </ItemGroup>
@@ -28,18 +28,18 @@
     <ClInclude Include="Memory\MemoryBus.h" />
     <ClInclude Include="FileFormat\ISA.h" />
     <ClInclude Include="FileFormat\Rom.h" />
-    <ClInclude Include="GPU\Display.h" />
-    <ClInclude Include="GPU\GPU.h" />
-    <ClInclude Include="GPU\Impl\GPUD12.h" />
+    <ClInclude Include="Video\Window.h" />
+    <ClInclude Include="Video\GPU.h" />
+    <ClInclude Include="Video\Impl\GPUD12.h" />
     <ClInclude Include="Platform\OS.h" />
     <ClInclude Include="Platform\Time.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CPU\CPU.cpp" />
     <ClCompile Include="Memory\MemoryBus.cpp" />
-    <ClCompile Include="GPU\GPU.cpp" />
-    <ClCompile Include="GPU\Impl\DisplayWin32.cpp" />
-    <ClCompile Include="GPU\Impl\GPUD12.cpp" />
+    <ClCompile Include="Video\GPU.cpp" />
+    <ClCompile Include="Video\Impl\WindowWin32.cpp" />
+    <ClCompile Include="Video\Impl\GPUD12.cpp" />
     <ClCompile Include="Platform\Impl\Win32OS.cpp" />
     <ClCompile Include="Platform\Impl\Win32Time.cpp" />
   </ItemGroup>
@@ -100,12 +100,13 @@
       <AdditionalIncludeDirectories>$(ProjectDir);</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointModel>Fast</FloatingPointModel>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -127,12 +128,13 @@
       <AdditionalIncludeDirectories>$(ProjectDir);</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointModel>Fast</FloatingPointModel>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>

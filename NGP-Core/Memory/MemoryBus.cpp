@@ -1,14 +1,14 @@
-// --------------------
-// MemoryBus.cpp
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #include "Memory/MemoryBus.h"
 #include "Core/Constants.h"
 #include "FileFormat/Rom.h"
 #include "CPU/CPU.h"
 #include <fstream>
-#include <memory>
 
 u8 BIOS[MB(4)] = {};
 u8 RAM[MB(256)] = {};
@@ -18,22 +18,19 @@ u32 rom_loaded_size = 0;
 
 RomHeader header = {};
 
-u8* MemoryBus::biosAddress()
-{
+u8* MemoryBus::bios_start_address() {
     return BIOS;
 }
 
-u8* MemoryBus::ramAddress()
-{
+u8* MemoryBus::ram_start_address() {
     return RAM;
 }
 
-u8* MemoryBus::romAddress()
-{
+u8* MemoryBus::rom_address() {
     return ROM;
 }
 
-bool MemoryBus::loadBios(const char* path) {
+bool MemoryBus::load_bios(const char* path) {
     std::ifstream file{ path, std::ios::binary | std::ios::ate };
     if (!file.is_open()) {
         return false;
@@ -51,7 +48,7 @@ bool MemoryBus::loadBios(const char* path) {
     return true;
 }
 
-bool MemoryBus::loadRom(const char* path) {
+bool MemoryBus::load_rom(const char* path) {
     std::ifstream file{ path, std::ios::binary | std::ios::ate };
     if (!file.is_open()) {
         return false;
@@ -82,8 +79,10 @@ bool MemoryBus::loadRom(const char* path) {
     return true;
 }
 
-void* MemoryBus::getAddress(u32 addr, bool read)
-{
+void* MemoryBus::get_address(u32 addr, bool read) {
+    // memory fetching
+    CPU::registers.cycle_counter++;
+
     if (addr <= BIOSEnd && read) {
         return BIOS + (addr - BIOSStart);
     }
@@ -98,74 +97,97 @@ void* MemoryBus::getAddress(u32 addr, bool read)
     return nullptr;
 }
 
-bool MemoryBus::readWord(u32 addr, u32& Word)
-{
-    u32* real_addr = (u32*)getAddress(addr, true);
+QWord MemoryBus::read_qword(u32 addr) {
+    QWord* real_addr = (QWord*)get_address(addr, true);
 
     if (real_addr != nullptr) {
-        Word = *real_addr;
-        return true;
+        return *real_addr;
     }
 
-    return false;
+    // make a exception
+    return {};
 }
 
-bool MemoryBus::readHalf(u32 addr, u16& half)
-{
-    u16* real_addr = (u16*)getAddress(addr, true);
+u64 MemoryBus::read_dword(u32 addr) {
+    u64* real_addr = (u64*)get_address(addr, true);
 
     if (real_addr != nullptr) {
-        half = *real_addr;
-        return true;
+        return *real_addr;
     }
 
-    return false;
+    // make a exception
+    return 0;
 }
 
-bool MemoryBus::readByte(u32 addr, u8& byte)
-{
-    u8* real_addr = (u8*)getAddress(addr, true);
+u32 MemoryBus::read_word(u32 addr) {
+    u32* real_addr = (u32*)get_address(addr, true);
 
     if (real_addr != nullptr) {
-        byte = *real_addr;
-        return true;
+        return *real_addr;
     }
 
-    return false;
+    // make a exception
+    return 0;
 }
 
-bool MemoryBus::writeWord(u32 addr, u32 Word)
-{
-    u32* real_addr = (u32*)getAddress(addr, false);
+u16 MemoryBus::read_half(u32 addr) {
+    u16* real_addr = (u16*)get_address(addr, true);
 
     if (real_addr != nullptr) {
-        *real_addr = Word;
-        return true;
+        return *real_addr;
     }
 
-    return false;
+    // make a exception
+    return 0;
 }
 
-bool MemoryBus::writeHalf(u32 addr, u16 half)
-{
-    u16* real_addr = (u16*)getAddress(addr, false);
+u8 MemoryBus::read_byte(u32 addr) {
+    u8* real_addr = (u8*)get_address(addr, true);
+
+    if (real_addr != nullptr) {
+        return *real_addr;
+    }
+
+    // make a exception
+    return 0;
+}
+
+void MemoryBus::write_qword(u32 addr, QWord qword) {
+    QWord* real_addr = (QWord*)get_address(addr, true);
+
+    if (real_addr != nullptr) {
+        *real_addr = qword;
+    }
+}
+
+void MemoryBus::write_dword(u32 addr, u64 dword) {
+    u64* real_addr = (u64*)get_address(addr, true);
+
+    if (real_addr != nullptr) {
+        *real_addr = dword;
+    }
+}
+
+void MemoryBus::write_word(u32 addr, u32 word) {
+    u32* real_addr = (u32*)get_address(addr, false);
+
+    if (real_addr != nullptr) {
+        *real_addr = word;
+    }
+}
+
+void MemoryBus::write_half(u32 addr, u16 half) {
+    u16* real_addr = (u16*)get_address(addr, false);
 
     if (real_addr != nullptr) {
         *real_addr = half;
-        return true;
     }
-
-    return false;
 }
 
-bool MemoryBus::writeByte(u32 addr, u8 byte)
-{
-    u8* real_addr = (u8*)getAddress(addr, false);
+void MemoryBus::write_byte(u32 addr, u8 byte) {
+    u8* real_addr = (u8*)get_address(addr, false);
 
     if (real_addr != nullptr) {
         *real_addr = byte;
-        return true;
     }
-
-    return false;
 }

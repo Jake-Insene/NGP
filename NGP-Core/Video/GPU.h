@@ -4,10 +4,19 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "Platform/OS.h"
-#include <Windows.h>
+#pragma once
+#include "Core/Header.h"
 
+static constexpr u32 DisplayWidth = 640;
+static constexpr u32 DisplayHeight = 480;
 
-void OS::sleep(i32 milisec) {
-    Sleep(milisec);
-}
+struct GPUDriver {
+    void(*initialize)();
+    void(*shutdown)();
+};
+
+struct GPU { 
+    static void initialize(GPUDriver impl);
+
+    static void shutdown();
+};

@@ -10,9 +10,6 @@ reset_entry:
 
 
 ; --------- Interrupt Table ---------
-interrupt_handler
+interrupt_handler:
 	MSR R0, intcode
-		
-
-	
 	ERET

@@ -1,8 +1,9 @@
-// --------------------
-// Token.h
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #pragma once
 #include "Core/Header.h"
 #include <string_view>
@@ -199,21 +200,37 @@ enum TokenDirective : u8 {
     TD_WORD,
     TD_DWORD,
     TD_ZERO,
+    TD_SPACE,
 };
 
 enum TokenInstruction : u8 {
-    TI_MOV,
-    TI_MOVT,
-    TI_MVN,
+    TI_BL,
+    TI_B,
+    TI_ADR,
+
+    TI_BEQ,
+    TI_BEZ = TI_BEQ,
+    TI_BNE,
+    TI_BNZ = TI_BNE,
+    TI_BLT,
+    TI_BLE,
+    TI_BGT,
+    TI_BGE,
+    TI_BC,
+    TI_BNC,
+    TI_BN,
+    TI_BP,
+    TI_BO,
+    TI_BNO,
+    TI_BHI,
+    TI_BLS,
+    TI_BAL,
+    TI_BNV,
 
     TI_ADD,
     TI_ADDS,
     TI_SUB,
     TI_SUBS,
-    TI_MUL,
-    TI_UMUL,
-    TI_DIV,
-    TI_UDIV,
 
     TI_ADC,
     TI_ADCS,
@@ -232,6 +249,13 @@ enum TokenInstruction : u8 {
 
     TI_BIC,
     TI_BICS,
+
+    TI_CMP,
+    TI_CMN,
+    TI_TST,
+    TI_NOT,
+    TI_NEG,
+    TI_ABS,
 
     TI_FMOV,
     TI_FMOVNC,
@@ -260,42 +284,32 @@ enum TokenInstruction : u8 {
     TI_STH,
     TI_STB,
 
-    TI_CMP,
-    TI_CMN,
-    TI_TST,
-    TI_NOT,
-    TI_NEG,
-    TI_ABS,
-
     TI_TBZ,
     TI_TBNZ,
 
     TI_CBZ,
     TI_CBNZ,
 
-    TI_BEQ,
-    TI_BEZ = TI_BEQ,
-    TI_BNE,
-    TI_BNZ = TI_BNE,
-    TI_BLT,
-    TI_BLE,
-    TI_BGT,
-    TI_BGE,
-    TI_BC,
-    TI_BNC,
-    TI_BN,
-    TI_BP,
-    TI_BO,
-    TI_BNO,
-    TI_BHI,
-    TI_BLS,
+    TI_MADD,
+    TI_MSUB,
+    TI_MUL,
+    TI_DIV,
+    TI_UDIV,
+    
+    TI_MOV,
+    TI_MOVT,
+    TI_MVN,
 
-    TI_BL,
-    TI_B,
-    TI_SWI,
     TI_RET,
+
+    TI_BLR,
+    TI_BR,
+    
+    TI_ERET,
+    TI_BRK,
     TI_HLT,
-    TI_ADR,
+    TI_SIT,
+
 };
 
 struct Token {
@@ -319,21 +333,21 @@ struct Token {
     };
 
     [[nodiscard]] constexpr bool is(TokenType tk) const { return type == tk; }
-    [[nodiscard]] constexpr bool isOneOf(TokenType tk1, TokenType tk2) const { return type == tk1 || type == tk2; }
+    [[nodiscard]] constexpr bool is_one_of(TokenType tk1, TokenType tk2) const { return type == tk1 || type == tk2; }
+    
+    [[nodiscard]] constexpr bool is_not(TokenType tk) const { return type != tk; }
 
-    [[nodiscard]] constexpr bool isNot(TokenType tk) const { return type != tk; }
+    [[nodiscard]] constexpr bool is_fpreg() const { return is_single_reg() || is_double_reg() || is_qword_reg(); }
 
-    [[nodiscard]] constexpr bool isFPReg() const { return isSingleReg() || isDoubleReg() || isQwordReg(); }
-
-    [[nodiscard]] constexpr bool isSingleReg() const {
+    [[nodiscard]] constexpr bool is_single_reg() const {
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_S0 && subtype <= TOKEN_S31);
     }
 
-    [[nodiscard]] constexpr bool isDoubleReg() const {
+    [[nodiscard]] constexpr bool is_double_reg() const {
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_D0 && subtype <= TOKEN_D31);
     }
 
-    [[nodiscard]] constexpr bool isQwordReg() const {
+    [[nodiscard]] constexpr bool is_qword_reg() const {
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_Q0 && subtype <= TOKEN_Q31);
     }
 

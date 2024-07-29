@@ -1,14 +1,14 @@
-// --------------------
-// Constants.h
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #pragma once
 #include "Core/Header.h"
 
 // BIOS	00000000 - 00400000 = 4 MB
 // RAM	10000000 - 20000000 = 256 MB
-
 
 static constexpr u32 BIOSStart  =   0x0000'0000;
 static constexpr u32 BIOSEnd    =   0x003F'FFFF;

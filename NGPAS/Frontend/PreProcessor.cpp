@@ -1,8 +1,9 @@
-// --------------------
-// PreProcessor.cpp
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #include "Frontend/PreProcessor.h"
 #include "Backend/AssemblerUtility.h"
 #include "ErrorManager.h"
@@ -34,14 +35,14 @@ void PreProcessor::process(const char* file_path) {
     advance();
     advance();
 
-    processSource();
+    process_source();
 }
 
-void PreProcessor::processSource() {
-    while (current.isNot(TOKEN_END_OF_FILE)) {
+void PreProcessor::process_source() {
+    while (current.is_not(TOKEN_END_OF_FILE)) {
         switch (current.type) {
         case TOKEN_DIRECTIVE:
-            processDirective();
+            process_directive();
             break;
         default:
             tokens.emplace_back(current);
@@ -51,7 +52,7 @@ void PreProcessor::processSource() {
     }
 }
 
-void PreProcessor::processDirective() {
+void PreProcessor::process_directive() {
     advance();
 
     switch (last.subtype) {
@@ -67,7 +68,7 @@ void PreProcessor::processDirective() {
 
         std::string file_path{};
         file_path.resize(last.str.size());
-        encodeString((u8*)file_path.data(), last.str);
+        encode_string((u8*)file_path.data(), last.str);
 
         std::string source_folder = last.source_file;
         source_folder = source_folder.substr(0, source_folder.find_last_of('/'));
@@ -104,7 +105,7 @@ void PreProcessor::processDirective() {
         advance();
         advance();
 
-        processSource();
+        process_source();
 
         lexer = last_lexer;
         current = last_current;
@@ -122,7 +123,7 @@ void PreProcessor::processDirective() {
 void PreProcessor::advance() {
     last = current;
     current = next;
-    next = lexer.getNext();
+    next = lexer.get_next();
 }
 
 bool PreProcessor::expected(TokenType type, const char* format, ...) {

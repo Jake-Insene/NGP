@@ -1,9 +1,10 @@
-// --------------------
-// GPUD12.cpp
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
-#include "GPU/Impl/GPUD12.h"
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
+#include "Video/Impl/GPUD12.h"
 
 #include <stdio.h>
 #define DX_ERROR(expr, ...)\
@@ -11,6 +12,13 @@
         OutputDebugStringA(__VA_ARGS__);\
         exit(-1);\
     }
+
+GPUDriver GPUD12::get() {
+    return GPUDriver{
+        .initialize = GPUD12::initialize,
+        .shutdown = GPUD12::shutdown,
+    };
+}
 
 void GPUD12::initialize() {
 #if NDEBUG == 0
@@ -82,6 +90,7 @@ void GPUD12::initialize() {
         device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&main_fence)),
         "Couldn't create the main fence"
     );
+
 }
 
 void GPUD12::shutdown() {

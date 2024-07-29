@@ -1,8 +1,9 @@
-// --------------------
-// Main.cpp
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #include "Core/Constants.h"
 #include "Core/Header.h"
 #include "Platform/Time.h"
@@ -77,9 +78,9 @@ int main(int argc, char** argv) {
         output_file = output_file.substr(0, output_file.find_last_of('.'));
     }
     
-    auto start = Time::getTime();
-    bool result = as.assembleFile(input_file, output_file.c_str());
-    f64 duration = Time::getTime() - start;
+    auto start = Time::get_time();
+    bool result = as.assemble_file(input_file, output_file.c_str());
+    f64 duration = Time::get_time() - start;
 
     printf("assembly tooks %fs\n", duration);
 

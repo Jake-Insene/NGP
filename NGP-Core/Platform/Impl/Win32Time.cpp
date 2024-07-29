@@ -1,8 +1,9 @@
-// --------------------
-// Win32Time.cpp
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #include "Platform/Time.h"
 #include <Windows.h>
 
@@ -15,17 +16,17 @@ void Time::initialize() {
 
 void Time::shutdown() {}
 
-f64 Time::getTime() {
-    return f64(getCounter() - start) / frequency;
+f64 Time::get_time() {
+    return f64(get_counter() - start) / frequency;
 }
 
-i64 Time::getCounter() {
+i64 Time::get_counter() {
     i64 counter = 0;
     QueryPerformanceCounter((LARGE_INTEGER*)&counter);
     return counter;
 }
 
-i64 Time::getTimerFrequency() {
+i64 Time::get_timer_frequency() {
     return frequency;
 }
 

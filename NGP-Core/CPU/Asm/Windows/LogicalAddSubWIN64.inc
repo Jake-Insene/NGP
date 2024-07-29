@@ -112,7 +112,7 @@ ADDS_SHL_OPC:
     GET_REGISTER EDX, R12
     SHIFT_REG EDX, R13D, SHL
     
-    CALL compareAdd
+    CALL compare_add
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -123,7 +123,7 @@ ADDS_SHR_OPC:
     GET_REGISTER EDX, R12
     SHIFT_REG EDX, R13D, SHR
     
-    CALL compareAdd
+    CALL compare_add
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -134,7 +134,7 @@ ADDS_ASR_OPC:
     GET_REGISTER EDX, R12
     SHIFT_REG EDX, R13D, SAR
     
-    CALL compareAdd
+    CALL compare_add
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -145,7 +145,7 @@ ADDS_ROR_OPC:
     GET_REGISTER EDX, R12
     SHIFT_REG EDX, R13D, ROR
     
-    CALL compareAdd
+    CALL compare_add
 
     RESTORE_ARGS
     MOV DWORD PTR [RDX+R10*4], EAX
@@ -200,7 +200,7 @@ ANDS_SHL_OPC:
     GET_REGISTER EDX, R12
     SHIFT_REG EDX, R13D, SHL
     
-    CALL compareAnd
+    CALL compare_and
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -211,7 +211,7 @@ ANDS_SHR_OPC:
     GET_REGISTER EDX, R12
     SHIFT_REG EDX, R13D, SHR
     
-    CALL compareAnd
+    CALL compare_and
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -222,7 +222,7 @@ ANDS_ASR_OPC:
     GET_REGISTER EDX, R12
     SHIFT_REG EDX, R13D, SAR
     
-    CALL compareAnd
+    CALL compare_and
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -233,7 +233,7 @@ ANDS_ROR_OPC:
     GET_REGISTER EDX, R12
     SHIFT_REG EDX, R13D, ROR
     
-    CALL compareAnd
+    CALL compare_and
 
     RESTORE_ARGS
     SET_REGISTER EAX, R10
@@ -289,7 +289,7 @@ BICS_SHL_OPC:
 
     SHIFT_REG EDX, R13D, SHL
     NOT EDX
-    CALL compareAnd
+    CALL compare_and
 
     RESTORE_ARGS
     
@@ -302,7 +302,7 @@ BICS_SHR_OPC:
 
     SHIFT_REG EDX, R13D, SHR
     NOT EDX
-    CALL compareAnd
+    CALL compare_and
 
     RESTORE_ARGS
     
@@ -315,7 +315,7 @@ BICS_ASR_OPC:
 
     SHIFT_REG EDX, R13D, SAR
     NOT EDX
-    CALL compareAnd
+    CALL compare_and
 
     RESTORE_ARGS
     
@@ -328,7 +328,7 @@ BICS_ROR_OPC:
 
     SHIFT_REG EDX, R13D, ROR
     NOT EDX
-    CALL compareAnd
+    CALL compare_and
 
     RESTORE_ARGS
     

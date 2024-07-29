@@ -1,8 +1,9 @@
-// --------------------
-// Lexer.cpp
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #include "Frontend/Lexer.h"
 #include "ErrorManager.h"
 #include <string>
@@ -179,19 +180,38 @@ SymbolInfo symbols[] = {
     {.symbol = "zr", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R31 },
     {.symbol = "lr", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R30 },
     {.symbol = "sp", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R29 },
+    
 
     // instructions
-    {.symbol = "mov", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MOV },
-    {.symbol = "movt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_MOVT },
-    {.symbol = "mvn", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MVN },
+    { .symbol = "bl", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_BL },
+    { .symbol = "b", .size = 1, .type = TOKEN_INSTRUCTION, .subtype = TI_B },
+    {.symbol = "adr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ADR },
+
+    {.symbol = "beq", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BEQ },
+    {.symbol = "bez", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BEQ },
+    {.symbol = "bne", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNE },
+    {.symbol = "bnz", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNE },
+    {.symbol = "blt", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLT },
+    {.symbol = "ble", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLE },
+    {.symbol = "bgt", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BGT },
+    {.symbol = "bge", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BGE },
+    {.symbol = "bc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BC },
+    {.symbol = "bhs", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BC },
+    {.symbol = "bnc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNC },
+    {.symbol = "blo", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNC },
+    {.symbol = "bn", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BN },
+    {.symbol = "bp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BP },
+    {.symbol = "bo", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BO },
+    {.symbol = "bno", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNO },
+    {.symbol = "bhi", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BHI },
+    {.symbol = "bls", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLS },
+    {.symbol = "bal", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BAL },
+    {.symbol = "bnv", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNV },
+
     {.symbol = "add", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ADD },
     {.symbol = "adds", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_ADDS },
     {.symbol = "sub", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SUB },
     {.symbol = "subs", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_SUBS },
-    {.symbol = "mul", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MUL },
-    {.symbol = "umul", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_UMUL },
-    {.symbol = "div", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_DIV },
-    {.symbol = "udiv", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_UDIV },
 
     {.symbol = "adc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ADC },
     {.symbol = "adcs", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_ADCS },
@@ -209,18 +229,6 @@ SymbolInfo symbols[] = {
     {.symbol = "ror", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ROR },
     {.symbol = "bic", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ROR },
     {.symbol = "bics", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ROR },
-
-    {.symbol = "ldp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDP },
-    {.symbol = "ld", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_LD },
-    {.symbol = "ldsh", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_LDSH },
-    {.symbol = "ldh", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDH },
-    {.symbol = "ldsb", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_LDSB },
-    {.symbol = "ldb", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDB },
-
-    {.symbol = "stp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STP },
-    {.symbol = "st", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_ST },
-    {.symbol = "sth", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STH },
-    {.symbol = "stb", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STB },
 
     {.symbol = "cmp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_CMP },
     {.symbol = "cmn", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_CMN },
@@ -243,31 +251,38 @@ SymbolInfo symbols[] = {
     {.symbol = "fneg", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FNEG },
     {.symbol = "fabs", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FABS },
 
-    {.symbol = "beq", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BEQ },
-    {.symbol = "bez", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BEQ },
-    {.symbol = "bne", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNE },
-    {.symbol = "bnz", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNE },
-    {.symbol = "blt", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLT },
-    {.symbol = "ble", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLE },
-    {.symbol = "bgt", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BGT },
-    {.symbol = "bge", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BGE },
-    {.symbol = "bc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BC },
-    {.symbol = "bhs", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BC },
-    {.symbol = "bnc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNC },
-    {.symbol = "blo", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNC },
-    {.symbol = "bn", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BN },
-    {.symbol = "bp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BP },
-    {.symbol = "bo", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BO },
-    {.symbol = "bno", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BNO },
-    {.symbol = "bhi", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BHI },
-    {.symbol = "bls", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLS },
+    {.symbol = "ldp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDP },
+    {.symbol = "ld", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_LD },
+    {.symbol = "ldsh", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_LDSH },
+    {.symbol = "ldh", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDH },
+    {.symbol = "ldsb", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_LDSB },
+    {.symbol = "ldb", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDB },
 
-    {.symbol = "bl", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_BL },
-    {.symbol = "b", .size = 1, .type = TOKEN_INSTRUCTION, .subtype = TI_B },
-    {.symbol = "swi", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_SWI },
-    {.symbol = "ret", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_RET },
+    {.symbol = "stp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STP },
+    {.symbol = "st", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_ST },
+    {.symbol = "sth", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STH },
+    {.symbol = "stb", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STB },
+
+    { .symbol = "tbz", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_TBZ },
+    { .symbol = "tbnz", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_TBNZ },
+    { .symbol = "cbz", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_CBZ },
+    { .symbol = "cbnz", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_CBNZ },
+
+    {.symbol = "mul", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MUL },
+    {.symbol = "div", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_DIV },
+    {.symbol = "udiv", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_UDIV },
+
+    {.symbol = "mov", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MOV },
+    {.symbol = "movt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_MOVT },
+    {.symbol = "mvn", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MVN },
+
+    { .symbol = "ret", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_RET },
+    { .symbol = "blr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLR },
+    { .symbol = "br", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_BR },
+    { .symbol = "eret", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_ERET },
+    {.symbol = "brk", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BRK },
     {.symbol = "hlt", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_HLT },
-    {.symbol = "adr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ADR },
+    {.symbol = "sit", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SIT },
 };
 
 #define MAKE_TOKEN(TYPE) { \
@@ -285,10 +300,10 @@ SymbolInfo symbols[] = {
     advance();\
 }
 
-Token Lexer::getNext() {
+Token Lexer::get_next() {
     Token tk = {};
 
-    skipWhiteSpace();
+    skip_white_space();
 
     switch (current) {
     case ';':
@@ -298,11 +313,11 @@ Token Lexer::getNext() {
             advance();
         }
 
-        tk = getNext();
+        tk = get_next();
     }
     break;
     case '#':
-        tk = getImmediate();
+        tk = get_immediate();
         break;
     case '=':
         if (peek(1) == '=') {
@@ -385,10 +400,10 @@ Token Lexer::getNext() {
         MAKE_TOKEN(TOKEN_OR);
         break;
     case '"':
-        tk = getString();
+        tk = get_string();
         break;
     case '\'':
-        tk = getString();
+        tk = get_string();
         break;
     case '\n':
         MAKE_TOKEN(TOKEN_NEW_LINE);
@@ -397,11 +412,11 @@ Token Lexer::getNext() {
         MAKE_TOKEN(TOKEN_END_OF_FILE);
         break;
     default:
-        if (isAlpha(current) || current == '_' || current == '.') {
-            tk = getSymbolOrLabel();
+        if (is_alpha(current) || current == '_' || current == '.') {
+            tk = get_symbol_or_label();
         }
-        else if (isNum(current)) {
-            tk = getImmediate();
+        else if (is_num(current)) {
+            tk = get_immediate();
         }
         else {
             ErrorManager::error(file_path, line, "invalid token '%c'", current);
@@ -412,7 +427,7 @@ Token Lexer::getNext() {
     return tk;
 }
 
-void Lexer::skipWhiteSpace() {
+void Lexer::skip_white_space() {
     while (current == ' '
         || current == '\r'
         || current == '\t') {
@@ -437,7 +452,7 @@ void Lexer::advance() {
     }
 }
 
-Token Lexer::getSymbolOrLabel()
+Token Lexer::get_symbol_or_label()
 {
     Token tk = {
         .source_file = file_path,
@@ -445,7 +460,7 @@ Token Lexer::getSymbolOrLabel()
     };
 
     u64 start = index;
-    while (isAlnum(current) || current == '_' || current == '.') {
+    while (is_alnum(current) || current == '_' || current == '.') {
         advance();
     }
     tk.str = std::string_view((char*)content + start, index - start);
@@ -453,6 +468,7 @@ Token Lexer::getSymbolOrLabel()
     if (current == ':') {
         advance();
         tk.type = TOKEN_LABEL;
+        return tk;
     }
     else {
         tk.type = TOKEN_SYMBOL;
@@ -476,7 +492,7 @@ Token Lexer::getSymbolOrLabel()
     return tk;
 }
 
-Token Lexer::getImmediate() {
+Token Lexer::get_immediate() {
     Token tk = {
         .source_file = file_path,
         .line = line,
@@ -503,7 +519,7 @@ Token Lexer::getImmediate() {
 
     u32 start = index;
     u32 i = 0;
-    while (isHex(current) && i < 32) {
+    while (is_hex(current) && i < 32) {
         advance();
         i++;
     }
@@ -518,7 +534,7 @@ Token Lexer::getImmediate() {
             is_single = true;
         }
 
-        while (isNum(current) && i < 32) {
+        while (is_num(current) && i < 32) {
             advance();
             i++;
         }
@@ -541,27 +557,27 @@ Token Lexer::getImmediate() {
     return tk;
 }
 
-bool Lexer::isAlpha(u8 c) const {
+bool Lexer::is_alpha(u8 c) const {
     return (c >= 'a' && c <= 'z')
         || (c >= 'A' && c <= 'Z');
 }
 
-bool Lexer::isNum(u8 c) const {
+bool Lexer::is_num(u8 c) const {
     return (c >= '0' && c <= '9');
 }
 
-bool Lexer::isAlnum(u8 c) const {
-    return isAlpha(c) || isNum(c);
+bool Lexer::is_alnum(u8 c) const {
+    return is_alpha(c) || is_num(c);
 }
 
-bool Lexer::isHex(u8 c) const {
+bool Lexer::is_hex(u8 c) const {
     return
-        isNum(c) ||
+        is_num(c) ||
         (c >= 'A' && c <= 'F') ||
         (c >= 'a' && c <= 'f');
 }
 
-Token Lexer::getString() {
+Token Lexer::get_string() {
     Token tk = {
         .source_file = file_path,
         .line = line,
@@ -575,6 +591,7 @@ Token Lexer::getString() {
     while ((cuot ? current != '\'' : current != '"') && current != '\0') {
         if (current == '\'' || current == '"') {
             ErrorManager::error(file_path, line, "inconsist string");
+            return tk;
         }
         advance();
     }

@@ -4,10 +4,16 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "Platform/OS.h"
-#include <Windows.h>
+#include "Video/GPU.h"
 
+GPUDriver driver_impl = {};
 
-void OS::sleep(i32 milisec) {
-    Sleep(milisec);
+void GPU::initialize(GPUDriver impl) {
+    driver_impl = impl;
+
+    driver_impl.initialize();
+}
+
+void GPU::shutdown() {
+    driver_impl.shutdown();
 }

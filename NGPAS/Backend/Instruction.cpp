@@ -1,8 +1,9 @@
-// --------------------
-// Instruction.cpp
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #include "Backend/Assembler.h"
 #include "ErrorManager.h"
 
@@ -25,17 +26,17 @@
     if(!expected(TOKEN_REGISTER, message)) {\
         BREAKER;\
     }\
-    u8 var = getRegister(*last)
+    u8 var = get_register(*last)
 
 #define INVALIDATE_FP(TOKEN, BREAKER) \
-    if (TOKEN.isFPReg()) {\
+    if (TOKEN.is_fpreg()) {\
         MAKE_ERROR(TOKEN, BREAKER, "expected a gp register but a fp register was given");\
     }
 
 #define BCOND(type_inst, ti)\
     {\
     u32 index = token_index - 3;\
-    auto target = parseExpresion(ParsePrecedence::Start);\
+    auto target = parse_expresion(ParsePrecedence::Start);\
     if (context.undefined_label == false) {\
         inst = bcond(type_inst, i32(target.u - program_index) / 4);\
     }\
@@ -43,7 +44,7 @@
         auto& tr = to_resolve.emplace_back();\
         tr.address = u32(program_index - 4);\
         tr.index = index;\
-        advanceToNextLine();\
+        advance_to_next_line();\
     }\
     }
 
@@ -51,15 +52,15 @@
 #define RELATIVE(type_inst, ti) \
     {\
     u32 index = token_index - 3;\
-    auto target = parseExpresion(ParsePrecedence::Start);\
+    auto target = parse_expresion(ParsePrecedence::Start);\
     if (context.undefined_label == false) {\
-        inst = bl(i32(target.u - program_index) / 4);\
+        inst = type_inst(i32(target.u - program_index) / 4);\
     }\
     else if(context.is_in_resolve == false) {\
         auto& tr = to_resolve.emplace_back();\
         tr.address = u32(program_index - 4);\
         tr.index = index;\
-        advanceToNextLine();\
+        advance_to_next_line();\
     }\
     }
 
@@ -71,220 +72,34 @@ void Assembler::assembleInstruction() {
     if (align_up(u32(program_index), 4) != u32(program_index) && !ErrorManager::is_panic_mode) {
         MAKE_ERROR((*last), {}, "rom isn't aligned");
     }
-    u32& inst = newWord();
+    u32& inst = new_word();
 
     switch (last->subtype) {
-    case TI_MOV:
+    case TI_BL:
+        RELATIVE(bl, TI_BL);
+    break;
+    case TI_B:
+        RELATIVE(b, TI_B);
+        break;
+    case TI_ADR:
     {
-        GET_REG(dest, "expected destination register", break);
+        u32 index = token_index - 3;
+        GET_REG(dest, "a register was expected!", break);
         INVALIDATE_FP((*last), break);
         EXPECTED_COMMA(break);
 
-        Token operand = parseExpresion(ParsePrecedence::Start);
-        if (operand.is(TOKEN_REGISTER)) {
-            INVALIDATE_FP(operand, break);
-            inst = logicalAddSub(NGP_OR_SHL, dest, 31, getRegister(operand), 0);
+        Token symbol = parse_expresion(ParsePrecedence::Start);
+        if (context.undefined_label == false) {
+            inst = pcrel(NGP_ADR_PC, dest, i32(symbol.u - program_index) / 4);
         }
-        else if (operand.is(TOKEN_IMMEDIATE)) {
-            if (operand.u > 0xFFFF) {
-                MAKE_ERROR(operand, break, "immediate value too long");
-            }
-            inst = binaryi(NGP_OR_IMMEDIATE, dest, 31, operand.ushort[0]);
-        }
-        else if (operand.is(TOKEN_NEW_LINE)) {
-            MAKE_ERROR(operand, {}, "expected a source operand");
-        }
-        else {
-            MAKE_ERROR(operand, {}, "invalid operand");
+        else if (context.is_in_resolve == false) {
+            auto& tr = to_resolve.emplace_back();
+            tr.address = u32(program_index - 4);
+            tr.index = index;
+            advance_to_next_line();
         }
     }
     break;
-    case TI_MOVT:
-    {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_FP((*last), break);
-        EXPECTED_COMMA(break);
-
-        Token operand = parseExpresion(ParsePrecedence::Start);
-        if (operand.is(TOKEN_IMMEDIATE)) {
-            if (operand.u > 0xFFFF) {
-                MAKE_ERROR(operand, break, "immediate value too long");
-            }
-            inst = iimmediate(NGP_MOVT_IMMEDIATE, dest, operand.ushort[0]);
-        }
-        else if (operand.is(TOKEN_NEW_LINE)) {
-            MAKE_ERROR(operand, {}, "expected a source operand");
-        }
-        else {
-            MAKE_ERROR(operand, {}, "invalid operand");
-        }
-    }
-    break;
-    case TI_MVN:
-    {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_FP((*last), break);
-        EXPECTED_COMMA(break);
-
-        Token operand = parseExpresion(ParsePrecedence::Start);
-        if (operand.is(TOKEN_IMMEDIATE)) {
-            if (operand.u > 0xFFFF) {
-                MAKE_ERROR(operand, break, "immediate value too long");
-            }
-            inst = iimmediate(NGP_MVN_IMMEDIATE, dest, operand.ushort[0]);
-        }
-        else if (operand.is(TOKEN_NEW_LINE)) {
-            MAKE_ERROR(operand, {}, "expected a source operand");
-        }
-        else {
-            MAKE_ERROR(operand, {}, "invalid operand");
-        }
-    }
-    break;
-    case TI_ADD:
-        assembleBinary(inst, NGP_ADD_SHL, NGP_ADD_IMMEDIATE, 0xFFFF, false, true);
-        break;
-    case TI_ADDS:
-        assembleBinary(inst, NGP_ADDS_SHL, NGP_ADDS_IMMEDIATE, 0xFFFF, false, true);
-        break;
-    case TI_SUB:
-        assembleBinary(inst, NGP_SUB_SHL, NGP_SUB_IMMEDIATE, 0xFFFF, false, true);
-        break;
-    case TI_SUBS:
-        assembleBinary(inst, NGP_SUBS_SHL, NGP_SUBS_IMMEDIATE, 0xFFFF, false, true);
-        break;
-    case TI_MUL:
-        assembleTwoOperands(inst, [](u8 dest, u8 src1, u8 src2) {
-            return additional(NGP_MADD, dest, src1, src2, 31);
-            }
-        );
-        break;
-    case TI_UMUL:
-        assembleTwoOperands(inst, [](u8 dest, u8 src1, u8 src2) {
-            return additional(NGP_UMADD, dest, src1, src2, 31);
-            }
-        );
-        break;
-    case TI_DIV:
-        assembleTwoOperands(inst, [](u8 dest, u8 src1, u8 src2) {
-            return additional(NGP_DIV, dest, src1, src2, 0);
-            }
-        );
-        break;
-    case TI_UDIV:
-        assembleTwoOperands(inst, [](u8 dest, u8 src1, u8 src2) {
-            return additional(NGP_UDIV, dest, src1, src2, 0);
-            }
-        );
-        break;
-    case TI_ADC:
-        assembleTwoOperands(inst, [](u8 dest, u8 src1, u8 src2) {
-            return logicalAddSub(NGP_ADC, dest, src1, src2, 0);
-            }
-        );
-        break;
-    case TI_ADCS:
-        assembleTwoOperands(inst, [](u8 dest, u8 src1, u8 src2) {
-            return logicalAddSub(NGP_ADCS, dest, src1, src2, 0);
-            }
-        );
-        break;
-    case TI_SBC:
-        assembleTwoOperands(inst, [](u8 dest, u8 src1, u8 src2) {
-            return logicalAddSub(NGP_SBC, dest, src1, src2, 0);
-            }
-        );
-        break;
-    case TI_SBCS:
-        assembleTwoOperands(inst, [](u8 dest, u8 src1, u8 src2) {
-            return logicalAddSub(NGP_SBCS, dest, src1, src2, 0);
-            }
-        );
-        break;
-    case TI_AND:
-        assembleBinary(inst, NGP_AND_SHL, NGP_AND_IMMEDIATE, 0xFFFF, false, true);
-        break;
-    case TI_ANDS:
-        assembleBinary(inst, NGP_ANDS_SHL, NGP_ANDS_IMMEDIATE, 0xFFFF, false, true);
-        break;
-    case TI_OR:
-        assembleBinary(inst, NGP_OR_SHL, NGP_OR_IMMEDIATE, 0xFFFF, false, true);
-        break;
-    case TI_ORN:
-        assembleBinary(inst, NGP_ORN_SHL, NGP_ORN_IMMEDIATE, 0xFFFF, false, true);
-        break;
-    case TI_EOR:
-        assembleBinary(inst, NGP_EOR_SHL, NGP_EOR_IMMEDIATE, 0xFFFF, false, true);
-        break;
-    case TI_SHL:
-        assembleShift(inst, NGP_SHL);
-        break;
-    case TI_SHR:
-        assembleShift(inst, NGP_SHR);
-        break;
-    case TI_ASR:
-        assembleShift(inst, NGP_ASR);
-        break;
-    case TI_ROR:
-        assembleShift(inst, NGP_ROR);
-        break;
-    case TI_BIC:
-        assembleBinary(inst, NGP_BIC_SHL, 0, u16(-1), 0, true);
-        break;
-    case TI_BICS:
-        assembleBinary(inst, NGP_BICS_SHL, 0, u16(-1), 0, true);
-        break;
-    case TI_LD:
-        assembleLoadStore(inst, NGP_LD_IMMEDIATE, NGP_LD, 4, true);
-        break;
-    case TI_LDSH:
-        assembleLoadStore(inst, NGP_LDSH_IMMEDIATE, NGP_LDSH, 2, false);
-        break;
-    case TI_LDH:
-        assembleLoadStore(inst, NGP_LDH_IMMEDIATE, NGP_LDH, 2, false);
-        break;
-    case TI_LDSB:
-        assembleLoadStore(inst, NGP_LDSB_IMMEDIATE, NGP_LDSB, 1, false);
-        break;
-    case TI_LDB:
-        assembleLoadStore(inst, NGP_LDB_IMMEDIATE, NGP_LDB, 1, false);
-        break;
-    case TI_ST:
-        assembleLoadStore(inst, NGP_ST_IMMEDIATE, NGP_ST, 4, false);
-        break;
-    case TI_STH:
-        assembleLoadStore(inst, NGP_STH_IMMEDIATE, NGP_STH, 2, false);
-        break;
-    case TI_STB:
-        assembleLoadStore(inst, NGP_STB_IMMEDIATE, NGP_STB, 1, false);
-        break;
-    case TI_CMP:
-        assembleComparision(inst, NGP_SUBS_SHL, NGP_SUBS_IMMEDIATE, 0xFFFF);
-        break;
-    case TI_CMN:
-        assembleComparision(inst, NGP_ADDS_SHL, NGP_ADDS_IMMEDIATE, 0xFFFF);
-        break;
-    case TI_TST:
-        assembleComparision(inst, NGP_ANDS_SHL, NGP_ANDS_IMMEDIATE, 0xFFFF);
-        break;
-    case TI_NOT:
-        assembleOneOperand(inst, [](u8 dest, u8 src) {
-            return logicalAddSub(NGP_ORN_SHL, dest, 31, src, 0);
-            }
-        );
-        break;
-    case TI_NEG:
-        assembleOneOperand(inst, [](u8 dest, u8 src) {
-            return logicalAddSub(NGP_SUB_SHL, dest, 31, src, 0);
-            }
-        );
-        break;
-    case TI_ABS:
-        assembleOneOperand(inst, [](u8 dest, u8 src) {
-            return additional(NGP_ABS, dest, src, 0, 0);
-            }
-        );
-        break;
     case TI_BEQ:
         BCOND(NGP_BEQ, TI_BEQ);
         break;
@@ -327,46 +142,245 @@ void Assembler::assembleInstruction() {
     case TI_BLS:
         BCOND(NGP_BGE, TI_BLS);
         break;
-    case TI_BL:
+    case TI_ADD:
+        assemble_binary(inst, NGP_ADD_SHL, NGP_ADD_IMMEDIATE, 0xFFFF, false, true);
+        break;
+    case TI_ADDS:
+        assemble_binary(inst, NGP_ADDS_SHL, NGP_ADDS_IMMEDIATE, 0xFFFF, false, true);
+        break;
+    case TI_SUB:
+        assemble_binary(inst, NGP_SUB_SHL, NGP_SUB_IMMEDIATE, 0xFFFF, false, true);
+        break;
+    case TI_SUBS:
+        assemble_binary(inst, NGP_SUBS_SHL, NGP_SUBS_IMMEDIATE, 0xFFFF, false, true);
+        break;
+    case TI_ADC:
+        assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2) {
+            return logical_add_sub(NGP_ADC, dest, src1, src2, 0);
+            }
+        );
+        break;
+    case TI_ADCS:
+        assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2) {
+            return logical_add_sub(NGP_ADCS, dest, src1, src2, 0);
+            }
+        );
+        break;
+    case TI_SBC:
+        assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2) {
+            return logical_add_sub(NGP_SBC, dest, src1, src2, 0);
+            }
+        );
+        break;
+    case TI_SBCS:
+        assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2) {
+            return logical_add_sub(NGP_SBCS, dest, src1, src2, 0);
+            }
+        );
+        break;
+    case TI_AND:
+        assemble_binary(inst, NGP_AND_SHL, NGP_AND_IMMEDIATE, 0xFFFF, false, true);
+        break;
+    case TI_ANDS:
+        assemble_binary(inst, NGP_ANDS_SHL, NGP_ANDS_IMMEDIATE, 0xFFFF, false, true);
+        break;
+    case TI_OR:
+        assemble_binary(inst, NGP_OR_SHL, NGP_OR_IMMEDIATE, 0xFFFF, false, true);
+        break;
+    case TI_ORN:
+        assemble_binary(inst, NGP_ORN_SHL, NGP_ORN_IMMEDIATE, 0xFFFF, false, true);
+        break;
+    case TI_EOR:
+        assemble_binary(inst, NGP_EOR_SHL, NGP_EOR_IMMEDIATE, 0xFFFF, false, true);
+        break;
+    case TI_SHL:
+        assemble_shift(inst, NGP_SHL);
+        break;
+    case TI_SHR:
+        assemble_shift(inst, NGP_SHR);
+        break;
+    case TI_ASR:
+        assemble_shift(inst, NGP_ASR);
+        break;
+    case TI_ROR:
+        assemble_shift(inst, NGP_ROR);
+        break;
+    case TI_BIC:
+        assemble_binary(inst, NGP_BIC_SHL, 0, u16(-1), 0, true);
+        break;
+    case TI_BICS:
+        assemble_binary(inst, NGP_BICS_SHL, 0, u16(-1), 0, true);
+        break;
+    case TI_CMP:
+        assemble_comparision(inst, NGP_SUBS_SHL, NGP_SUBS_IMMEDIATE, 0xFFFF);
+        break;
+    case TI_CMN:
+        assemble_comparision(inst, NGP_ADDS_SHL, NGP_ADDS_IMMEDIATE, 0xFFFF);
+        break;
+    case TI_TST:
+        assemble_comparision(inst, NGP_ANDS_SHL, NGP_ANDS_IMMEDIATE, 0xFFFF);
+        break;
+    case TI_NOT:
+        assemble_one_operand(inst, [](u8 dest, u8 src) {
+            return logical_add_sub(NGP_ORN_SHL, dest, 31, src, 0);
+            }
+        );
+        break;
+    case TI_NEG:
+        assemble_one_operand(inst, [](u8 dest, u8 src) {
+            return logical_add_sub(NGP_SUB_SHL, dest, 31, src, 0);
+            }
+        );
+        break;
+    case TI_ABS:
+        assemble_one_operand(inst, [](u8 dest, u8 src) {
+            return additional(NGP_ABS, dest, src, 0, 0);
+            }
+        );
+        break;
+    case TI_LD:
+        assemble_load_store(inst, NGP_LD_IMMEDIATE, NGP_LD, 4, true);
+        break;
+    case TI_LDSH:
+        assemble_load_store(inst, NGP_LDSH_IMMEDIATE, NGP_LDSH, 2, false);
+        break;
+    case TI_LDH:
+        assemble_load_store(inst, NGP_LDH_IMMEDIATE, NGP_LDH, 2, false);
+        break;
+    case TI_LDSB:
+        assemble_load_store(inst, NGP_LDSB_IMMEDIATE, NGP_LDSB, 1, false);
+        break;
+    case TI_LDB:
+        assemble_load_store(inst, NGP_LDB_IMMEDIATE, NGP_LDB, 1, false);
+        break;
+    case TI_ST:
+        assemble_load_store(inst, NGP_ST_IMMEDIATE, NGP_ST, 4, false);
+        break;
+    case TI_STH:
+        assemble_load_store(inst, NGP_STH_IMMEDIATE, NGP_STH, 2, false);
+        break;
+    case TI_STB:
+        assemble_load_store(inst, NGP_STB_IMMEDIATE, NGP_STB, 1, false);
+        break;
+    case TI_MADD:
+        assemble_three_operands(inst, [](u8 dest, u8 src1, u8 src2, u8 src3) {
+            return additional(NGP_MADD, dest, src1, src2, src3);
+            }
+        );
+        break;
+    case TI_MSUB:
+        assemble_three_operands(inst, [](u8 dest, u8 src1, u8 src2, u8 src3) {
+            return additional(NGP_MSUB, dest, src1, src2, src3);
+            }
+        );
+        break;
+    case TI_MUL:
+        assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2) {
+            return additional(NGP_MADD, dest, src1, src2, 31);
+            }
+        );
+        break;
+    case TI_DIV:
+        assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2) {
+            return additional(NGP_DIV, dest, src1, src2, 0);
+            }
+        );
+        break;
+    case TI_UDIV:
+        assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2) {
+            return additional(NGP_UDIV, dest, src1, src2, 0);
+            }
+        );
+        break;
+    case TI_MOV:
     {
-        RELATIVE(bl, TI_BL);
-    };
+        GET_REG(dest, "expected destination register", break);
+        INVALIDATE_FP((*last), break);
+        EXPECTED_COMMA(break);
+
+        Token operand = parse_expresion(ParsePrecedence::Start);
+        if (operand.is(TOKEN_REGISTER)) {
+            INVALIDATE_FP(operand, break);
+            inst = logical_add_sub(NGP_OR_SHL, dest, 31, get_register(operand), 0);
+        }
+        else if (operand.is(TOKEN_IMMEDIATE)) {
+            if (operand.u > 0xFFFF) {
+                MAKE_ERROR(operand, break, "immediate value too long");
+            }
+            inst = binaryi(NGP_OR_IMMEDIATE, dest, 31, operand.ushort[0]);
+        }
+        else if (operand.is(TOKEN_NEW_LINE)) {
+            MAKE_ERROR(operand, {}, "expected a source operand");
+        }
+        else {
+            MAKE_ERROR(operand, {}, "invalid operand");
+        }
+    }
+    break;
+    case TI_MOVT:
+    {
+        GET_REG(dest, "expected destination register", break);
+        INVALIDATE_FP((*last), break);
+        EXPECTED_COMMA(break);
+
+        Token operand = parse_expresion(ParsePrecedence::Start);
+        if (operand.is(TOKEN_IMMEDIATE)) {
+            if (operand.u > 0xFFFF) {
+                MAKE_ERROR(operand, break, "immediate value too long");
+            }
+            inst = iimmediate(NGP_MOVT_IMMEDIATE, dest, operand.ushort[0]);
+        }
+        else if (operand.is(TOKEN_NEW_LINE)) {
+            MAKE_ERROR(operand, {}, "expected a source operand");
+        }
+        else {
+            MAKE_ERROR(operand, {}, "invalid operand");
+        }
+    }
+    break;
+    case TI_MVN:
+    {
+        GET_REG(dest, "expected destination register", break);
+        INVALIDATE_FP((*last), break);
+        EXPECTED_COMMA(break);
+
+        Token operand = parse_expresion(ParsePrecedence::Start);
+        if (operand.is(TOKEN_IMMEDIATE)) {
+            if (operand.u > 0xFFFF) {
+                MAKE_ERROR(operand, break, "immediate value too long");
+            }
+            inst = iimmediate(NGP_MVN_IMMEDIATE, dest, operand.ushort[0]);
+        }
+        else if (operand.is(TOKEN_NEW_LINE)) {
+            MAKE_ERROR(operand, {}, "expected a source operand");
+        }
+        else {
+            MAKE_ERROR(operand, {}, "invalid operand");
+        }
+    }
+    break;
+    case TI_RET:
+        inst = non_binary(NGP_RET, 0, 30, 0);
         break;
-    case TI_B:
-        RELATIVE(b, TI_B);
-        break;
-    case TI_SWI:
+    case TI_BRK:
     {
         if (!expected(TOKEN_IMMEDIATE, "a immediate value was expected!")) {
             break;
         }
 
-        inst = swi((u32)last->uword);
+        inst = exception(NGP_BRK, (u16)last->uword);
     }
     break;
-    case TI_RET:
-        inst = nonBinary(NGP_RET, 30, 0, 0, 0);
-        break;
     case TI_HLT:
-        inst = nonBinary(NGP_HLT, 0, 0, 0, 0);
+        inst = exception(NGP_HLT, 0);
         break;
-    case TI_ADR:
+    case TI_SIT:
     {
-        u32 index = token_index - 3;
-        GET_REG(dest, "a register was expected!", break);
-        INVALIDATE_FP((*last), break);
-        EXPECTED_COMMA(break);
+        if (!expected(TOKEN_IMMEDIATE, "a immediate value was expected!")) {
+            break;
+        }
 
-        Token symbol = parseExpresion(ParsePrecedence::Start);
-        if (context.undefined_label == false) {
-            inst = pcrel(NGP_ADR_PC, dest, i32(symbol.u - program_index) / 4);
-        }
-        else if(context.is_in_resolve == false) {
-            auto& tr = to_resolve.emplace_back();
-            tr.address = u32(program_index - 4);
-            tr.index = index;
-            advanceToNextLine();
-        }
+        inst = exception(NGP_SIT, (u16)last->uword);
     }
     break;
     default:
@@ -375,38 +389,38 @@ void Assembler::assembleInstruction() {
     }
 
     if (ErrorManager::is_panic_mode) {
-        while (current->isNot(TOKEN_END_OF_FILE) && current->isNot(TOKEN_NEW_LINE)) {
+        while (current->is_not(TOKEN_END_OF_FILE) && current->is_not(TOKEN_NEW_LINE)) {
             advance();
         }
     }
 
-    if (current->isNot(TOKEN_END_OF_FILE)) {
+    if (current->is_not(TOKEN_END_OF_FILE)) {
         expected(TOKEN_NEW_LINE, "a new line was expected");
     }
 }
 
-void Assembler::assembleLoadStore(u32 & inst, u8 imm_opcode,
+void Assembler::assemble_load_store(u32 & inst, u8 imm_opcode,
     u8 index_opc, u8 alignment, bool handle_symbol) {
     u32 index = token_index - 3;
 
     GET_REG(dest, "expected source register", return);
 
     u8 fp_type = 0;
-    if (last->isFPReg()) {
-        if (last->isSingleReg()) {
+    if (last->is_fpreg()) {
+        if (last->is_single_reg()) {
             fp_type = 1;
         }
-        else if (last->isDoubleReg()) {
+        else if (last->is_double_reg()) {
             fp_type = 2;
         }
-        else if (last->isQwordReg()) {
+        else if (last->is_qword_reg()) {
             fp_type = 3;
         }
     }
     EXPECTED_COMMA(return);
 
     if (handle_symbol) {
-        Token symbol = parseExpresion(ParsePrecedence::Start);
+        Token symbol = parse_expresion(ParsePrecedence::Start);
         if (context.undefined_label == false) {
             if (fp_type == 1) {
                 inst = pcrel(NGP_LD_PC, dest, i32((symbol.u - program_index) / 4));
@@ -425,7 +439,7 @@ void Assembler::assembleLoadStore(u32 & inst, u8 imm_opcode,
             auto& tr = to_resolve.emplace_back();
             tr.address = u32(program_index - 4);
             tr.index = index;
-            advanceToNextLine();
+            advance_to_next_line();
             return;
         }
         else {
@@ -436,17 +450,17 @@ void Assembler::assembleLoadStore(u32 & inst, u8 imm_opcode,
     if (!expected(TOKEN_REGISTER, "expected base register")) {
         return;
     }
-    u8 base = getRegister(*last);
+    u8 base = get_register(*last);
     INVALIDATE_FP((*last), return);
 
     if (current->is(TOKEN_RIGHT_KEY)) {
         advance();
         inst = memoryi(imm_opcode, dest, base, 0, 0);
     }
-    else if (current->isNot(TOKEN_NEW_LINE)) {
+    else if (current->is_not(TOKEN_NEW_LINE)) {
         expected(TOKEN_COMMA, "',' was expected");
 
-        Token indice = parseExpresion(ParsePrecedence::Start);
+        Token indice = parse_expresion(ParsePrecedence::Start);
         if (indice.is(TOKEN_IMMEDIATE)) {
             if (indice.iword >= 0) {
                 u32 aligned = align_up(indice.uword, alignment);
@@ -489,7 +503,7 @@ void Assembler::assembleLoadStore(u32 & inst, u8 imm_opcode,
             EXPECTED_KEY_RIGHT(return);
         }
         else if (indice.is(TOKEN_REGISTER)) {
-            u8 reg_index = getRegister(indice);
+            u8 reg_index = get_register(indice);
             INVALIDATE_FP(indice, return);
 
             if (fp_type == 1) {
@@ -518,7 +532,7 @@ void Assembler::assembleLoadStore(u32 & inst, u8 imm_opcode,
     }
 }
 
-void Assembler::assembleBinary(u32& inst, u8 opc,
+void Assembler::assemble_binary(u32& inst, u8 opc,
     u8 opc_imm, u16 immediate_limit, bool is_additional_opc, bool use_amount) {
     GET_REG(dest, "expected destination register", return);
     INVALIDATE_FP((*last), return);
@@ -527,21 +541,21 @@ void Assembler::assembleBinary(u32& inst, u8 opc,
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token second_operand = parseExpresion(ParsePrecedence::Start);
+    Token second_operand = parse_expresion(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER)) {
         INVALIDATE_FP(second_operand, return);
 
         u8 adder = 0;
         u8 amount = 0;
         if (use_amount) {
-            checkForAmount(adder, amount);
+            check_for_amount(adder, amount);
         }
 
         if (is_additional_opc) {// SHL/SHR/AST/ROR
-            inst = additional(opc, dest, src1, getRegister(second_operand), 0);
+            inst = additional(opc, dest, src1, get_register(second_operand), 0);
         }
         else {
-            inst = logicalAddSub(opc, dest, src1, getRegister(second_operand), amount);
+            inst = logical_add_sub(opc, dest, src1, get_register(second_operand), amount);
         }
     }
     else if (second_operand.is(TOKEN_IMMEDIATE) && immediate_limit != -1) {
@@ -564,21 +578,21 @@ void Assembler::assembleBinary(u32& inst, u8 opc,
     }
 }
 
-void Assembler::assembleComparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit) {
+void Assembler::assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit) {
     GET_REG(src1, "expected first source register", return);
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token second_source = parseExpresion(ParsePrecedence::Start);
+    Token second_source = parse_expresion(ParsePrecedence::Start);
     if (second_source.is(TOKEN_REGISTER)) {
         INVALIDATE_FP(second_source, return);
-        u8 src2 = getRegister(second_source);
+        u8 src2 = get_register(second_source);
 
         u8 adder = 0;
         u8 amount = 0;
-        checkForAmount(adder, amount);
+        check_for_amount(adder, amount);
 
-        inst = logicalAddSub(opc + adder, 31, src1, src2, amount);
+        inst = logical_add_sub(opc + adder, 31, src1, src2, amount);
     }
     else if (second_source.is(TOKEN_IMMEDIATE)) {
         if (second_source.u > immediate_limit) {
@@ -594,7 +608,7 @@ void Assembler::assembleComparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate
     }
 }
 
-void Assembler::assembleTwoOperands(u32& inst, u32(*fn)(u8, u8, u8)) {
+void Assembler::assemble_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8)) {
     GET_REG(dest, "expected destination register", return);
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
@@ -603,10 +617,36 @@ void Assembler::assembleTwoOperands(u32& inst, u32(*fn)(u8, u8, u8)) {
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token second_operand = parseExpresion(ParsePrecedence::Start);
+    GET_REG(src2, "expected second source register", return);
+    INVALIDATE_FP((*last), return);
+    EXPECTED_COMMA(return);
+
+    Token third_operand = parse_expresion(ParsePrecedence::Start);
+    if (third_operand.is(TOKEN_REGISTER)) {
+        INVALIDATE_FP(third_operand, return);
+        inst = fn(dest, src1, src2, get_register(third_operand));
+    }
+    else if (third_operand.is(TOKEN_NEW_LINE)) {
+        MAKE_ERROR(third_operand, {}, "expected a third source operand");
+    }
+    else {
+        MAKE_ERROR(third_operand, {}, "invalid operand");
+    }
+}
+
+void Assembler::assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8)) {
+    GET_REG(dest, "expected destination register", return);
+    INVALIDATE_FP((*last), return);
+    EXPECTED_COMMA(return);
+
+    GET_REG(src1, "expected first source register", return);
+    INVALIDATE_FP((*last), return);
+    EXPECTED_COMMA(return);
+
+    Token second_operand = parse_expresion(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER)) {
         INVALIDATE_FP(second_operand, return);
-        inst = fn(dest, src1, getRegister(second_operand));
+        inst = fn(dest, src1, get_register(second_operand));
     }
     else if (second_operand.is(TOKEN_NEW_LINE)) {
         MAKE_ERROR(second_operand, {}, "expected a second source operand");
@@ -616,15 +656,15 @@ void Assembler::assembleTwoOperands(u32& inst, u32(*fn)(u8, u8, u8)) {
     }
 }
 
-void Assembler::assembleOneOperand(u32& inst, u32(*fn)(u8, u8)) {
+void Assembler::assemble_one_operand(u32& inst, u32(*fn)(u8, u8)) {
     GET_REG(dest, "expected destination register", return);
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token operand = parseExpresion(ParsePrecedence::Start);
+    Token operand = parse_expresion(ParsePrecedence::Start);
     if (operand.is(TOKEN_REGISTER)) {
         INVALIDATE_FP(operand, return);
-        inst = fn(dest, getRegister(operand));
+        inst = fn(dest, get_register(operand));
     }
     else if (operand.is(TOKEN_NEW_LINE)) {
         MAKE_ERROR(operand, {}, "expected a source operand");
@@ -634,7 +674,7 @@ void Assembler::assembleOneOperand(u32& inst, u32(*fn)(u8, u8)) {
     }
 }
 
-void Assembler::assembleShift(u32& inst, u8 opcode) {
+void Assembler::assemble_shift(u32& inst, u8 opcode) {
     GET_REG(dest, "expected destination register", return);
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
@@ -643,10 +683,10 @@ void Assembler::assembleShift(u32& inst, u8 opcode) {
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token third_operand = parseExpresion(ParsePrecedence::Start);
+    Token third_operand = parse_expresion(ParsePrecedence::Start);
     if (third_operand.is(TOKEN_REGISTER)) {
         INVALIDATE_FP(third_operand, return);
-        inst = additional(opcode, dest, src1, getRegister(third_operand), 0);
+        inst = additional(opcode, dest, src1, get_register(third_operand), 0);
     }
     else if (third_operand.is(TOKEN_IMMEDIATE)) {
         if (third_operand.u > 0x1F) {
@@ -654,7 +694,7 @@ void Assembler::assembleShift(u32& inst, u8 opcode) {
         }
 
         u8 logopc = opcode - NGP_SHL;
-        inst = logicalAddSub(NGP_OR_SHL + logopc, dest, 31, src1, third_operand.byte[0]);
+        inst = logical_add_sub(NGP_OR_SHL + logopc, dest, 31, src1, third_operand.byte[0]);
     }
     else if (third_operand.is(TOKEN_NEW_LINE)) {
         MAKE_ERROR(third_operand, {}, "expected a source operand");
@@ -664,7 +704,7 @@ void Assembler::assembleShift(u32& inst, u8 opcode) {
     }
 }
 
-void Assembler::checkForAmount(u8& adder, u8& amount) {
+void Assembler::check_for_amount(u8& adder, u8& amount) {
     if (!current->is(TOKEN_COMMA)) {
         return;
     }

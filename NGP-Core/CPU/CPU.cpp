@@ -1,18 +1,17 @@
-// --------------------
-// CPU.cpp
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #include "Core/Constants.h"
 #include "CPU/CPU.h"
 #include "Memory/MemoryBus.h"
-#include "FileFormat/ISA.h"
 #include "Platform/OS.h"
 #include "Platform/Time.h"
 #include <stdio.h>
 
 #define PROFILE 1
-
 
 static inline void setFlags(u32 src1, u32 src2, u64 res) {
     CPU::registers.psr = {};
@@ -38,7 +37,7 @@ extern "C" u32 compare(u32 src1, u32 src2) {
     return u32(res);
 }
 
-extern "C" u32 compareAdd(u32 src1, u32 src2) {
+extern "C" u32 compare_add(u32 src1, u32 src2) {
     CPU::registers.cycle_counter++; // addition
     u64 res = (u64)src1 + (u64)src2;
     CPU::registers.cycle_counter++; // setting flags
@@ -46,7 +45,7 @@ extern "C" u32 compareAdd(u32 src1, u32 src2) {
     return (u32)res;
 }
 
-extern "C" u32 compareAnd(u32 src1, u32 src2) {
+extern "C" u32 compare_and(u32 src1, u32 src2) {
     CPU::registers.cycle_counter++; // bitwise and
     u64 res = (u64)src1 & (u64)src2;
     CPU::registers.cycle_counter++; // setting flags
@@ -54,7 +53,7 @@ extern "C" u32 compareAnd(u32 src1, u32 src2) {
     return (u32)res;
 }
 
-extern "C" void interpreterMain(u32 inst, u32* registers);
+extern "C" void interpreter_main(u32 inst, u32* registers);
 
 // Type:
 // 0 - Word
@@ -66,154 +65,138 @@ extern "C" void interpreterMain(u32 inst, u32* registers);
 // 6 - Single
 // 7 - Double
 
-extern "C" void memoryRead(u32 dest, u32 address, u32 type) {
-    CPU::registers.cycle_counter++; // address calculation
-    void* ptr = MemoryBus::getAddress(address, true);
-    CPU::registers.cycle_counter++; // memory fetch
-    CPU::registers.cycle_counter++; // read memory
-    if (!ptr) {
-        // Emit a exeception if you can't read the address
-    }
-
-    union {
-        u32* ulist = (u32*)&CPU::registers;
-        i32* ilist;
-    };
-
+extern "C" void memory_read(u32 dest, u32 address, u32 type) {
+    // write back
+    CPU::registers.cycle_counter++;
 
     switch (type) {
     case 0:
-        ulist[dest] = *(u32*)ptr;
+        // When we use the ZR write back dont happen
+        if (dest == 0) {
+            CPU::registers.cycle_counter--;
+            return;
+        }
+        CPU::registers.list[dest] = MemoryBus::read_word(address);
         break;
     case 1:
-        ulist[dest] = *(u16*)ptr;
+        if (dest == 0) {
+            CPU::registers.cycle_counter--;
+            return;
+        }
+        CPU::registers.list[dest] = MemoryBus::read_half(address);
         break;
     case 2:
-        ilist[dest] = *(i16*)ptr;
+        if (dest == 0) {
+            CPU::registers.cycle_counter--;
+            return;
+        }
+        CPU::registers.ilist[dest] = static_cast<i16>(MemoryBus::read_half(address));
         break;
     case 3:
-        ulist[dest] = *(u8*)ptr;
+        if (dest == 0) {
+            CPU::registers.cycle_counter--;
+            return;
+        }
+        CPU::registers.list[dest] = MemoryBus::read_byte(address);
         break;
     case 4:
-        ilist[dest] = *(i8*)ptr;
+        if (dest == 0) {
+            CPU::registers.cycle_counter--;
+            return;
+        }
+        CPU::registers.ilist[dest] = static_cast<i8>(MemoryBus::read_byte(address));
         break;
     case 5:
-        CPU::simd.qfp[dest] = *(QWord*)ptr;
+        CPU::simd.qfp[dest] = MemoryBus::read_qword(address);
         break;
     case 6:
-        CPU::simd.ncsfp[dest << 2] = *(u32*)ptr;
+        CPU::simd.ncsfp[dest << 2] = MemoryBus::read_word(address);
         break;
     case 7:
-        CPU::simd.ncdfp[dest << 1] = *(u64*)ptr;
+        CPU::simd.ncdfp[dest << 1] = MemoryBus::read_dword(address);
         break;
     }
 }
 
-extern "C" void memoryWrite(u32 source, u32 address, u32 type) {
-    CPU::registers.cycle_counter++; // address calculation
-    void* ptr = MemoryBus::getAddress(address, false);
-    CPU::registers.cycle_counter++; // write memory
-    if (!ptr) {
-        // Emit a exeception if you can't write the address
-    }
-
-    union {
-        u32* ulist = (u32*)&CPU::registers;
-        i32* ilist;
-    };
-
-
+extern "C" void memory_write(u32 source, u32 address, u32 type) {
+    // write back dont happend here
     switch (type) {
     case 0:
-        *(u32*)ptr = ulist[source];
+        MemoryBus::write_word(address, CPU::registers.list[source]);
         break;
     case 1:
-        *(u16*)ptr = (u16)ulist[source];
-        break;
-    case 2:
-        *(i16*)ptr = (i16)ilist[source];
+        MemoryBus::write_half(address, static_cast<u16>(CPU::registers.list[source]));
         break;
     case 3:
-        *(u8*)ptr = (u8)ulist[source];
-        break;
-    case 4:
-        *(i8*)ptr = (i8)ilist[source];
+        MemoryBus::write_byte(address, static_cast<u8>(CPU::registers.list[source]));
         break;
     case 5:
-        *(QWord*)ptr = CPU::simd.qfp[source];
+        MemoryBus::write_qword(address, CPU::simd.qfp[source]);
         break;
     case 6:
-        *(u32*)ptr = CPU::simd.ncsfp[source << 2];
+        MemoryBus::write_word(address, CPU::simd.ncsfp[source<<2]);
         break;
     case 7:
-        *(u64*)ptr = CPU::simd.ncdfp[source << 1];
+        MemoryBus::write_dword(address, CPU::simd.ncdfp[source<<1]);
         break;
     }
 }
 
-extern "C" void memoryReadPair(u32 dest1, u32 dest2, u32 address, u32 type) {
-    CPU::registers.cycle_counter++; // address calculation
-    void* ptr = MemoryBus::getAddress(address, true);
-    CPU::registers.cycle_counter++; // memory fetch
-    CPU::registers.cycle_counter++; // read memory
-    if (!ptr) {
-        // Emit a exeception if you can't read the address
-    }
-
-    union {
-        u32* ulist = (u32*)&CPU::registers;
-        i32* ilist;
-    };
+extern "C" void memory_read_pair(u32 dest1, u32 dest2, u32 address, u32 type) {
+    // write back 2 registers
+    CPU::registers.cycle_counter += 2;
 
     switch (type) {
     case 0:
-        ulist[dest1] = *((u32*)ptr);
-        ulist[dest2] = *((u32*)ptr + 1);
+        // When we use the ZR write back dont happen
+        if (dest1 == 0) {
+            CPU::registers.cycle_counter--;
+        }
+        else {
+            CPU::registers.list[dest1] = MemoryBus::read_word(address);
+        }
+
+        if (dest2 == 0) {
+            CPU::registers.cycle_counter--;
+        }
+        else {
+            CPU::registers.list[dest2] = MemoryBus::read_word(address + 4);
+        }
+
         break;
     case 5:
-        CPU::simd.qfp[dest1] = *((QWord*)ptr);
-        CPU::simd.qfp[dest2] = *((QWord*)ptr + 1);
+        CPU::simd.qfp[dest1] = MemoryBus::read_qword(address);
+        CPU::simd.qfp[dest2] = MemoryBus::read_qword(address + 16);
         break;
     case 6:
-        CPU::simd.ncsfp[dest1<<2] = *((u32*)ptr);
-        CPU::simd.ncsfp[dest2<<2] = *((u32*)ptr + 1);
+        CPU::simd.ncsfp[dest1 << 2] = MemoryBus::read_word(address);
+        CPU::simd.ncsfp[dest1 << 2] = MemoryBus::read_word(address + 4);
         break;
     case 7:
-        CPU::simd.ncdfp[dest1 << 1] = *((u64*)ptr);
-        CPU::simd.ncdfp[dest2 << 1] = *((u64*)ptr + 1);
+        CPU::simd.ncdfp[dest1 << 1] = MemoryBus::read_dword(address);
+        CPU::simd.ncdfp[dest2 << 1] = MemoryBus::read_dword(address + 8);
         break;
     }
 }
 
-extern "C" void memoryWritePair(u32 source1, u32 source2, u32 address, u32 type) {
-    CPU::registers.cycle_counter++; // address calculation
-    void* ptr = MemoryBus::getAddress(address, false);
-    CPU::registers.cycle_counter++; // write memory
-    if (!ptr) {
-        // Emit a exeception if you can't write the address
-    }
-
-    union {
-        u32* ulist = (u32*)&CPU::registers;
-        i32* ilist;
-    };
-
+extern "C" void memory_write_pair(u32 source1, u32 source2, u32 address, u32 type) {
+    // write back dont happend here
     switch (type) {
     case 0:
-        *((u32*)ptr) = ulist[source1];
-        *((u32*)ptr + 1) = ulist[source2];
+        MemoryBus::write_word(address, CPU::registers.list[source1]);
+        MemoryBus::write_word(address + 4, CPU::registers.list[source2]);
         break;
     case 5:
-        *((QWord*)ptr) = CPU::simd.qfp[source1];
-        *((QWord*)ptr + 1) = CPU::simd.qfp[source2];
+        MemoryBus::write_qword(address, CPU::simd.qfp[source1]);
+        MemoryBus::write_qword(address + 16, CPU::simd.qfp[source2]);
         break;
     case 6:
-        *((u32*)ptr) = CPU::simd.ncsfp[source1];
-        *((u32*)ptr + 1) = CPU::simd.ncsfp[source2];
+        MemoryBus::write_word(address, CPU::simd.ncsfp[source1 << 2]);
+        MemoryBus::write_word(address, CPU::simd.ncsfp[source2<<2]);
         break;
     case 7:
-        *((u64*)ptr) = CPU::simd.ncdfp[source1];
-        *((u64*)ptr + 1) = CPU::simd.ncdfp[source2];
+        MemoryBus::write_dword(address, CPU::simd.ncdfp[source1 << 1]);
+        MemoryBus::write_dword(address, CPU::simd.ncdfp[source2 << 1]);
         break;
     }
 }
@@ -221,30 +204,36 @@ extern "C" void memoryWritePair(u32 source1, u32 source2, u32 address, u32 type)
 i64 start;
 i64 frequency;
 void CPU::initialize() {
-    start = Time::getCounter();
-    frequency = Time::getTimerFrequency();
+    start = Time::get_counter();
+    frequency = Time::get_timer_frequency();
 }
 
 void CPU::shutdown() {}
 
 void CPU::dispatch() {
     while (CPU::registers.cycle_counter < CyclesPerFrame) {
+        registers.ir = MemoryBus::read_word(CPU::registers.pc);
+        
         if (CPU::registers.psr.halt) {
             break;
         }
-     
-        if (MemoryBus::readWord(CPU::registers.pc, registers.ir)) {
-            CPU::registers.pc += 4;
 
-            interpreterMain(CPU::registers.ir, CPU::registers.list);
-        }
+        CPU::registers.pc += 4;
+
+
+        // One cycle for fetching,
+        // other for decoding and the last for execution
+        CPU::registers.cycle_counter += 3;
+        interpreter_main(CPU::registers.ir, CPU::registers.list);
+        CPU::instruction_counter++;
     }
 
+    CPU::registers.cycle_counter = 0;
 }
 
-void CPU::delayForTiming() {
-    f64 elapsed = f64(Time::getCounter() - start) / frequency;
-    f64 target_time = f64(CPU::registers.cycle_counter) / CyclesPerSecond;
+void CPU::delay_for_timing() {
+    f64 elapsed = f64(Time::get_counter() - start) / frequency;
+    f64 target_time = f64(CPU::registers.cycle_counter) / CyclesPerFrame;
     f64 to_wait = target_time - elapsed;
 
     if (to_wait > 0.0) {
@@ -252,7 +241,7 @@ void CPU::delayForTiming() {
     }
 }
 
-void CPU::printRegisters() {
+void CPU::print_pegisters() {
     printf(
         "R0  = %08X R1  = %08X R2  = %08X R3  = %08X  R4 = %08X\n"
         "R5  = %08X R6  = %08X R7  = %08X R8  = %08X  R9 = %08X\n"

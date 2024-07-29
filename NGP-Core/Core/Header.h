@@ -1,14 +1,15 @@
-// --------------------
-// Header.h
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #pragma once
 
 #define KB(n) (1024*n)
 #define MB(n) (KB(1024)*n)
 
-#define MHZ(n) n * 1'000'000
+#define MHZ(n) n * 1'000'000U
 
 using i8 = char;
 using u8 = unsigned char;
@@ -23,6 +24,17 @@ using f32 = float;
 using f64 = double;
 
 using Word = u32;
+
+#pragma warning(disable : 4201)
+
+union QWord {
+    Word w[4];
+    u64 dw[2];
+    struct {
+        u64 hi;
+        u64 lo;
+    };
+};
 
 [[nodiscard]] constexpr u32 align_up(u32 size, u16 alignment) {
     return (size + alignment - 1) & -(alignment);

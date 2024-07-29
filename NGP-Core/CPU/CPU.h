@@ -1,15 +1,12 @@
-// --------------------
-// CPU.h
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #pragma once
-#include "FileFormat/Rom.h"
+#include "Core/Header.h"
 
-struct QWord {
-    u64 hi;
-    u64 lo;
-};
 
 struct CPU {
     static void initialize();
@@ -18,12 +15,12 @@ struct CPU {
 
     static void dispatch();
 
-    static void delayForTiming();
+    static void delay_for_timing();
 
-    static void printRegisters();
+    static void print_pegisters();
 
     static constexpr u32 MaxExceptionLevel = 2;
-    static constexpr u32 CountOfRegisters = 37 + MaxExceptionLevel;
+    static constexpr u32 RegisterCount = 36 + MaxExceptionLevel;
 
     struct ProgramStateRegister {
         u32 z : 1;
@@ -49,23 +46,27 @@ struct CPU {
         union {
             GPRegisters gpr;
             u32 list[32];
+            i32 ilist[32];
         };
         u32 pc, ir;
         ProgramStateRegister psr;
         u32 cycle_counter;
         u32 el_ra[MaxExceptionLevel];
     };
+    static_assert(sizeof(RegisterList) / 4 == RegisterCount, "RegisterList dont contain the correct number of registers");
 
     static inline RegisterList registers = {};
+    static inline u32 instruction_counter = 0;
 
-    static constexpr u32 CountOfSIMDRegisters = 32;
-    union SIMD{
-        QWord qfp[CountOfSIMDRegisters] = {};
-        f64 dfp[CountOfSIMDRegisters * 2];
-        u64 ncdfp[CountOfSIMDRegisters * 2];
-        f32 sfp[CountOfSIMDRegisters * 4];
-        u32 ncsfp[CountOfSIMDRegisters * 4];
+    static constexpr u32 SIMDRegistersCount = 32;
+    union SIMD {
+        QWord qfp[SIMDRegistersCount] = {};
+        f64 dfp[SIMDRegistersCount * 2];
+        u64 ncdfp[SIMDRegistersCount * 2];
+        f32 sfp[SIMDRegistersCount * 4];
+        u32 ncsfp[SIMDRegistersCount * 4];
     };
+    static_assert(sizeof(SIMD) / 16 == SIMDRegistersCount, "SIMD dont contain the correct number of registers");
 
     static inline SIMD simd = {};
 

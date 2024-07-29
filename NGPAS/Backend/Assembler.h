@@ -1,8 +1,9 @@
-// --------------------
-// Assembler.h
-// --------------------
-// Copyright (c) 2024 jake
-// See the LICENSE in the project root.
+/******************************************************/
+/*              This file is part of NGP              */
+/******************************************************/
+/*       Copyright (c) 2024-Present Jake-Insene       */
+/*        See the LICENSE in the project root.        */
+/******************************************************/
 #pragma once
 #include "Frontend/PreProcessor.h"
 #include "Backend/AssemblerUtility.h"
@@ -51,33 +52,35 @@ struct InstructionToResolve {
 };
 
 struct Assembler {
-    bool assembleFile(const char* file_path, const char* output_path);
+    bool assemble_file(const char* file_path, const char* output_path);
 
     // First phase: search labels and constants
     void phase1();
-    Symbol& makeLabel(std::string_view label, u64 address, const char* source_file, u32 line);
-    Symbol& makeSymbol(std::string_view label, u64 value, const char* source_file, u32 line);
+    Symbol& make_label(const Token& label, u64 address, const char* source_file, u32 line);
+    Symbol& make_symbol(const Token& label, u64 value, const char* source_file, u32 line);
 
     // Second phase: assembly
     void phase2();
 
-    void assembleDirective();
+    void assemble_directive();
     void assembleInstruction();
 
     // assemble_instruction();
-    void assembleLoadStore(u32& inst, u8 imm_opcode, u8 index_opc, u8 alignment, bool handle_symbol);
+    void assemble_load_store(u32& inst, u8 imm_opcode, u8 index_opc, u8 alignment, bool handle_symbol);
 
-    void assembleBinary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit, bool is_additional_opc, bool use_amount);
+    void assemble_binary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit, bool is_additional_opc, bool use_amount);
 
-    void assembleComparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit);
+    void assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit);
 
-    void assembleTwoOperands(u32& inst, u32(*fn)(u8, u8, u8));
+    void assemble_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8));
 
-    void assembleOneOperand(u32& inst, u32(*)(u8, u8));
+    void assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8));
 
-    void assembleShift(u32& inst, u8 opcode);
+    void assemble_one_operand(u32& inst, u32(*)(u8, u8));
 
-    void checkForAmount(u8& adder, u8& amount);
+    void assemble_shift(u32& inst, u8 opcode);
+
+    void check_for_amount(u8& adder, u8& amount);
 
     // Third phase: resolving instructions
     void resolve_instructions();
@@ -85,45 +88,46 @@ struct Assembler {
     void advance();
     void syncronize();
     bool expected(TokenType tk, const char* format, ...);
-    void gotoNextLine();
-    void advanceToNextLine();
+    void goto_next_line();
+    void advance_to_next_line();
 
     // Utility
-    u8 getRegister(Token tk);
-    u32& newWord();
-    u16& newHalf();
-    u8& newByte();
+    u8 get_register(Token tk);
+    u32& new_word();
+    u16& new_half();
+    u8& new_byte();
     u8* reserve(u32 count);
     void check_capacity(u32 count);
 
     // Parser
 
     // Prefix
-    Token parseMinus(Token, Token);
-    Token parseNot(Token, Token);
-    Token parseImmediate(Token, Token);
-    Token parseSymbol(Token, Token);
-    Token parseRegister(Token, Token);
-    Token parseGroup(Token, Token);
-    Token parseString(Token, Token);
+    Token parse_minus(Token, Token);
+    Token parse_not(Token, Token);
+    Token parse_immediate(Token, Token);
+    Token parse_symbol(Token, Token);
+    Token parse_register(Token, Token);
+    Token parse_group(Token, Token);
+    Token parse_dollar(Token, Token);
+    Token parse_string(Token, Token);
 
     // Infix
-    Token parseAdd(Token lsh, Token rhs);
-    Token parseSub(Token lsh, Token rhs);
-    Token parseAnd(Token lsh, Token rhs);
-    Token parseOr(Token lsh, Token rhs);
-    Token parseXor(Token lsh, Token rhs);
-    Token parseShl(Token lsh, Token rhs);
-    Token parseShr(Token lsh, Token rhs);
-    Token parseAsr(Token lsh, Token rhs);
-    Token parseMul(Token lsh, Token rhs);
-    Token parseDiv(Token lsh, Token rhs);
+    Token parse_add(Token lsh, Token rhs);
+    Token parse_sub(Token lsh, Token rhs);
+    Token parse_and(Token lsh, Token rhs);
+    Token parse_or(Token lsh, Token rhs);
+    Token parse_xor(Token lsh, Token rhs);
+    Token parse_shl(Token lsh, Token rhs);
+    Token parse_shr(Token lsh, Token rhs);
+    Token parse_asr(Token lsh, Token rhs);
+    Token parse_mul(Token lsh, Token rhs);
+    Token parse_div(Token lsh, Token rhs);
 
-    Token parseExpresion(ParsePrecedence precedence);
+    Token parse_expresion(ParsePrecedence precedence);
 
     // expresions
 
-    std::unordered_map<std::string, Symbol>::iterator findLabel(std::string_view label);
+    std::unordered_map<std::string, Symbol>::iterator find_label(const std::string_view label);
 
     PreProcessor pre_processor;
 

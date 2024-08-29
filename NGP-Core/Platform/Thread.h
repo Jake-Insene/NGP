@@ -7,12 +7,14 @@
 #pragma once
 #include "Core/Header.h"
 
-inline constexpr u32 RomSignature = 	0x0050474E;
+using ThreadID = u64;
 
-struct RomHeader {
-    u32 magic;
-    u32 check_sum;
+struct Thread {
+    using ThreadFunc = void(*)(void*);
 
-    // A multiply of 4
-    u32 target_address;
+    static ThreadID create(ThreadFunc func, void* arg);
+
+    static void start(ThreadID id);
+
+    static void terminate(ThreadID id);
 };

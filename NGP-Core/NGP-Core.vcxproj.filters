@@ -15,51 +15,16 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="CPU\Asm\Windows\AdditionalWIN64.inc">
-      <Filter>Archivos de encabezado</Filter>
-    </None>
-    <None Include="CPU\Asm\Windows\BranchConditionalWIN64.inc">
-      <Filter>Archivos de encabezado</Filter>
-    </None>
-    <None Include="CPU\Asm\Windows\FPWIN64.inc">
-      <Filter>Archivos de encabezado</Filter>
-    </None>
-    <None Include="CPU\Asm\Windows\ImmediateWIN64.inc">
-      <Filter>Archivos de encabezado</Filter>
-    </None>
-    <None Include="CPU\Asm\Windows\LogicalAddSubWIN64.inc">
-      <Filter>Archivos de encabezado</Filter>
-    </None>
-    <None Include="CPU\Asm\Windows\MacrosWIN64.inc">
-      <Filter>Archivos de encabezado</Filter>
-    </None>
-    <None Include="CPU\Asm\Windows\LoadStoreWIN64.inc">
-      <Filter>Archivos de encabezado</Filter>
-    </None>
-    <None Include="CPU\Asm\Windows\NonBinaryWIN64.inc">
-      <Filter>Archivos de encabezado</Filter>
-    </None>
-    <None Include="CPU\Asm\Windows\UtilityWIN64.inc">
-      <Filter>Archivos de encabezado</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Core\Constants.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
     <ClInclude Include="CPU\CPU.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Core\Header.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Memory\MemoryBus.h">
+    <ClInclude Include="Memory\Bus.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="FileFormat\ISA.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
-    <ClInclude Include="FileFormat\Rom.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Video\Impl\GPUD12.h">
@@ -77,12 +42,27 @@
     <ClInclude Include="Platform\Time.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="IO\IO.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="IO\Pad.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="IO\DMA.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Platform\Thread.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Platform\Header.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CPU\CPU.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Memory\MemoryBus.cpp">
+    <ClCompile Include="Memory\Bus.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Video\Impl\WindowWin32.cpp">
@@ -100,10 +80,17 @@
     <ClCompile Include="Platform\Impl\Win32Time.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="CPU\Asm\Windows\InterpreterWIN64.asm">
+    <ClCompile Include="IO\IO.cpp">
       <Filter>Archivos de origen</Filter>
-    </MASM>
+    </ClCompile>
+    <ClCompile Include="IO\Pad.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="IO\DMA.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Platform\Impl\Win32Thread.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

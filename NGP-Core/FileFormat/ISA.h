@@ -13,9 +13,6 @@
 // Call/Branch
 // 6 - 31 | disp26
 
-// SWI
-// 6 - 31 | imm26
-
 // Binary (Immediate)
 // 6 - 10 | dest
 // 11 - 15 | src1
@@ -82,16 +79,15 @@ enum NGPBranchConditional {
     NGP_BLE = 0x3,
     NGP_BGT = 0x4,
     NGP_BGE = 0x5,
-    NGP_BC = 0x6,
-    NGP_BNC = 0x7,
-    NGP_BN = 0x8,
-    NGP_BP = 0x9,
-    NGP_BO = 0xA,
-    NGP_BNO = 0xB,
+    NGP_BCS = 0x6,
+    NGP_BCC = 0x7,
+    NGP_BMI = 0x8,
+    NGP_BPL = 0x9,
+    NGP_BVS = 0xA,
+    NGP_BVC = 0xB,
     NGP_BHI = 0xC,
     NGP_BLS = 0xD,
     NGP_BAL = 0xE,
-    NGP_BNV = 0xF,
 };
 
 // Logical Sub Add
@@ -99,7 +95,7 @@ enum NGPBranchConditional {
 // 12 - 16 | dest 
 // 17 - 21 | src1
 // 22 - 26 | src2
-// 27 - 31 | imm5/src2
+// 27 - 31 | imm5/src3
 enum NGPLogicalSubAdd {
 
     // ADD Rd, Rfs, Rss, SHL/SHR/ASR #imm5
@@ -219,14 +215,13 @@ enum NGPFBinary {
 // 19 | sub
 // 20 - 31 | disp12
 enum NGPMemoryImmediate {
-    // LD{...} Rd, [Rb, #[-/+]imm12]
+    // OP Rd, [Rb, #[-/+]imm12]
     NGP_LD_IMMEDIATE = 0x0,
     NGP_LDSH_IMMEDIATE = 0x1,
     NGP_LDH_IMMEDIATE = 0x2,
     NGP_LDSB_IMMEDIATE = 0x3,
     NGP_LDB_IMMEDIATE = 0x4,
 
-    // ST{...} Rd, [Rb, #[-/+]imm12]
     NGP_ST_IMMEDIATE = 0x5,
     NGP_STH_IMMEDIATE = 0x6,
     NGP_STB_IMMEDIATE = 0x7,
@@ -283,13 +278,12 @@ enum NGPLoadStoreRegister {
 // 24 | sub
 // 25 - 31 | imm8
 enum NGPLoadStorePair {
-    // LDP Rfs, Rss, [Rb, #[-/+]imm8]
+    // LDP/STP Rfs, Rss, [Rb, #[-/+]imm8]
     NGP_LDP = 0x0,
     NGP_LDP_S = 0x1,
     NGP_LDP_D = 0x2,
     NGP_LDP_Q = 0x3,
 
-    // STP Rfs, Rss, [Rb, #[-/+]imm8]
     NGP_STP = 0x4,
     NGP_STP_S = 0x5,
     NGP_STP_D = 0x6,

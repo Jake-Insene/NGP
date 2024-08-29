@@ -7,32 +7,25 @@
 #pragma once
 #include "Core/Header.h"
 
+static constexpr u32 CYCLES_PER_SECOND = MHZ(120);
+static constexpr u32 FRAMES_PER_SECOND = 60;
+static constexpr u32 CYCLES_PER_FRAME = CYCLES_PER_SECOND / FRAMES_PER_SECOND;
+
+static constexpr u32 MAX_NUMBER_OF_CORES = 2;
 
 struct CPU {
-    static void initialize();
+    union ProgramStateRegister {
+        struct {
+            u32 z : 1;
+            u32 c : 1;
+            u32 n : 1;
+            u32 v : 1;
 
-    static void shutdown();
+            u32 halt : 1;
 
-    static void dispatch();
-
-    static void delay_for_timing();
-
-    static void print_pegisters();
-
-    static constexpr u32 MaxExceptionLevel = 2;
-    static constexpr u32 RegisterCount = 36 + MaxExceptionLevel;
-
-    struct ProgramStateRegister {
-        u32 z : 1;
-        u32 c : 1;
-        u32 n : 1;
-        u32 v : 1;
-
-        u32 irq : 1;
-        u32 el : 1;
-        u32 halt : 1;
-
-        u32 rem : 25;
+            u32 rem : 27;
+        };
+        u32 raw;
     };
 
     struct GPRegisters {
@@ -42,40 +35,45 @@ struct CPU {
         u32 sp, lr, zr;
     };
 
-    struct RegisterList {
+    static constexpr u32 SIMDRegistersCount = 32;
+
+    struct SIMDRegister {
+        QWord qw;
+        f32 s;
+        Word w;
+        f64 d;
+        DWord dw;
+    };
+
+    static constexpr u32 MaxExceptionLevel = 3;
+    struct CPUCore {
         union {
             GPRegisters gpr;
             u32 list[32];
             i32 ilist[32];
         };
+        SIMDRegister simd[SIMDRegistersCount];
+
         u32 pc, ir;
-        ProgramStateRegister psr;
         u32 cycle_counter;
-        u32 el_ra[MaxExceptionLevel];
+
+        // System registers
+        u32 current_el;
+        ProgramStateRegister psr;
+
+        ProgramStateRegister spsr_el[MaxExceptionLevel];
+        u32 elr_el[MaxExceptionLevel];
+        u32 elr_vt[MaxExceptionLevel];
     };
-    static_assert(sizeof(RegisterList) / 4 == RegisterCount, "RegisterList dont contain the correct number of registers");
 
-    static inline RegisterList registers = {};
-    static inline u32 instruction_counter = 0;
+    static void initialize();
 
-    static constexpr u32 SIMDRegistersCount = 32;
-    union SIMD {
-        QWord qfp[SIMDRegistersCount] = {};
-        f64 dfp[SIMDRegistersCount * 2];
-        u64 ncdfp[SIMDRegistersCount * 2];
-        f32 sfp[SIMDRegistersCount * 4];
-        u32 ncsfp[SIMDRegistersCount * 4];
-    };
-    static_assert(sizeof(SIMD) / 16 == SIMDRegistersCount, "SIMD dont contain the correct number of registers");
+    static void shutdown();
 
-    static inline SIMD simd = {};
+    static void dispatch(CPU::CPUCore& core, u32& counter);
 
-    enum FLAGS {
-        ZERO_FLAG = 0,
-        CARRY_FLAG = 1,
-        NEGATIVE_FLAG = 2,
-        OVERFLOW_FLAG = 3,
+    static void print_pegisters(CPU::CPUCore& core);
 
-        INTERRUPT_FLAG = 4,
-    };
+    static inline CPUCore cores[MAX_NUMBER_OF_CORES] = {};
+    static inline u32 instruction_counter[MAX_NUMBER_OF_CORES] = {};
 };

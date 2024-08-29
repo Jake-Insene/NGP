@@ -6,6 +6,12 @@
 /******************************************************/
 #pragma once
 
+#define NGP_VERSION_MAJOR "1"
+#define NGP_VERSION_MINOR "0"
+#define NGP_VERSION_PATCH "0"
+
+#define NGP_VERSION NGP_VERSION_MAJOR "." NGP_VERSION_MINOR "." NGP_VERSION_PATCH
+
 #define KB(n) (1024*n)
 #define MB(n) (KB(1024)*n)
 
@@ -24,6 +30,7 @@ using f32 = float;
 using f64 = double;
 
 using Word = u32;
+using DWord = u32;
 
 #pragma warning(disable : 4201)
 
@@ -31,10 +38,14 @@ union QWord {
     Word w[4];
     u64 dw[2];
     struct {
-        u64 hi;
         u64 lo;
+        u64 hi;
     };
 };
+
+#if defined(_MSVC_LANG)
+#define FORCE_INLINE __forceinline
+#endif // _MSVC_LANG
 
 [[nodiscard]] constexpr u32 align_up(u32 size, u16 alignment) {
     return (size + alignment - 1) & -(alignment);
@@ -44,14 +55,3 @@ union QWord {
     return size & ~(alignment - 1);
 }
 
-[[nodiscard]] constexpr u32 sign_ext(u32 imm, u8 imm_width, u8 extend_size) {
-    u8 sign = (imm >> (imm_width - 1)) & 1;
-    u32 extended = imm;
-
-    if (sign) {
-        u32 extension_mask = ((1 << (extend_size - imm_width)) - 1) << imm_width;
-        extended = imm | extension_mask;
-    }
-
-    return extended;
-}

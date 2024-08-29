@@ -5,12 +5,10 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #pragma once
-#include "Core/Header.h"
 
-struct OS {
+#ifdef _WIN32
 
-    static void sleep(i32 milisec);
+#include <Windows.h>
+#include <d3d12.h>
 
-    static void* allocate_virtual_memory(void* address, u64 size);
-
-};
+#endif _WIN32

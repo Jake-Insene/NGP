@@ -5,68 +5,202 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #include "CPU/CPU.h"
-#include "Memory/MemoryBus.h"
+#include "Memory/Bus.h"
+#include "Video/GPU.h"
 #include "Video/Window.h"
+#include "Platform/OS.h"
 #include "Platform/Time.h"
-#include <stdio.h>
-#include <math.h>
-
-#ifdef _WIN32
-#include <Video/Impl/GPUD12.h>
-#endif // _WIN32
+#include "Platform/Thread.h"
+#include "IO/IO.h"
+#include <cstdio>
+#include <memory>
 
 #define DEBUGGING 1
 
-int main(int /*argc*/, char** /*argv*/) {
-    if (system("\"..\\Build\\Debug-x64\\ngpas.exe\" ../NGPAS/Examples/main.asm") != 0) {
-        return -1;
+void start_cores();
+void end_cores();
+void print_cores();
+
+void print_help() {
+    puts(
+        "usage: ngpas [options]\n"
+        "options:\n"
+        "\t-bios <path> set the bios file\n"
+    );
+}
+
+int main(int argc, char** argv) {
+    printf("NGP Emulator %s\n", NGP_VERSION);
+
+    const char* bios_file = "../BIOS/BIOS.BIN";
+
+    i32 index = 1;
+    while (index < argc) {
+        char* arg = argv[index++];
+
+        if (arg[0] == '-') {
+            // Options
+            arg++;
+            u32 arg_len = u32(strlen(arg));
+
+            if (arg_len == 4) {
+                if (std::memcmp(arg, "help", 4) == 0) {
+                    print_help();
+                    return 0;
+                }
+                else if (std::memcmp(arg, "bios", 4) == 0) {
+                    printf("error: -bios require a path");
+                    bios_file = argv[index++];
+                    return -1;
+                }
+                else {
+                    printf("error: unknown option '%s'\n", arg--);
+                    return -1;
+                }
+            }
+        }
+        else {
+            printf("error: invalid argument '%s'\n", arg);
+        }
     }
 
     Time::initialize();
-    CPU::initialize();
-
-    Window::initialize(960, 544);
-    if (!MemoryBus::load_rom("../NGPAS/Examples/main.ngp")) {
+    
+    Bus::initialize();
+    if (!Bus::load_bios(bios_file)) {
+        printf("error: invalid bios file '%s'", bios_file);
         return -1;
     }
 
+    CPU::initialize();
+    IO::initialize();
+
+    Window::initialize(960, 540);
+
 #ifdef _WIN32
-    GPU::initialize(GPUD12::get());
+    GPU::initialize(DriverApi::D3D12);
 #endif
 
-    f64 elapsed = Time::get_time();
+    // Initializing CPU Cores
+    start_cores();
+
+    // The main thread use the main core
+    CPU::CPUCore& main_core = CPU::cores[0];
+
+    f64 elapsed = 0.0;
+    u32& counter = CPU::instruction_counter[0];
+    u32 cycle_counter = 0;
     u32 fps = 0;
 
     while (Window::is_open) {
         f64 start = Time::get_time();
+#if DEBUGGING
         // For debugging
-#if DEBUGGING == 1
-        if (CPU::registers.psr.halt) {
+        if (main_core.psr.halt) {
             break;
         }
 #endif // DEBUGGING
-
+        
         Window::update();
-        CPU::dispatch();
+        fps++;
+        
+        CPU::dispatch(main_core, counter);
 
         elapsed += Time::get_time() - start;
-        fps += 1;
+        cycle_counter += main_core.cycle_counter;
+        main_core.cycle_counter = 0;
 
         if (elapsed >= 1.0) {
-            printf("Frame Rate: %f, FPS: %d, MIPS: %d\n", elapsed, fps, CPU::instruction_counter);
+            printf(
+                "Core 0:\n"
+                "\tFrame Rate: %f\n"
+                "\tFPS: %d\n"
+                "\tMIPS: %d\n"
+                "\tCPS: %d\n",
+                elapsed, fps, counter, cycle_counter
+            );
 
-            fps = 0;
             elapsed = 0.0;
-            CPU::instruction_counter = 0;
+            counter = 0;
+            cycle_counter = 0;
+            fps = 0;
         }
     }
 
-    CPU::print_pegisters();
+    end_cores();
+    print_cores();
 
     GPU::shutdown();
     Window::shutdown();
+    IO::shutdown();
     CPU::shutdown();
-    Time::initialize();
+    Bus::shutdown();
+    Time::shutdown();
 
     return 0;
+}
+
+void thread_core_callback(void* arg) {
+    u32 core_index = *reinterpret_cast<u32*>(&arg);
+
+    CPU::CPUCore& core = CPU::cores[core_index];
+    u32& counter = CPU::instruction_counter[core_index];
+
+    core.pc = Bus::BIOS_START;
+    core.current_el = 0;
+
+    f64 elapsed = 0.0;
+    u32 cycle_counter = 0;
+
+    while (true) {
+        if (core.psr.halt) {
+            OS::sleep(1);
+            continue;
+        }
+
+        f64 start = Time::get_time();
+        CPU::dispatch(core, counter);
+
+        elapsed += Time::get_time() - start;
+        cycle_counter += core.cycle_counter;
+        core.cycle_counter = 0;
+
+        if (elapsed >= 1.0) {
+            printf(
+                "Core: %d\n"
+                "\tMIPS: %d\n"
+                "\tCPS: %d\n",
+                core_index, counter, cycle_counter
+            );
+
+            elapsed = 0.0;
+            counter = 0;
+            cycle_counter = 0;
+        }
+    }
+}
+
+// 0 is unused
+ThreadID core_threads[MAX_NUMBER_OF_CORES] = {};
+
+void start_cores() {
+    for (u32 core = 1; core < MAX_NUMBER_OF_CORES; core++) {
+        core_threads[core] = Thread::create(thread_core_callback, *reinterpret_cast<void**>(&core));
+
+        // All core are disable by default
+        CPU::cores[core].psr.halt = true;
+    }
+}
+
+void end_cores() {
+    for (u32 core = 1; core < MAX_NUMBER_OF_CORES; core++) {
+        Thread::terminate(core_threads[core]);
+    }
+}
+
+void print_cores() {
+    for (u32 core = 0; core < MAX_NUMBER_OF_CORES; core++) {
+        printf("Core: %d\n", core);
+        CPU::print_pegisters(CPU::cores[core]);
+    }
 }

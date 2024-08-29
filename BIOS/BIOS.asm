@@ -1,15 +1,25 @@
-FORMAT RAW AS 'bin'
+FORMAT RAW AS 'BIN'
 ORG 0x00000000
 
-B reset_entry
-B interrupt_handler
+RAM_START = 0x20000000
+RAM_END = 0x90000000
 
-; --------- Reset Table ---------
-reset_entry:
+main:
+	MOV R0, RAM_START & 0xFFFF
+	MOVT R0, RAM_START >> 16
+	MOV R1, RAM_END & 0xFFFF
+	MOVT R1, RAM_END >> 16
+	MOV R3, R0
+
+	MOV R2, 0xDCDC
+	MOVT R2, 0xDCDC
+
+.loop:
+	;ST R2, [R0]
+	ADD R0, R0, 4
+	CMP R0, R1
+	BCC .loop
+	
 	HLT
 
-
-; --------- Interrupt Table ---------
-interrupt_handler:
-	MSR R0, intcode
-	ERET
+.zero 0x400000-$

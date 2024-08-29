@@ -5,9 +5,8 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #pragma once
+#include "Platform/Header.h"
 #include "Video/GPU.h"
-
-#include <d3d12.h>
 
 struct GPUD12 {
     static GPUDriver get();

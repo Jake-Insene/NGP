@@ -5,7 +5,7 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #include "Platform/Time.h"
-#include <Windows.h>
+#include "Platform/Header.h"
 
 static i64 frequency = 1;
 static i64 start = 0;

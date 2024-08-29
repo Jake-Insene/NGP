@@ -11,23 +11,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <None Include="CPU\Asm\Windows\AdditionalWIN64.inc" />
-    <None Include="CPU\Asm\Windows\BranchConditionalWIN64.inc" />
-    <None Include="CPU\Asm\Windows\FPWIN64.inc" />
-    <None Include="CPU\Asm\Windows\ImmediateWIN64.inc" />
-    <None Include="CPU\Asm\Windows\LogicalAddSubWIN64.inc" />
-    <None Include="CPU\Asm\Windows\MacrosWIN64.inc" />
-    <None Include="CPU\Asm\Windows\LoadStoreWIN64.inc" />
-    <None Include="CPU\Asm\Windows\NonBinaryWIN64.inc" />
-    <None Include="CPU\Asm\Windows\UtilityWIN64.inc" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Core\Constants.h" />
     <ClInclude Include="CPU\CPU.h" />
     <ClInclude Include="Core\Header.h" />
-    <ClInclude Include="Memory\MemoryBus.h" />
+    <ClInclude Include="IO\DMA.h" />
+    <ClInclude Include="IO\IO.h" />
+    <ClInclude Include="IO\Pad.h" />
+    <ClInclude Include="Memory\Bus.h" />
     <ClInclude Include="FileFormat\ISA.h" />
-    <ClInclude Include="FileFormat\Rom.h" />
+    <ClInclude Include="Platform\Header.h" />
+    <ClInclude Include="Platform\Thread.h" />
     <ClInclude Include="Video\Window.h" />
     <ClInclude Include="Video\GPU.h" />
     <ClInclude Include="Video\Impl\GPUD12.h" />
@@ -36,15 +28,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CPU\CPU.cpp" />
-    <ClCompile Include="Memory\MemoryBus.cpp" />
+    <ClCompile Include="IO\DMA.cpp" />
+    <ClCompile Include="IO\IO.cpp" />
+    <ClCompile Include="IO\Pad.cpp" />
+    <ClCompile Include="Memory\Bus.cpp" />
+    <ClCompile Include="Platform\Impl\Win32Thread.cpp" />
     <ClCompile Include="Video\GPU.cpp" />
     <ClCompile Include="Video\Impl\WindowWin32.cpp" />
     <ClCompile Include="Video\Impl\GPUD12.cpp" />
     <ClCompile Include="Platform\Impl\Win32OS.cpp" />
     <ClCompile Include="Platform\Impl\Win32Time.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="CPU\Asm\Windows\InterpreterWIN64.asm" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

@@ -118,29 +118,32 @@ void Assembler::assembleInstruction() {
     case TI_BGE:
         BCOND(NGP_BGE, TI_BGE);
         break;
-    case TI_BC:
-        BCOND(NGP_BGE, TI_BC);
+    case TI_BCS:
+        BCOND(NGP_BCS, TI_BCS);
         break;
-    case TI_BNC:
-        BCOND(NGP_BGE, TI_BNC);
+    case TI_BCC:
+        BCOND(NGP_BCC, TI_BCC);
         break;
-    case TI_BN:
-        BCOND(NGP_BGE, TI_BN);
+    case TI_BMI:
+        BCOND(NGP_BMI, TI_BMI);
         break;
-    case TI_BP:
-        BCOND(NGP_BGE, TI_BP);
+    case TI_BPL:
+        BCOND(NGP_BPL, TI_BPL);
         break;
-    case TI_BO:
-        BCOND(NGP_BGE, TI_BO);
+    case TI_BVS:
+        BCOND(NGP_BVS, TI_BVS);
         break;
-    case TI_BNO:
-        BCOND(NGP_BGE, TI_BNO);
+    case TI_BVC:
+        BCOND(NGP_BVC, TI_BVC);
         break;
     case TI_BHI:
-        BCOND(NGP_BGE, TI_BHI);
+        BCOND(NGP_BHI, TI_BHI);
         break;
     case TI_BLS:
-        BCOND(NGP_BGE, TI_BLS);
+        BCOND(NGP_BLS, TI_BLS);
+        break;
+    case TI_BAL:
+        BCOND(NGP_BAL, TI_BAL);
         break;
     case TI_ADD:
         assemble_binary(inst, NGP_ADD_SHL, NGP_ADD_IMMEDIATE, 0xFFFF, false, true);

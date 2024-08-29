@@ -8,7 +8,6 @@
 #include "Frontend/PreProcessor.h"
 #include "Backend/AssemblerUtility.h"
 #include "FileFormat/ISA.h"
-#include "FileFormat/Rom.h"
 
 #define MAKE_ERROR(TOKEN, BREAKER, ...) \
     ErrorManager::error(TOKEN.source_file, TOKEN.line, __VA_ARGS__);\

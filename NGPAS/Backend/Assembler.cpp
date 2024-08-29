@@ -5,7 +5,6 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #include "Backend/Assembler.h"
-#include "Core/Constants.h"
 #include "ErrorManager.h"
 #include <fstream>
 
@@ -46,13 +45,7 @@ bool Assembler::assemble_file(const char* file_path, const char* output_path)
         std::ofstream output{ output_file_name, std::ios::binary };
 
         if (file_format == TD_FORMAT_ROM) {
-            RomHeader header = {
-                .magic = RomSignature,
-                .check_sum = u32(program_index),
-                .target_address = ROMStart,
-            };
-         
-            output.write((char*)&header, sizeof(RomHeader));
+            // TODO: NGP executable format
         }
 
         output.write((char*)program.data(), program_index);

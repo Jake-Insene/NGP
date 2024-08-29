@@ -4,7 +4,6 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "Core/Constants.h"
 #include "Core/Header.h"
 #include "Platform/Time.h"
 #include "Backend/Assembler.h"
@@ -61,7 +60,7 @@ int main(int argc, char** argv) {
                     }
                 }
                 else if (arg[0] == 'v') {
-                    printf("NGP version: %s\n", NGP_VERSION);
+                    printf("NGP assebmler version: %s\n", NGP_VERSION);
                     return 0;
                 }
             }

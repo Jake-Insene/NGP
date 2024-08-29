@@ -56,7 +56,7 @@ static inline ParseFn rules[TOKEN_COUNT] = {
     {&Assembler::parse_register, nullptr, ParsePrecedence::None},
 };
 
-static inline ParseFn getRule(TokenType type) {
+static inline ParseFn get_rule(TokenType type) {
     return rules[type];
 }
 
@@ -133,7 +133,7 @@ Token Assembler::parse_string(Token, Token) {
 // Infix
 
 #define CHECK_INFIX() \
-    ParseFn rule = getRule(last->type);\
+    ParseFn rule = get_rule(last->type);\
     rhs = parse_expresion(ParsePrecedence(u32(rule.precedence) + 1));\
     CHECK_IMMEDIATE(lhs);\
     CHECK_IMMEDIATE(rhs);\
@@ -205,7 +205,7 @@ Token Assembler::parse_div(Token lhs, Token rhs) {
 }
 
 Token Assembler::parse_expresion(ParsePrecedence precedence) {
-    ParseFn rule = getRule(current->type);
+    ParseFn rule = get_rule(current->type);
     advance();
 
     Token result = {};
@@ -216,7 +216,7 @@ Token Assembler::parse_expresion(ParsePrecedence precedence) {
         MAKE_ERROR((*last), return result, "invalid expresion");
     }
 
-    while (u32(precedence) <= u32((rule = getRule(current->type)).precedence)) {
+    while (u32(precedence) <= u32((rule = get_rule(current->type)).precedence)) {
         advance();
         result = (this->*rule.infix)(result, {});
     }

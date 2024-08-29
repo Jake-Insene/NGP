@@ -1,6 +1,6 @@
 ; entry point of the program
 FORMAT ROM AS 'ngp'
-ORG 0x20000000
+ORG 0x10000000
 
 B main
 

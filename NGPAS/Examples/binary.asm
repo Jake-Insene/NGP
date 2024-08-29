@@ -2,7 +2,7 @@ FORMAT ROM AS 'ngp'
 
 ; entry point of the program
 ; this will be my main function
-ORG 0x20000000
+ORG 0x10000000
 
 main:
 	mov r0, #255

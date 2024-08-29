@@ -170,9 +170,18 @@ void Assembler::assemble_directive() {
             MAKE_ERROR(count, break, "a immediate value was expected");
         }
 
-        while (count.u--) {
-            program.emplace_back(u8(0));
+        if (count.i < 0) {
+            MAKE_ERROR(count, break, "a negative value is not allowed %lli", count.i);
         }
+
+        while (count.u--) {
+            new_byte() = 0;
+        }
+    }
+    break;
+    case TD_SPACE:
+    {
+
     }
     break;
     default:

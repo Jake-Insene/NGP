@@ -11,8 +11,6 @@ static constexpr u32 CYCLES_PER_SECOND = MHZ(120);
 static constexpr u32 FRAMES_PER_SECOND = 60;
 static constexpr u32 CYCLES_PER_FRAME = CYCLES_PER_SECOND / FRAMES_PER_SECOND;
 
-static constexpr u32 MAX_NUMBER_OF_CORES = 2;
-
 struct CPU {
     union ProgramStateRegister {
         struct {
@@ -45,35 +43,34 @@ struct CPU {
         DWord dw;
     };
 
-    static constexpr u32 MaxExceptionLevel = 3;
-    struct CPUCore {
-        union {
-            GPRegisters gpr;
-            u32 list[32];
-            i32 ilist[32];
-        };
-        SIMDRegister simd[SIMDRegistersCount];
-
-        u32 pc, ir;
-        u32 cycle_counter;
-
-        // System registers
-        u32 current_el;
-        ProgramStateRegister psr;
-
-        ProgramStateRegister spsr_el[MaxExceptionLevel];
-        u32 elr_el[MaxExceptionLevel];
-        u32 elr_vt[MaxExceptionLevel];
+    static constexpr u32 MaxExceptionLevel = 4;
+    union {
+        GPRegisters gpr;
+        u32 list[32];
+        i32 ilist[32];
     };
+    SIMDRegister simd[SIMDRegistersCount];
 
-    static void initialize();
+    u32 pc;
+    u32 cycle_counter;
+    u32 inst_counter;
 
-    static void shutdown();
+    // System registers
+    u32 current_el;
+    ProgramStateRegister psr;
 
-    static void dispatch(CPU::CPUCore& core, u32& counter);
+    ProgramStateRegister spsr_el[MaxExceptionLevel];
+    u32 elr_el[MaxExceptionLevel];
+    u32 elr_vt[MaxExceptionLevel];
 
-    static void print_pegisters(CPU::CPUCore& core);
+    void initialize();
 
-    static inline CPUCore cores[MAX_NUMBER_OF_CORES] = {};
-    static inline u32 instruction_counter[MAX_NUMBER_OF_CORES] = {};
+    void shutdown();
+
+    u32 fetch_inst();
+
+    void dispatch();
+
+    void print_pegisters();
 };
+

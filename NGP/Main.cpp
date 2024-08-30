@@ -21,6 +21,10 @@ void start_cores();
 void end_cores();
 void print_cores();
 
+ThreadID* core_threads = nullptr;
+CPU* cores = nullptr;
+u32 number_of_cores = 2;
+
 void print_help() {
     puts(
         "usage: ngpas [options]\n"
@@ -72,7 +76,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    CPU::initialize();
+    start_cores();
     IO::initialize();
 
     Window::initialize(960, 540);
@@ -81,14 +85,10 @@ int main(int argc, char** argv) {
     GPU::initialize(DriverApi::D3D12);
 #endif
 
-    // Initializing CPU Cores
-    start_cores();
-
     // The main thread use the main core
-    CPU::CPUCore& main_core = CPU::cores[0];
+    CPU& main_core = cores[0];
 
     f64 elapsed = 0.0;
-    u32& counter = CPU::instruction_counter[0];
     u32 cycle_counter = 0;
     u32 fps = 0;
 
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
         Window::update();
         fps++;
         
-        CPU::dispatch(main_core, counter);
+        main_core.dispatch();
 
         elapsed += Time::get_time() - start;
         cycle_counter += main_core.cycle_counter;
@@ -117,11 +117,11 @@ int main(int argc, char** argv) {
                 "\tFPS: %d\n"
                 "\tMIPS: %d\n"
                 "\tCPS: %d\n",
-                elapsed, fps, counter, cycle_counter
+                elapsed, fps, main_core.inst_counter, cycle_counter
             );
 
             elapsed = 0.0;
-            counter = 0;
+            main_core.inst_counter = 0;
             cycle_counter = 0;
             fps = 0;
         }
@@ -133,7 +133,6 @@ int main(int argc, char** argv) {
     GPU::shutdown();
     Window::shutdown();
     IO::shutdown();
-    CPU::shutdown();
     Bus::shutdown();
     Time::shutdown();
 
@@ -143,8 +142,7 @@ int main(int argc, char** argv) {
 void thread_core_callback(void* arg) {
     u32 core_index = *reinterpret_cast<u32*>(&arg);
 
-    CPU::CPUCore& core = CPU::cores[core_index];
-    u32& counter = CPU::instruction_counter[core_index];
+    CPU& core = cores[core_index];
 
     core.pc = Bus::BIOS_START;
     core.current_el = 0;
@@ -159,7 +157,7 @@ void thread_core_callback(void* arg) {
         }
 
         f64 start = Time::get_time();
-        CPU::dispatch(core, counter);
+        core.dispatch();
 
         elapsed += Time::get_time() - start;
         cycle_counter += core.cycle_counter;
@@ -170,37 +168,44 @@ void thread_core_callback(void* arg) {
                 "Core: %d\n"
                 "\tMIPS: %d\n"
                 "\tCPS: %d\n",
-                core_index, counter, cycle_counter
+                core_index, core.inst_counter, cycle_counter
             );
 
             elapsed = 0.0;
-            counter = 0;
+            core.inst_counter = 0;
             cycle_counter = 0;
         }
     }
 }
 
-// 0 is unused
-ThreadID core_threads[MAX_NUMBER_OF_CORES] = {};
-
 void start_cores() {
-    for (u32 core = 1; core < MAX_NUMBER_OF_CORES; core++) {
+    core_threads = new ThreadID[number_of_cores]{};
+    cores = new CPU[number_of_cores]{};
+
+    cores[0].initialize();
+
+    for (u32 core = 1; core < number_of_cores; core++) {
+        cores[core].initialize();
         core_threads[core] = Thread::create(thread_core_callback, *reinterpret_cast<void**>(&core));
 
         // All core are disable by default
-        CPU::cores[core].psr.halt = true;
+        cores[core].psr.halt = true;
+
+        Thread::start(core_threads[core]);
     }
 }
 
 void end_cores() {
-    for (u32 core = 1; core < MAX_NUMBER_OF_CORES; core++) {
+    for (u32 core = 1; core < number_of_cores; core++) {
         Thread::terminate(core_threads[core]);
+
+        cores[core].shutdown();
     }
 }
 
 void print_cores() {
-    for (u32 core = 0; core < MAX_NUMBER_OF_CORES; core++) {
+    for (u32 core = 0; core < number_of_cores; core++) {
         printf("Core: %d\n", core);
-        CPU::print_pegisters(CPU::cores[core]);
+        cores[core].print_pegisters();
     }
 }

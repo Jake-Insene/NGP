@@ -8,7 +8,7 @@
 #include "Platform/Header.h"
 
 ThreadID Thread::create(Thread::ThreadFunc func, void* arg) {
-    HANDLE id = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)func, arg, 0, 0);
+    HANDLE id = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)func, arg, CREATE_SUSPENDED, 0);
     if (id) {
         return reinterpret_cast<ThreadID>(id);
     }
@@ -17,6 +17,7 @@ ThreadID Thread::create(Thread::ThreadFunc func, void* arg) {
 }
 
 void Thread::start(ThreadID id) {
+    ResumeThread(HANDLE(id));
 }
 
 void Thread::terminate(ThreadID id) {

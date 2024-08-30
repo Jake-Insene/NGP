@@ -39,11 +39,11 @@ u8* ram_start_address() {
     return ram;
 }
 
-void invalid_read(void* core_ptr, u32 address) {
+void invalid_read(CPU* core, u32 address) {
     // TODO: Generate a exception
 }
 
-void invalid_write(void* core_ptr, u32 address) {
+void invalid_write(CPU* core, u32 address) {
     // TODO: Generate a exception
 }
 
@@ -66,20 +66,22 @@ bool load_bios(const char* path) {
     return true;
 }
 
-void read_pc(void* core_ptr) {
-    CPU::CPUCore* core = reinterpret_cast<CPU::CPUCore*>(core_ptr);
-    u32 addr = core->pc;
+u32 read_pc(CPU* core, u32 pc) {
+    if (pc + 3 <= BIOS_END && core->current_el == 0) {
+        return *reinterpret_cast<u32*>(pc + MAPPED_BIOS_ADDRESS);
+    }
+    else if (pc >= RAM_START && pc + 3 <= RAM_END) {
+        return *(u32*)u64(pc);
+    }
+    else {
+        invalid_read(core, pc);
+    }
 
-    if (addr + 3 <= BIOS_END && core->current_el == 0) {
-        core->ir = *reinterpret_cast<u32*>(addr + MAPPED_BIOS_ADDRESS);
-    }
-    else if (addr >= RAM_START && addr + 3 <= RAM_END) {
-        core->ir = *(u32*)u64(addr);
-    }
+    return u32(-1);
 }
 
 template<typename T>
-inline T read_at(CPU::CPUCore* core, u32 addr) {
+inline T read_at(CPU* core, u32 addr) {
     if (addr + (sizeof(T) + 1) <= BIOS_END && core->current_el == 0) {
         return *reinterpret_cast<T*>(addr + MAPPED_BIOS_ADDRESS);
     }
@@ -96,29 +98,29 @@ inline T read_at(CPU::CPUCore* core, u32 addr) {
 }
 
 
-QWord read_qword(void* core_ptr, u32 addr) {
-    return read_at<QWord>(reinterpret_cast<CPU::CPUCore*>(core_ptr), addr);
+QWord read_qword(CPU* core, u32 addr) {
+    return read_at<QWord>(core, addr);
 }
 
-DWord read_dword(void* core_ptr, u32 addr) {
-    return read_at<DWord>(reinterpret_cast<CPU::CPUCore*>(core_ptr), addr);
+DWord read_dword(CPU* core, u32 addr) {
+    return read_at<DWord>(core, addr);
 }
 
-u32 read_word(void* core_ptr, u32 addr) {
-    return read_at<u32>(reinterpret_cast<CPU::CPUCore*>(core_ptr), addr);
+u32 read_word(CPU* core, u32 addr) {
+    return read_at<u32>(core, addr);
 }
 
-u16 read_half(void* core_ptr, u32 addr) {
-    return read_at<u16>(reinterpret_cast<CPU::CPUCore*>(core_ptr), addr);
+u16 read_half(CPU* core, u32 addr) {
+    return read_at<u16>(core, addr);
 }
 
-u8 read_byte(void* core_ptr, u32 addr) {
-    return read_at<u8>(reinterpret_cast<CPU::CPUCore*>(core_ptr), addr);
+u8 read_byte(CPU* core, u32 addr) {
+    return read_at<u8>(core, addr);
 }
 
 
 template<typename T>
-inline void write_at(CPU::CPUCore* core, u32 addr, T value) {
+inline void write_at(CPU* core, u32 addr, T value) {
     if (addr + (sizeof(T) + 1) <= BIOS_END && core->current_el == 0) {
         *reinterpret_cast<T*>(addr + MAPPED_BIOS_ADDRESS) = value;
     }
@@ -133,24 +135,24 @@ inline void write_at(CPU::CPUCore* core, u32 addr, T value) {
     }
 }
 
-void write_qword(void* core_ptr, u32 addr, QWord qword) {
-    write_at<QWord>(reinterpret_cast<CPU::CPUCore*>(core_ptr), addr, qword);
+void write_qword(CPU* core, u32 addr, QWord qword) {
+    write_at<QWord>(core, addr, qword);
 }
 
-void write_dword(void* core_ptr, u32 addr, DWord dword) {
-    write_at<DWord>(reinterpret_cast<CPU::CPUCore*>(core_ptr), addr, dword);
+void write_dword(CPU* core, u32 addr, DWord dword) {
+    write_at<DWord>(core, addr, dword);
 }
 
-void write_word(void* core_ptr, u32 addr, u32 word) {
-    write_at<u32>(reinterpret_cast<CPU::CPUCore*>(core_ptr), addr, word);
+void write_word(CPU* core, u32 addr, u32 word) {
+    write_at<u32>(core, addr, word);
 }
 
-void write_half(void* core_ptr, u32 addr, u16 half) {
-    write_at<u16>(reinterpret_cast<CPU::CPUCore*>(core_ptr), addr, half);
+void write_half(CPU* core, u32 addr, u16 half) {
+    write_at<u16>(core, addr, half);
 }
 
-void write_byte(void* core_ptr, u32 addr, u8 byte) {
-    write_at<u8>(reinterpret_cast<CPU::CPUCore*>(core_ptr), addr, byte);
+void write_byte(CPU* core, u32 addr, u8 byte) {
+    write_at<u8>(core, addr, byte);
 }
 
 }

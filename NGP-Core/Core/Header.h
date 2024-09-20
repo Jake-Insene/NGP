@@ -32,6 +32,9 @@ using f64 = double;
 using Word = u32;
 using DWord = u32;
 
+using VirtualAddress = u32;
+using PhysicalAddress = u64;
+
 #pragma warning(disable : 4201)
 
 union QWord {
@@ -45,6 +48,8 @@ union QWord {
 
 #if defined(_MSVC_LANG)
 #define FORCE_INLINE __forceinline
+#elif defined(__GNUC__)
+#define FORCE_INLINE __attribute__((always_inline))
 #endif // _MSVC_LANG
 
 [[nodiscard]] constexpr u32 align_up(u32 size, u16 alignment) {

@@ -39,11 +39,11 @@ u8* ram_start_address() {
     return ram;
 }
 
-void invalid_read(CPU* core, u32 address) {
+void invalid_read(CPU* core, VirtualAddress addr) {
     // TODO: Generate a exception
 }
 
-void invalid_write(CPU* core, u32 address) {
+void invalid_write(CPU* core, VirtualAddress addr) {
     // TODO: Generate a exception
 }
 
@@ -55,7 +55,7 @@ bool load_bios(const char* path) {
 
     u32 size = (u32)file.tellg();
     file.seekg(0);
-    if (size > MB(4)) {
+    if (size != MB(4)) {
         return false;
     }
 
@@ -81,7 +81,7 @@ u32 read_pc(CPU* core, u32 pc) {
 }
 
 template<typename T>
-inline T read_at(CPU* core, u32 addr) {
+inline T read_at(CPU* core, VirtualAddress addr) {
     if (addr + (sizeof(T) + 1) <= BIOS_END && core->current_el == 0) {
         return *reinterpret_cast<T*>(addr + MAPPED_BIOS_ADDRESS);
     }
@@ -98,29 +98,29 @@ inline T read_at(CPU* core, u32 addr) {
 }
 
 
-QWord read_qword(CPU* core, u32 addr) {
+QWord read_qword(CPU* core, VirtualAddress addr) {
     return read_at<QWord>(core, addr);
 }
 
-DWord read_dword(CPU* core, u32 addr) {
+DWord read_dword(CPU* core, VirtualAddress addr) {
     return read_at<DWord>(core, addr);
 }
 
-u32 read_word(CPU* core, u32 addr) {
+u32 read_word(CPU* core, VirtualAddress addr) {
     return read_at<u32>(core, addr);
 }
 
-u16 read_half(CPU* core, u32 addr) {
+u16 read_half(CPU* core, VirtualAddress addr) {
     return read_at<u16>(core, addr);
 }
 
-u8 read_byte(CPU* core, u32 addr) {
+u8 read_byte(CPU* core, VirtualAddress addr) {
     return read_at<u8>(core, addr);
 }
 
 
 template<typename T>
-inline void write_at(CPU* core, u32 addr, T value) {
+inline void write_at(CPU* core, VirtualAddress addr, T value) {
     if (addr + (sizeof(T) + 1) <= BIOS_END && core->current_el == 0) {
         *reinterpret_cast<T*>(addr + MAPPED_BIOS_ADDRESS) = value;
     }
@@ -135,23 +135,23 @@ inline void write_at(CPU* core, u32 addr, T value) {
     }
 }
 
-void write_qword(CPU* core, u32 addr, QWord qword) {
+void write_qword(CPU* core, VirtualAddress addr, QWord qword) {
     write_at<QWord>(core, addr, qword);
 }
 
-void write_dword(CPU* core, u32 addr, DWord dword) {
+void write_dword(CPU* core, VirtualAddress addr, DWord dword) {
     write_at<DWord>(core, addr, dword);
 }
 
-void write_word(CPU* core, u32 addr, u32 word) {
+void write_word(CPU* core, VirtualAddress addr, u32 word) {
     write_at<u32>(core, addr, word);
 }
 
-void write_half(CPU* core, u32 addr, u16 half) {
+void write_half(CPU* core, VirtualAddress addr, u16 half) {
     write_at<u16>(core, addr, half);
 }
 
-void write_byte(CPU* core, u32 addr, u8 byte) {
+void write_byte(CPU* core, VirtualAddress addr, u8 byte) {
     write_at<u8>(core, addr, byte);
 }
 

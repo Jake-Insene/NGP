@@ -7,6 +7,7 @@
 #include "Core/Header.h"
 #include "Platform/Time.h"
 #include "Backend/Assembler.h"
+#include <cstring>
 
 void print_help() {
     puts(
@@ -37,7 +38,7 @@ int main(int argc, char** argv) {
         if (arg[0] == '-') {
             // Options
             arg++;
-            u32 arg_len = u32(strlen(arg));
+            u32 arg_len = u32(std::strlen(arg));
 
             if (arg_len == 4) {
                 if (std::memcmp(arg, "help", 4) == 0) {

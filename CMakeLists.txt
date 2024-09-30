@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 include_directories("NGP-Core")
 
 file(GLOB NGP_CORE_SOURCES
-    "NGP-Core/CPU/CPU.cpp"
+    "NGP-Core/CPU/CPUCore.cpp"
     "NGP-Core/IO/DMA.cpp"
     "NGP-Core/IO/IO.cpp"
     "NGP-Core/IO/Pad.cpp"

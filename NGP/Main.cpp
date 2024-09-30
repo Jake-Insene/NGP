@@ -4,7 +4,7 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "CPU/CPU.h"
+#include "CPU/CPUCore.h"
 #include "Memory/Bus.h"
 #include "Video/GPU.h"
 #include "Video/Window.h"
@@ -22,8 +22,8 @@ void end_cores();
 void print_cores();
 
 ThreadID* core_threads = nullptr;
-CPU* cores = nullptr;
-u32 number_of_cores = 2;
+CPUCore* cores = nullptr;
+u32 number_of_cores = 1;
 
 void print_help() {
     puts(
@@ -36,7 +36,7 @@ void print_help() {
 int main(int argc, char** argv) {
     printf("NGP Emulator %s\n", NGP_VERSION);
 
-    const char* bios_file = "../BIOS/BIOS.BIN";
+    const char* bios_file = "BIOS/BIOS.BIN";
 
     i32 index = 1;
     while (index < argc) {
@@ -53,9 +53,11 @@ int main(int argc, char** argv) {
                     return 0;
                 }
                 else if (std::memcmp(arg, "bios", 4) == 0) {
-                    printf("error: -bios require a path");
+                    if(index == argc) {
+                        printf("error: -bios require a path");
+                        return 1;
+                    }
                     bios_file = argv[index++];
-                    return -1;
                 }
                 else {
                     printf("error: unknown option '%s'\n", arg--);
@@ -86,45 +88,20 @@ int main(int argc, char** argv) {
 #endif
 
     // The main thread use the main core
-    CPU& main_core = cores[0];
+    CPUCore& main_core = cores[0];
 
     f64 elapsed = 0.0;
     u32 cycle_counter = 0;
     u32 fps = 0;
 
     while (Window::is_open) {
-        f64 start = Time::get_time();
 #if DEBUGGING
         // For debugging
         if (main_core.psr.halt) {
             break;
         }
 #endif // DEBUGGING
-        
         Window::update();
-        fps++;
-        
-        main_core.dispatch();
-
-        elapsed += Time::get_time() - start;
-        cycle_counter += main_core.cycle_counter;
-        main_core.cycle_counter = 0;
-
-        if (elapsed >= 1.0) {
-            printf(
-                "Core 0:\n"
-                "\tFrame Rate: %f\n"
-                "\tFPS: %d\n"
-                "\tMIPS: %d\n"
-                "\tCPS: %d\n",
-                elapsed, fps, main_core.inst_counter, cycle_counter
-            );
-
-            elapsed = 0.0;
-            main_core.inst_counter = 0;
-            cycle_counter = 0;
-            fps = 0;
-        }
     }
 
     end_cores();
@@ -142,10 +119,10 @@ int main(int argc, char** argv) {
 void thread_core_callback(void* arg) {
     u32 core_index = *reinterpret_cast<u32*>(&arg);
 
-    CPU& core = cores[core_index];
+    CPUCore& core = cores[core_index];
 
     core.pc = Bus::BIOS_START;
-    core.current_el = 0;
+    core.current_el = CPUCore::MaxExceptionLevel - 1;
 
     f64 elapsed = 0.0;
     u32 cycle_counter = 0;
@@ -157,7 +134,7 @@ void thread_core_callback(void* arg) {
         }
 
         f64 start = Time::get_time();
-        core.dispatch();
+        core.dispatch(CYCLES_PER_FRAME);
 
         elapsed += Time::get_time() - start;
         cycle_counter += core.cycle_counter;
@@ -180,19 +157,22 @@ void thread_core_callback(void* arg) {
 
 void start_cores() {
     core_threads = new ThreadID[number_of_cores]{};
-    cores = new CPU[number_of_cores]{};
+    cores = new CPUCore[number_of_cores]{};
 
     cores[0].initialize();
 
-    for (u32 core = 1; core < number_of_cores; core++) {
+    for (u32 core = 0; core < number_of_cores; core++) {
         cores[core].initialize();
         core_threads[core] = Thread::create(thread_core_callback, *reinterpret_cast<void**>(&core));
 
         // All core are disable by default
         cores[core].psr.halt = true;
 
-        Thread::start(core_threads[core]);
+        Thread::resume(core_threads[core]);
     }
+
+    // Core 0 is always active at the beginning
+    cores[0].psr.halt = false;
 }
 
 void end_cores() {

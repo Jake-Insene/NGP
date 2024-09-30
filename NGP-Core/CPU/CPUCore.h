@@ -11,7 +11,7 @@ static constexpr u32 CYCLES_PER_SECOND = MHZ(120);
 static constexpr u32 FRAMES_PER_SECOND = 60;
 static constexpr u32 CYCLES_PER_FRAME = CYCLES_PER_SECOND / FRAMES_PER_SECOND;
 
-struct CPU {
+struct CPUCore {
     union ProgramStateRegister {
         struct {
             u32 z : 1;
@@ -35,7 +35,7 @@ struct CPU {
 
     static constexpr u32 SIMDRegistersCount = 32;
 
-    struct SIMDRegister {
+    union SIMDRegister {
         QWord qw;
         f32 s;
         Word w;
@@ -43,7 +43,7 @@ struct CPU {
         DWord dw;
     };
 
-    static constexpr u32 MaxExceptionLevel = 4;
+    static constexpr u32 MaxExceptionLevel = 3;
     union {
         GPRegisters gpr;
         u32 list[32];
@@ -59,9 +59,10 @@ struct CPU {
     u32 current_el;
     ProgramStateRegister psr;
 
-    ProgramStateRegister spsr_el[MaxExceptionLevel];
-    u32 elr_el[MaxExceptionLevel];
-    u32 elr_vt[MaxExceptionLevel];
+    static constexpr u32 MaxRegisterPerExceptionLevel = MaxExceptionLevel - 1;
+    ProgramStateRegister spsr_el[MaxRegisterPerExceptionLevel];
+    u32 elr_el[MaxRegisterPerExceptionLevel];
+    u32 elr_vt[MaxRegisterPerExceptionLevel];
 
     void initialize();
 
@@ -69,7 +70,7 @@ struct CPU {
 
     u32 fetch_inst();
 
-    void dispatch();
+    void dispatch(u32 num_cycles);
 
     void print_pegisters();
 };

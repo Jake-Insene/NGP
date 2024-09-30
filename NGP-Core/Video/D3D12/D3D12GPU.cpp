@@ -4,7 +4,7 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "Video/Impl/GPUD12.h"
+#include "Video/D3D12/D3D12GPU.h"
 
 #include <stdio.h>
 #define DX_ERROR(expr, ...)\
@@ -13,14 +13,14 @@
         exit(-1);\
     }
 
-GPUDriver GPUD12::get() {
+GPUDriver D3D12GPU::get() {
     return GPUDriver{
-        .initialize = GPUD12::initialize,
-        .shutdown = GPUD12::shutdown,
+        .initialize = D3D12GPU::initialize,
+        .shutdown = D3D12GPU::shutdown,
     };
 }
 
-void GPUD12::initialize() {
+void D3D12GPU::initialize() {
 #if NDEBUG == 0
     ID3D12Debug3* debug = nullptr;
     if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))))
@@ -93,7 +93,7 @@ void GPUD12::initialize() {
 
 }
 
-void GPUD12::shutdown() {
+void D3D12GPU::shutdown() {
     main_fence->Release();
 
     cmd_graphics->Release();

@@ -7,7 +7,7 @@
 #pragma once
 #include "Core/Header.h"
 
-struct CPU;
+struct CPUCore;
 
 namespace Bus {
 
@@ -33,23 +33,23 @@ void shutdown();
 u8* bios_start_address();
 u8* ram_start_address();
 
-void invalid_read(CPU* core, VirtualAddress addr);
-void invalid_write(CPU* core, VirtualAddress addr);
+void invalid_read(CPUCore* core, VirtualAddress addr);
+void invalid_write(CPUCore* core, VirtualAddress addr);
 
 bool load_bios(const char* path);
 
-u32 read_pc(CPU* core, u32 pc);
+u32 read_pc(CPUCore* core, u32 pc);
 
-QWord read_qword(CPU* core, VirtualAddress addr);
-DWord read_dword(CPU* core, VirtualAddress addr);
-u32 read_word(CPU* core, VirtualAddress addr);
-u16 read_half(CPU* core, VirtualAddress addr);
-u8 read_byte(CPU* core, VirtualAddress addr);
+QWord read_qword(CPUCore* core, VirtualAddress addr);
+DWord read_dword(CPUCore* core, VirtualAddress addr);
+u32 read_word(CPUCore* core, VirtualAddress addr);
+u16 read_half(CPUCore* core, VirtualAddress addr);
+u8 read_byte(CPUCore* core, VirtualAddress addr);
 
-void write_qword(CPU* core, VirtualAddress addr, QWord qword);
-void write_dword(CPU* core, VirtualAddress addr, DWord dword);
-void write_word(CPU* core, VirtualAddress addr, u32 word);
-void write_half(CPU* core, VirtualAddress addr, u16 half);
-void write_byte(CPU* core, VirtualAddress addr, u8 byte);
+void write_qword(CPUCore* core, VirtualAddress addr, QWord qword);
+void write_dword(CPUCore* core, VirtualAddress addr, DWord dword);
+void write_word(CPUCore* core, VirtualAddress addr, u32 word);
+void write_half(CPUCore* core, VirtualAddress addr, u16 half);
+void write_byte(CPUCore* core, VirtualAddress addr, u8 byte);
 
 };

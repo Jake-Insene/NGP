@@ -8,7 +8,7 @@
 #include "Platform/Header.h"
 #include "Video/GPU.h"
 
-struct GPUD12 {
+struct D3D12GPU {
     static GPUDriver get();
 
     static void initialize();

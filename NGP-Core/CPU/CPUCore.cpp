@@ -4,13 +4,13 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "CPU/CPU.h"
+#include "CPU/CPUCore.h"
 #include "FileFormat/ISA.h"
 #include "Memory/Bus.h"
 #include <stdio.h>
 
 // Logical Add sub
-FORCE_INLINE void setFlags(CPU& core, u32 src1, u32 src2, u64 res) {
+FORCE_INLINE static inline void setFlags(CPUCore& core, u32 src1, u32 src2, u64 res) {
     // Set Z flag (zero flag)
     core.psr.z = res == 0;
 
@@ -25,7 +25,7 @@ FORCE_INLINE void setFlags(CPU& core, u32 src1, u32 src2, u64 res) {
 }
 
 // Comparision
-FORCE_INLINE u32 add_with_carry_setting_flags(CPU& core, u32 src1, u32 src2, u32 carry) {
+FORCE_INLINE static inline u32 add_with_carry_setting_flags(CPUCore& core, u32 src1, u32 src2, u32 carry) {
     u64 res = u64(src1) + u64(src2) + carry;
     setFlags(core, src1, src2, res);
 
@@ -33,12 +33,12 @@ FORCE_INLINE u32 add_with_carry_setting_flags(CPU& core, u32 src1, u32 src2, u32
 }
 
 // Comparision
-FORCE_INLINE u32 add_with_carry(u32 src1, u32 src2, u32 carry) {
+FORCE_INLINE static inline u32 add_with_carry(u32 src1, u32 src2, u32 carry) {
     u64 res = u64(src1) + u64(src2) + carry;
     return u32(res);
 }
 
-FORCE_INLINE u32 and_setting_flags(CPU& core, u32 src1, u32 src2) {
+FORCE_INLINE static inline u32 and_setting_flags(CPUCore& core, u32 src1, u32 src2) {
     u64 res = (u64)src1 & (u64)src2;
     core.psr.n = (res & 0x8000'0000) != 0;
     core.psr.z = res == 0;
@@ -47,17 +47,17 @@ FORCE_INLINE u32 and_setting_flags(CPU& core, u32 src1, u32 src2) {
 }
 
 #define MAKE_SIMPLE_LAS(name, op) \
-    void name(CPU& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
+    static inline void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
         core.list[dest] = dest == 31 ? op : 0;\
     }
 
 #define MAKE_SIMPLE_OP(name, op) \
-    void name(CPU& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
+    static inline void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
         core.list[dest] = dest == 31 ? op : 0;\
     }
 
 #define MAKE_SETTING_FLAGS(name, op) \
-    void name(CPU& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
+    static inline void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
         u32 result = op;\
         core.list[dest] = dest == 31 ? result : 0;\
     }
@@ -130,213 +130,166 @@ MAKE_SIMPLE_LAS(adcs, add_with_carry_setting_flags(core, core.list[src1], core.l
 MAKE_SIMPLE_LAS(sbcs, add_with_carry_setting_flags(core, core.list[src1], ~core.list[src2], core.psr.c));
 
 // Memory
-FORCE_INLINE void memory_read_byte(CPU& core, u32 dest, u32 address) {
+FORCE_INLINE static inline void memory_read_byte(CPUCore& core, u32 dest, VirtualAddress address) {
     if (dest != 31) {
-        // write back, fetch
-        core.cycle_counter += 2;
         core.list[dest] = Bus::read_byte(&core, address);
     }
 }
 
-FORCE_INLINE void memory_read_half(CPU& core, u32 dest, u32 address) {
+FORCE_INLINE static inline void memory_read_half(CPUCore& core, u32 dest, VirtualAddress address) {
     if (dest != 31) {
-        // write back, fetch
-        core.cycle_counter += 2;
         core.list[dest] = Bus::read_half(&core, address);
     }
 }
 
-FORCE_INLINE void memory_read_word(CPU& core, u32 dest, u32 address) {
+FORCE_INLINE static inline void memory_read_word(CPUCore& core, u32 dest, VirtualAddress address) {
     if (dest != 31) {
-        // write back, fetch
-        core.cycle_counter += 2;
         core.list[dest] = Bus::read_word(&core, address);
     }
 }
 
-FORCE_INLINE void memory_read_ihalf(CPU& core, u32 dest, u32 address) {
+FORCE_INLINE static inline void memory_read_ihalf(CPUCore& core, u32 dest, VirtualAddress address) {
     if (dest != 31) {
-        // write back, fetch
-        core.cycle_counter += 2;
         core.ilist[dest] = static_cast<i16>(Bus::read_half(&core, address));
     }
 }
 
-FORCE_INLINE void memory_read_ibyte(CPU& core, u32 dest, u32 address) {
+FORCE_INLINE static inline void memory_read_ibyte(CPUCore& core, u32 dest, VirtualAddress address) {
     if (dest != 31) {
-        // write back, fetch
-        core.cycle_counter += 2;
         core.ilist[dest] = static_cast<i8>(Bus::read_byte(&core, address));
     }
 }
 
-FORCE_INLINE void memory_read_single(CPU& core, u32 dest, u32 address) {
+FORCE_INLINE static inline void memory_read_single(CPUCore& core, u32 dest, VirtualAddress address) {
     if (dest != 31) {
-        // write back, fetch
-        core.cycle_counter += 2;
         core.simd[dest].w = Bus::read_word(&core, address);
     }
 }
 
-FORCE_INLINE void memory_read_double(CPU& core, u32 dest, u32 address) {
+FORCE_INLINE static inline void memory_read_double(CPUCore& core, u32 dest, VirtualAddress address) {
     if (dest != 31) {
-        // write back, fetch
-        core.cycle_counter += 2;
         core.simd[dest].dw = Bus::read_dword(&core, address);
     }
 }
 
-FORCE_INLINE void memory_read_qword(CPU& core, u32 dest, u32 address) {
+FORCE_INLINE static inline void memory_read_qword(CPUCore& core, u32 dest, VirtualAddress address) {
     if (dest != 31) {
-        // write back, fetch
-        core.cycle_counter += 2;
         core.simd[dest].qw = Bus::read_qword(&core, address);
     }
 }
 
-FORCE_INLINE void memory_write_byte(CPU& core, u32 src, u32 address) {
-    // fetch
-    core.cycle_counter++;
+FORCE_INLINE static inline void memory_write_byte(CPUCore& core, u32 src, VirtualAddress address) {
     Bus::write_byte(&core, address, static_cast<u8>(core.list[src]));
 }
 
-FORCE_INLINE void memory_write_half(CPU& core, u32 src, u32 address) {
-    // fetch
-    core.cycle_counter++;
+FORCE_INLINE static inline void memory_write_half(CPUCore& core, u32 src, VirtualAddress address) {
     Bus::write_half(&core, address, static_cast<u16>(core.list[src]));
 }
 
-FORCE_INLINE void memory_write_word(CPU& core, u32 src, u32 address) {
-    // fetch
-    core.cycle_counter++;
+FORCE_INLINE static inline void memory_write_word(CPUCore& core, u32 src, VirtualAddress address) {
     Bus::write_word(&core, address, core.list[src]);
 }
 
-FORCE_INLINE void memory_write_single(CPU& core, u32 src, u32 address) {
-    // fetch
-    core.cycle_counter++;
+FORCE_INLINE static inline void memory_write_single(CPUCore& core, u32 src, VirtualAddress address) {
     Bus::write_word(&core, address, core.simd[src].w);
 }
 
-FORCE_INLINE void memory_write_double(CPU& core, u32 src, u32 address) {
-    // fetch
-    core.cycle_counter++;
+FORCE_INLINE static inline void memory_write_double(CPUCore& core, u32 src, VirtualAddress address) {
     Bus::write_dword(&core, address, core.simd[src].dw);
 }
 
-FORCE_INLINE void memory_write_qword(CPU& core, u32 src, u32 address) {
-    // fetch
-    core.cycle_counter++;
+FORCE_INLINE static inline void memory_write_qword(CPUCore& core, u32 src, VirtualAddress address) {
     Bus::write_qword(&core, address, core.simd[src].qw);
 }
 
-FORCE_INLINE void memory_pair_read_word(CPU& core, u32 dest1, u32 dest2, u32 address) {
-    // write back, fetch
+FORCE_INLINE static inline void memory_pair_read_word(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address) {
     if (dest1 != 31) {
-        core.cycle_counter++;
         core.list[dest1] = Bus::read_word(&core, address);
     }
 
     if (dest2 != 31) {
-        core.cycle_counter++;
         core.list[dest2] = Bus::read_word(&core, address + 4);
     }
 }
 
-FORCE_INLINE void memory_pair_read_single(CPU& core, u32 dest1, u32 dest2, u32 address) {
-    // write back, fetch
+FORCE_INLINE static inline void memory_pair_read_single(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address) {
     if (dest1 != 31) {
-        core.cycle_counter++;
         core.simd[dest1].w = Bus::read_word(&core, address);
     }
 
     if (dest2 != 31) {
-        core.cycle_counter++;
         core.simd[dest2].w = Bus::read_word(&core, address + 4);
     }
 }
 
-FORCE_INLINE void memory_pair_read_double(CPU& core, u32 dest1, u32 dest2, u32 address) {
-    // write back, fetch
+FORCE_INLINE static inline void memory_pair_read_double(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address) {
     if (dest1 != 31) {
-        core.cycle_counter++;
         core.simd[dest1].dw = Bus::read_dword(&core, address);
     }
 
     if (dest2 != 31) {
-        core.cycle_counter++;
         core.simd[dest2].dw = Bus::read_dword(&core, address + 8);
     }
 }
 
-FORCE_INLINE void memory_pair_read_qword(CPU& core, u32 dest1, u32 dest2, u32 address) {
-    // write back, fetch
+FORCE_INLINE static inline void memory_pair_read_qword(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address) {
     if (dest1 != 31) {
-        core.cycle_counter++;
         core.simd[dest1].qw = Bus::read_qword(&core, address);
     }
 
     if (dest2 != 31) {
-        core.cycle_counter++;
         core.simd[dest2].qw = Bus::read_qword(&core, address + 16);
     }
 }
 
-FORCE_INLINE void memory_pair_write_word(CPU& core, u32 src1, u32 src2, u32 address) {
+FORCE_INLINE static inline void memory_pair_write_word(CPUCore& core, u32 src1, u32 src2, VirtualAddress address) {
     // fetch
-    core.cycle_counter += 2;
     Bus::write_word(&core, address, core.list[src1]);
     Bus::write_word(&core, address + 4, core.list[src2]);
 }
 
-FORCE_INLINE void memory_pair_write_single(CPU& core, u32 src1, u32 src2, u32 address) {
+FORCE_INLINE static inline void memory_pair_write_single(CPUCore& core, u32 src1, u32 src2, VirtualAddress address) {
     // fetch
-    core.cycle_counter += 2;
     Bus::write_word(&core, address, core.simd[src1].w);
     Bus::write_word(&core, address + 4, core.simd[src2].w);
 }
 
-FORCE_INLINE void memory_pair_write_double(CPU& core, u32 src1, u32 src2, u32 address) {
-    // fetch
-    core.cycle_counter += 2;
+FORCE_INLINE static inline void memory_pair_write_double(CPUCore& core, u32 src1, u32 src2, VirtualAddress address) {
     Bus::write_dword(&core, address, core.simd[src1].dw);
     Bus::write_dword(&core, address + 8, core.simd[src2].dw);
 }
 
-FORCE_INLINE void memory_pair_write_qword(CPU& core, u32 src1, u32 src2, u32 address) {
-    // fetch
-    core.cycle_counter += 2;
+FORCE_INLINE static inline void memory_pair_write_qword(CPUCore& core, u32 src1, u32 src2, VirtualAddress address) {
     Bus::write_qword(&core, address, core.simd[src1].qw);
     Bus::write_qword(&core, address + 16, core.simd[src2].qw);
 }
 
 // Non Binary
-void ret(CPU& core, u8, u8 src1, u8) {
+static inline void ret(CPUCore& core, u8, u8 src1, u8) {
     core.pc = core.list[src1];
-
 }
 
-void blr(CPU& core, u8, u8 src1, u8) {
+static inline void blr(CPUCore& core, u8, u8 src1, u8) {
     core.gpr.lr = core.pc;
     core.pc = core.list[src1];
 }
 
-void br(CPU& core, u8, u8 src1, u8) {
+static inline void br(CPUCore& core, u8, u8 src1, u8) {
     core.pc = core.list[src1];
 }
 
-void eret(CPU& core, u8, u8, u8) {}
-void brk(CPU& core, u8, u8, u8) {}
-void hlt(CPU& core, u8, u8, u8) {
+static inline void eret(CPUCore& core, u8, u8, u8) {}
+static inline void brk(CPUCore& core, u8, u8, u8) {}
+static inline void hlt(CPUCore& core, u8, u8, u8) {
     core.psr.halt = true;
 }
-void sit(CPU& core, u8, u8, u8) {}
-void msr(CPU& core, u8, u8, u8) {}
-void mrs(CPU& core, u8, u8, u8) {}
-void nop(CPU& core, u8, u8, u8) {}
+static inline void sit(CPUCore& core, u8, u8, u8) {}
+static inline void msr(CPUCore& core, u8, u8, u8) {}
+static inline void mrs(CPUCore& core, u8, u8, u8) {}
+static inline void nop(CPUCore& core, u8, u8, u8) {}
 
 // Main opcodes
-FORCE_INLINE void bl(CPU& core, u32 inst) {
+FORCE_INLINE static inline void bl(CPUCore& core, u32 inst) {
     i32 disp = inst >> 6;
     disp = disp & 0x2000000 ? 0xFC00'0000 | disp : disp;
     disp <<= 2;
@@ -344,14 +297,14 @@ FORCE_INLINE void bl(CPU& core, u32 inst) {
     core.pc += disp;
 }
 
-FORCE_INLINE void b(CPU& core, u32 inst) {
+FORCE_INLINE static inline void b(CPUCore& core, u32 inst) {
     i32 disp = inst >> 6;
     disp = disp & 0x2000000 ? 0xFC00'0000 | disp : disp;
     disp <<= 2;
     core.pc += disp;
 }
 
-FORCE_INLINE void bcond(CPU& core, u32 inst) {
+FORCE_INLINE static inline void bcond(CPUCore& core, u32 inst) {
     u8 cond = (inst >> 6) & 0xF;
     i32 disp = (inst >> 10);
     disp = disp & 0x200000 ? 0xFFC0'0000 | disp : disp;
@@ -431,7 +384,7 @@ FORCE_INLINE void bcond(CPU& core, u32 inst) {
     }
 }
 
-FORCE_INLINE void logical_add_sub(CPU& core, u32 inst) {
+FORCE_INLINE static inline void logical_add_sub(CPUCore& core, u32 inst) {
     u8 las = (inst >> 6) & 0x3F;
     u8 dest = (inst >> 12) & 0x1F;
     u8 src1 = (inst >> 17) & 0x1F;
@@ -493,9 +446,9 @@ FORCE_INLINE void logical_add_sub(CPU& core, u32 inst) {
 #undef CASE
 }
 
-FORCE_INLINE void fp_op(CPU& core, u32 inst) {}
+FORCE_INLINE static inline void fp_op(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE void load_store_immediate(CPU& core, u32 inst) {
+FORCE_INLINE static inline void load_store_immediate(CPUCore& core, u32 inst) {
     u8 memopc = (inst>>6) & 0x7;
 
     u8 dest = (inst >> 9) & 0x1F;
@@ -519,15 +472,15 @@ FORCE_INLINE void load_store_immediate(CPU& core, u32 inst) {
 #undef CASE
 }
 
-FORCE_INLINE void load_store_fp_immediate(CPU& core, u32 inst) {}
+FORCE_INLINE static inline void load_store_fp_immediate(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE void load_store_register(CPU& core, u32 inst) {}
+FORCE_INLINE static inline void load_store_register(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE void load_store_pair(CPU& core, u32 inst) {}
+FORCE_INLINE static inline void load_store_pair(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE void additional(CPU& core, u32 inst) {}
+FORCE_INLINE static inline void additional(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE void non_binary(CPU& core, u32 inst) {
+FORCE_INLINE static inline void non_binary(CPUCore& core, u32 inst) {
     u16 nonopc = (inst >> 6) & 0x3FF;
     u8 op = (inst >> 16) & 0x3F;
     u8 src1 = (inst >> 22) & 0x1F;
@@ -551,13 +504,13 @@ FORCE_INLINE void non_binary(CPU& core, u32 inst) {
 #undef CASE
 }
 
-FORCE_INLINE void ld_pc(CPU& core, u32 inst) {}
-FORCE_INLINE void ld_s_pc(CPU& core, u32 inst) {}
-FORCE_INLINE void ld_d_pc(CPU& core, u32 inst) {}
-FORCE_INLINE void ld_q_pc(CPU& core, u32 inst) {}
-FORCE_INLINE void adr_pc(CPU& core, u32 inst) {}
+FORCE_INLINE static inline void ld_pc(CPUCore& core, u32 inst) {}
+FORCE_INLINE static inline void ld_s_pc(CPUCore& core, u32 inst) {}
+FORCE_INLINE static inline void ld_d_pc(CPUCore& core, u32 inst) {}
+FORCE_INLINE static inline void ld_q_pc(CPUCore& core, u32 inst) {}
+FORCE_INLINE static inline void adr_pc(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE void immediate(CPU& core, u32 inst) {
+FORCE_INLINE static inline void immediate(CPUCore& core, u32 inst) {
     u16 imm = inst >> 16;
     u8 immopc = (inst >> 6) & 0x1F;
     u8 reg = (inst >> 11) & 0x1F;
@@ -567,7 +520,7 @@ FORCE_INLINE void immediate(CPU& core, u32 inst) {
     }
 }
 
-FORCE_INLINE void add_immediate(CPU& core, u32 inst) {
+FORCE_INLINE static inline void add_immediate(CPUCore& core, u32 inst) {
     u8 dest = (inst >> 6) & 0x1F;
     if (dest != 31) {
         u8 src = (inst >> 11) & 0x1F;
@@ -576,7 +529,7 @@ FORCE_INLINE void add_immediate(CPU& core, u32 inst) {
     }
 }
 
-FORCE_INLINE void adds_immediate(CPU& core, u32 inst) {
+FORCE_INLINE static inline void adds_immediate(CPUCore& core, u32 inst) {
     u8 dest = (inst >> 6) & 0x1F;
     u8 src = (inst >> 11) & 0x1F;
     u16 imm = inst >> 16;
@@ -584,7 +537,7 @@ FORCE_INLINE void adds_immediate(CPU& core, u32 inst) {
     core.list[dest] = dest == 31 ? result : 0;
 }
 
-FORCE_INLINE void sub_immediate(CPU& core, u32 inst) {
+FORCE_INLINE static inline void sub_immediate(CPUCore& core, u32 inst) {
     u8 dest = (inst >> 6) & 0x1F;
     if (dest != 31) {
         u8 src = (inst >> 11) & 0x1F;
@@ -593,7 +546,7 @@ FORCE_INLINE void sub_immediate(CPU& core, u32 inst) {
     }
 }
 
-FORCE_INLINE void subs_immediate(CPU& core, u32 inst) {
+FORCE_INLINE static inline void subs_immediate(CPUCore& core, u32 inst) {
     u8 dest = (inst >> 6) & 0x1F;
     u8 src = (inst >> 11) & 0x1F;
     u16 imm = inst >> 16;
@@ -601,7 +554,7 @@ FORCE_INLINE void subs_immediate(CPU& core, u32 inst) {
     core.list[dest] = dest == 31 ? result : 0;
 }
 
-FORCE_INLINE void and_immediate(CPU& core, u32 inst) {
+FORCE_INLINE static inline void and_immediate(CPUCore& core, u32 inst) {
     u8 dest = (inst >> 6) & 0x1F;
     if (dest != 31) {
         u8 src = (inst >> 11) & 0x1F;
@@ -610,7 +563,7 @@ FORCE_INLINE void and_immediate(CPU& core, u32 inst) {
     }
 }
 
-FORCE_INLINE void ands_immediate(CPU& core, u32 inst) {
+FORCE_INLINE static inline void ands_immediate(CPUCore& core, u32 inst) {
     u8 dest = (inst >> 6) & 0x1F;
     u8 src = (inst >> 11) & 0x1F;
     u16 imm = inst >> 16;
@@ -618,7 +571,7 @@ FORCE_INLINE void ands_immediate(CPU& core, u32 inst) {
     core.list[dest] = dest == 31 ? result : 0;
 }
 
-FORCE_INLINE void or_immediate(CPU& core, u32 inst) {
+FORCE_INLINE static inline void or_immediate(CPUCore& core, u32 inst) {
     u8 dest = (inst >> 6) & 0x1F;
     if (dest != 31) {
         u8 src = (inst >> 11) & 0x1F;
@@ -627,7 +580,7 @@ FORCE_INLINE void or_immediate(CPU& core, u32 inst) {
     }
 }
 
-FORCE_INLINE void eor_immediate(CPU& core, u32 inst) {
+FORCE_INLINE static inline void eor_immediate(CPUCore& core, u32 inst) {
     u8 dest = (inst >> 6) & 0x1F;
     if (dest != 31) {
         u8 src = (inst >> 11) & 0x1F;
@@ -636,40 +589,24 @@ FORCE_INLINE void eor_immediate(CPU& core, u32 inst) {
     }
 }
 
-FORCE_INLINE void tbz(CPU& core, u32 inst) {}
-FORCE_INLINE void tbnz(CPU& core, u32 inst) {}
-FORCE_INLINE void cbz(CPU& core, u32 inst) {}
-FORCE_INLINE void cbnz(CPU& core, u32 inst) {}
+FORCE_INLINE static inline void tbz(CPUCore& core, u32 inst) {}
+FORCE_INLINE static inline void tbnz(CPUCore& core, u32 inst) {}
+FORCE_INLINE static inline void cbz(CPUCore& core, u32 inst) {}
+FORCE_INLINE static inline void cbnz(CPUCore& core, u32 inst) {}
 
-static constexpr u32 CACHE_SIZE = 1024;
-static constexpr u32 CACHE_MEM_SIZE = 16;
-static constexpr u32 CACHE_BLOCKS = CACHE_SIZE / CACHE_MEM_SIZE;
+void CPUCore::initialize() {}
 
-struct CacheBlock {
-    u32 tag = u32(-1);
-    bool valid;
-    u32 cache_memory[CACHE_MEM_SIZE];
-};
+void CPUCore::shutdown() {}
 
-CacheBlock cache[CACHE_BLOCKS];
-
-void CPU::initialize() {
-    for (auto& block : cache) {
-        block.valid = false;
-    }
-}
-
-void CPU::shutdown() {}
-
-u32 CPU::fetch_inst() {
+u32 CPUCore::fetch_inst() {
     u32 addr = pc;
     return Bus::read_pc(this, addr);
 }
 
 #define PROFILE 1
 
-void CPU::dispatch() {
-    while (cycle_counter < CYCLES_PER_FRAME) {
+void CPUCore::dispatch(u32 num_cycles) {
+    while (num_cycles--) {
         if (psr.halt) {
             break;
         }
@@ -726,7 +663,7 @@ void CPU::dispatch() {
 
 }
 
-void CPU::print_pegisters() {
+void CPUCore::print_pegisters() {
     printf(
         "R0  = %08X R1  = %08X R2  = %08X R3  = %08X R4  = %08X\n"
         "R5  = %08X R6  = %08X R7  = %08X R8  = %08X R9  = %08X\n"

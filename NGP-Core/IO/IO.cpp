@@ -9,7 +9,7 @@
 #include "IO/Pad.h"
 #include "Memory/Bus.h"
 #include "Platform/OS.h"
-#include "CPU/CPU.h"
+#include "CPU/CPUCore.h"
 #include <stdio.h>
 
 namespace IO {
@@ -65,35 +65,35 @@ void* io_start_address() {
     return io_mem;
 }
 
-u8 read_io_byte(CPU* core, u32 io_address) {
+u8 read_io_byte(CPUCore* core, u32 io_address) {
     return io_mem[io_address];
 }
 
-u16 read_io_half(CPU* core, u32 io_address) {
+u16 read_io_half(CPUCore* core, u32 io_address) {
     return *(u16*)u64(io_address);
 }
 
-Word read_io_word(CPU* core, u32 io_address) {
+Word read_io_word(CPUCore* core, u32 io_address) {
     return *(Word*)u64(io_address);
 }
 
-DWord read_io_dword(CPU* core, u32 io_address) {
+DWord read_io_dword(CPUCore* core, u32 io_address) {
     return *(DWord*)u64(io_address);
 }
 
-QWord read_io_qword(CPU* core, u32 io_address) {
+QWord read_io_qword(CPUCore* core, u32 io_address) {
     return *(QWord*)u64(io_address);
 }
 
-void write_io_byte(CPU* core, u32 io_address, u8 value) {
+void write_io_byte(CPUCore* core, u32 io_address, u8 value) {
     // TODO: what could we do?
 }
 
-void write_io_half(CPU* core, u32 io_address, u16 value) {
+void write_io_half(CPUCore* core, u32 io_address, u16 value) {
     // TODO: what could we do?
 }
 
-void write_io_word(CPU* core, u32 address, Word value) {
+void write_io_word(CPUCore* core, u32 address, Word value) {
     if (address < 0x1000'0100) {
         dma_channel_write((address >> 4) & 0xF, (address >> 2) & 0x3, value);
     }
@@ -117,11 +117,11 @@ void write_io_word(CPU* core, u32 address, Word value) {
     }
 }
 
-void write_io_dword(CPU* core, u32 io_address, DWord value) {
+void write_io_dword(CPUCore* core, u32 io_address, DWord value) {
     // TODO: what could we do?
 }
 
-void write_io_qword(CPU* core, u32 io_address, QWord value) {
+void write_io_qword(CPUCore* core, u32 io_address, QWord value) {
     // TODO: what could we do?
 }
 

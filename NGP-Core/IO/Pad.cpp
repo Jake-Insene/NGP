@@ -19,7 +19,7 @@ struct PadInfo {
     u32 port;
     // RAM address of sync buffer
     u32 sync_buffer;
-} pads[4];
+} pads[MaxPadPort];
 
 
 void pad_reset() {

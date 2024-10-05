@@ -1,2 +1,2 @@
 @echo off
-"Build\Release-x64\ngpas" BIOS/BIOS.asm
+"build\ngpas" BIOS/BIOS.asm

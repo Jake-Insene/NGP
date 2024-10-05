@@ -135,7 +135,6 @@ enum NGPLogicalSubAdd {
     NGP_EOR_ASR = 0x16,
     NGP_EOR_ROR = 0x17,
 
-    // OP Rd, Rfs, Rss, SHL/SHR/ASR/ROR imm5
     NGP_ADDS_SHL = 0x18,
     NGP_ADDS_SHR = 0x19,
     NGP_ADDS_ASR = 0x1A,
@@ -151,7 +150,6 @@ enum NGPLogicalSubAdd {
     NGP_ANDS_ASR = 0x22,
     NGP_ANDS_ROR = 0x23,
 
-    // OP Rd, Rfs, Rss, SHL/SHR/ASR/ROR imm5
     NGP_BIC_SHL = 0x24,
     NGP_BIC_SHR = 0x25,
     NGP_BIC_ASR = 0x26,

@@ -62,7 +62,7 @@ struct CPUCore {
     static constexpr u32 MaxRegisterPerExceptionLevel = MaxExceptionLevel - 1;
     ProgramStateRegister spsr_el[MaxRegisterPerExceptionLevel];
     u32 elr_el[MaxRegisterPerExceptionLevel];
-    u32 elr_vt[MaxRegisterPerExceptionLevel];
+    u32 vtr_el[MaxRegisterPerExceptionLevel];
 
     void initialize();
 

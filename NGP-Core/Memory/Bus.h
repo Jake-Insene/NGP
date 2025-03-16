@@ -30,6 +30,8 @@ static constexpr u32 RAM_SIZE = MB(256);
 void initialize();
 void shutdown();
 
+void set_ram_size(u32 new_size);
+
 u8* bios_start_address();
 u8* ram_start_address();
 

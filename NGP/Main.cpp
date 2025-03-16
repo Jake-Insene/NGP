@@ -14,6 +14,7 @@
 #include "IO/IO.h"
 #include <cstdio>
 #include <cstring>
+#include <string>
 
 #define DEBUGGING 1
 
@@ -47,6 +48,19 @@ int main(int argc, char** argv) {
             arg++;
             u32 arg_len = u32(std::strlen(arg));
 
+            if (arg_len == 1)
+            {
+                if (arg[0] == 'm')
+                {
+					if (index == argc)
+					{
+						printf("error: -m require a number\n");
+						return 1;
+					}
+					Bus::set_ram_size(std::atoi(argv[index++]));
+                }
+            }
+
             if (arg_len == 4) {
                 if (std::memcmp(arg, "help", 4) == 0) {
                     print_help();
@@ -63,6 +77,19 @@ int main(int argc, char** argv) {
                     printf("error: unknown option '%s'\n", arg--);
                     return -1;
                 }
+            }
+
+            if (arg_len == 5)
+            {
+				if (std::memcmp(arg, "cores", 5) == 0)
+				{
+					if (index == argc)
+					{
+						printf("error: -cores require a number\n");
+						return 1;
+					}
+					number_of_cores = std::atoi(argv[index++]);
+				}
             }
         }
         else {
@@ -145,7 +172,7 @@ void thread_core_callback(void* arg) {
                 "Core: %d\n"
                 "\tMIPS: %d\n"
                 "\tCPS: %d\n",
-                core_index, core.inst_counter, cycle_counter
+                core_index, core.inst_counter / 1'000'000, cycle_counter
             );
 
             elapsed = 0.0;

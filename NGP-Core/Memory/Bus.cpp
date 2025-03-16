@@ -15,11 +15,13 @@ namespace Bus {
 u8* ram = nullptr;
 u8* bios = nullptr;
 
+u32 ram_size = MB(256);
+
 static constexpr u64 MAPPED_BIOS_ADDRESS = 0x1'0000'0000;
 
 void initialize() {
     bios = (u8*)OS::allocate_virtual_memory((void*)MAPPED_BIOS_ADDRESS, BIOS_SIZE);
-    ram = (u8*)OS::allocate_virtual_memory((void*)u64(RAM_START), RAM_SIZE);
+    ram = (u8*)OS::allocate_virtual_memory((void*)u64(RAM_START), ram_size);
 
 #if !NDEBUG
     printf("DEBUG: BIOS mapped at 0x%p\n", bios);
@@ -29,6 +31,10 @@ void initialize() {
 
 void shutdown() {
     // There is not reason to deallocate bios/ram, it just will make the exit slower
+}
+
+void set_ram_size(u32 new_size) {
+	ram_size = new_size;
 }
 
 u8* bios_start_address() {
@@ -67,10 +73,10 @@ bool load_bios(const char* path) {
 }
 
 u32 read_pc(CPUCore* core, u32 pc) {
-    if (pc + 3 <= BIOS_END && core->current_el > 0) {
+    if (pc < BIOS_END && core->current_el > 0) {
         return *reinterpret_cast<u32*>(pc + MAPPED_BIOS_ADDRESS);
     }
-    else if (pc >= RAM_START && pc + 3 <= RAM_END) {
+    else if (pc >= RAM_START && pc < RAM_END) {
         return *(u32*)u64(pc);
     }
     else {

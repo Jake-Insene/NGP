@@ -10,12 +10,19 @@
 #include <stdio.h>
 
 // Logical Add sub
-FORCE_INLINE static inline void setFlags(CPUCore& core, u32 src1, u32 src2, u64 res) {
+FORCE_INLINE static inline void setFlags(CPUCore& core, u32 src1, u32 src2, u64 res, bool is_sub) {
     // Set Z flag (zero flag)
     core.psr.z = res == 0;
 
     // Set C flag (carry flag)
-    core.psr.c = src1 >= src2;
+    if (is_sub) {
+        // Carry for subtraction (borrow logic)
+        core.psr.c = src1 >= src2;
+    }
+    else {
+        // Carry for addition
+        core.psr.c = ((u64)src1 + (u64)src2) > 0xFFFF'FFFF;
+    }
 
     // Set N flag (negative flag)
     core.psr.n = (res & 0x8000'0000) != 0;
@@ -27,7 +34,7 @@ FORCE_INLINE static inline void setFlags(CPUCore& core, u32 src1, u32 src2, u64 
 // Comparision
 FORCE_INLINE static inline u32 add_with_carry_setting_flags(CPUCore& core, u32 src1, u32 src2, u32 carry) {
     u64 res = u64(src1) + u64(src2) + carry;
-    setFlags(core, src1, src2, res);
+    setFlags(core, src1, src2, res, false);
 
     return u32(res);
 }
@@ -102,7 +109,9 @@ MAKE_SETTING_FLAGS(adds_asr, add_with_carry_setting_flags(core, core.list[src1],
 // TODO: implement ROR
 MAKE_SETTING_FLAGS(adds_ror, add_with_carry_setting_flags(core, core.list[src1], core.ilist[src2], 0));
 
-MAKE_SETTING_FLAGS(subs_shl, add_with_carry_setting_flags(core, core.list[src1], ~(core.list[src2] << src3), 1));
+static inline void subs_shl(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {
+    u32 result = add_with_carry_setting_flags(core, core.list[src1], ~(core.list[src2] << src3), 1); core.list[dest] = dest == 31 ? result : 0;
+};
 MAKE_SETTING_FLAGS(subs_shr, add_with_carry_setting_flags(core, core.list[src1], ~(core.list[src2] >> src3), 1));
 MAKE_SETTING_FLAGS(subs_asr, add_with_carry_setting_flags(core, core.list[src1], ~(core.ilist[src2] >> src3), 1));
 // TODO: implement ROR
@@ -322,7 +331,7 @@ FORCE_INLINE static inline void bcond(CPUCore& core, u32 inst) {
         }
         break;
     case NGP_BLT:
-        if (core.psr.n ^ core.psr.v) {
+        if (core.psr.n != core.psr.v) {
             core.pc += disp;
         }
         break;

@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 include_directories("NGP-Core")
 
+file(COPY "BIOS/BIOS.bin" DESTINATION "${CMAKE_BINARY_DIR}/BIOS")
+
 file(GLOB NGP_CORE_SOURCES
     "NGP-Core/CPU/CPUCore.cpp"
     "NGP-Core/IO/DMA.cpp"
@@ -14,6 +16,7 @@ file(GLOB NGP_CORE_SOURCES
     "NGP-Core/Memory/Bus.cpp"
     "NGP-Core/Video/GPU.cpp"
     )
+
 
 if(WIN32)
     file(GLOB NGP_CORE_PLATFORM_SOURCE
@@ -44,6 +47,9 @@ file(GLOB NGP_SOURCES
 add_executable("ngp" ${NGP_SOURCES})
 target_link_libraries("ngp" "ngp-core")
 
+set_property(TARGET "ngp" PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
+
 file(GLOB NGPAS_SOURCES
     "NGPAS/Backend/Assembler.cpp"
     "NGPAS/Backend/Directive.cpp"
@@ -57,3 +63,4 @@ file(GLOB NGPAS_SOURCES
 add_executable("ngpas" ${NGPAS_SOURCES})
 target_include_directories("ngpas" PUBLIC "NGPAS")
 target_link_libraries("ngpas" "ngp-core")
+

@@ -7,7 +7,7 @@
 #pragma once
 #include "Core/Header.h"
 
-static constexpr u32 CYCLES_PER_SECOND = MHZ(120);
+static constexpr u32 CYCLES_PER_SECOND = MHZ(200);
 static constexpr u32 FRAMES_PER_SECOND = 60;
 static constexpr u32 CYCLES_PER_FRAME = CYCLES_PER_SECOND / FRAMES_PER_SECOND;
 

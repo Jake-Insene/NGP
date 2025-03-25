@@ -14,7 +14,7 @@ void Assembler::assemble_directive() {
     case TD_FORMAT:
     {
         if (current->is(TOKEN_DIRECTIVE)) {
-            if (current->subtype != TD_FORMAT_RAW || current->subtype != TD_FORMAT_ROM) {
+            if (current->subtype == TD_FORMAT_RAW || current->subtype == TD_FORMAT_ROM) {
                 file_format = TokenDirective(current->subtype);
 
                 advance(); // file_format

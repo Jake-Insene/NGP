@@ -154,6 +154,7 @@ void thread_core_callback(void* arg) {
     f64 elapsed = 0.0;
     u32 cycle_counter = 0;
 
+    core.handle_pc_change();
     while (true) {
         if (core.psr.halt) {
             OS::sleep(1);

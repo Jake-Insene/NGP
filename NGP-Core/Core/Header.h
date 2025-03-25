@@ -12,8 +12,8 @@
 
 #define NGP_VERSION NGP_VERSION_MAJOR "." NGP_VERSION_MINOR "." NGP_VERSION_PATCH
 
-#define KB(n) (1024*n)
-#define MB(n) (KB(1024)*n)
+#define KB(n) (1024U*n)
+#define MB(n) (KB(1024U)*n)
 
 #define MHZ(n) n * 1'000'000U
 
@@ -30,7 +30,7 @@ using f32 = float;
 using f64 = double;
 
 using Word = u32;
-using DWord = u32;
+using DWord = u64;
 
 using VirtualAddress = u32;
 using PhysicalAddress = u64;

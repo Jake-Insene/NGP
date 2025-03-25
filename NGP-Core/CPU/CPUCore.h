@@ -11,7 +11,9 @@ static constexpr u32 CYCLES_PER_SECOND = MHZ(200);
 static constexpr u32 FRAMES_PER_SECOND = 60;
 static constexpr u32 CYCLES_PER_FRAME = CYCLES_PER_SECOND / FRAMES_PER_SECOND;
 
-struct CPUCore {
+static constexpr u32 BIOS_REQUESTED_LEVEL = 2;
+
+struct alignas(64) CPUCore {
     union ProgramStateRegister {
         struct {
             u32 z : 1;
@@ -52,6 +54,10 @@ struct CPUCore {
     SIMDRegister simd[SIMDRegistersCount];
 
     u32 pc;
+    u32 offset;
+    
+    u32* mem_pc;
+
     u32 cycle_counter;
     u32 inst_counter;
 
@@ -59,14 +65,15 @@ struct CPUCore {
     u32 current_el;
     ProgramStateRegister psr;
 
-    static constexpr u32 MaxRegisterPerExceptionLevel = MaxExceptionLevel - 1;
-    ProgramStateRegister spsr_el[MaxRegisterPerExceptionLevel];
-    u32 elr_el[MaxRegisterPerExceptionLevel];
-    u32 vtr_el[MaxRegisterPerExceptionLevel];
+    ProgramStateRegister spsr_el[MaxExceptionLevel];
+    u32 elr_el[MaxExceptionLevel - 1];
+    u32 vtr_el[MaxExceptionLevel - 1];
 
     void initialize();
 
     void shutdown();
+
+    void handle_pc_change();
 
     u32 fetch_inst();
 

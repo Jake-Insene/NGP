@@ -21,9 +21,9 @@ struct SourceFile {
 
     std::string file_path;
 
-    u8* source_code;
-    u32 source_len;
-    u32 index;
+    u8* source_code = nullptr;
+    u32 source_len = 0;
+    u32 index = 0;
 };
 
 using SourceFileList = std::vector<SourceFile>;

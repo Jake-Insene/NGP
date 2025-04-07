@@ -2,7 +2,9 @@ FORMAT RAW AS 'BIN'
 ORG 0x00000000
 
 RAM_START = 0x20000000
-RAM_END = 0x30000000
+RAM_END = 0x20000000
+
+
 
 main:
 	MOV R0, RAM_START & 0xFFFF
@@ -13,13 +15,14 @@ main:
 
 	MOV R2, 0xDCDC
 	MOVT R2, 0xDCDC
+	NOP
 
 .loop:
-	ST R2, [R0]
+	;ST R2, [R0]
 	ADD R0, R0, 4
 	CMP R0, R1
 	BNE .loop
 	
-	HLT
+	HALT
 
 .zero 0x400000-$

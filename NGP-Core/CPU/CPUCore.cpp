@@ -10,6 +10,7 @@
 #include "Memory/Bus.h"
 #include <stdio.h>
 
+
 // Logical Add sub
 FORCE_INLINE static void setFlags(CPUCore& core, u32 src1, u32 src2, u64 res, bool is_sub) {
     // Set Z flag (zero flag)
@@ -58,21 +59,21 @@ FORCE_INLINE static u32 and_setting_flags(CPUCore& core, u32 src1, u32 src2) {
 
 #define MAKE_SIMPLE_LAS(name, op) \
     static inline void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
-        if(dest == 31) return;\
-        core.list[dest] = op;\
+        if(dest != 31)\
+        { core.list[dest] = op; }\
     }
 
 #define MAKE_SIMPLE_OP(name, op) \
     static inline void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
-        if(dest == 31) return;\
-        core.list[dest] = op;\
+        if(dest != 31)\
+        { core.list[dest] = op; }\
     }
 
 #define MAKE_SETTING_FLAGS(name, op) \
     static inline void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
-        if(dest == 31) return;\
         const u32 result = op;\
-        core.list[dest] = result;\
+        if(dest != 31)\
+        { core.list[dest] = result; }\
     }
 
 #define HANDLE_BRANCH(cond, core, disp) if(cond) { core.pc += disp; core.handle_pc_change(); }
@@ -120,8 +121,10 @@ MAKE_SETTING_FLAGS(adds_ror, add_with_carry_setting_flags(core, core.list[src1],
 FORCE_INLINE static void subs_shl(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
     const u32 result = add_with_carry_setting_flags(core, core.list[src1], ~(core.list[src2] << src3), 1);
-    if (dest == 31) return;
-    core.list[dest] = result;
+    if (dest != 31)
+    {
+        core.list[dest] = result;
+    }
 };
 
 MAKE_SETTING_FLAGS(subs_shr, add_with_carry_setting_flags(core, core.list[src1], ~(core.list[src2] >> src3), 1));
@@ -151,189 +154,234 @@ MAKE_SIMPLE_LAS(adcs, add_with_carry_setting_flags(core, core.list[src1], core.l
 MAKE_SIMPLE_LAS(sbcs, add_with_carry_setting_flags(core, core.list[src1], ~core.list[src2], core.psr.c));
 
 // Memory
-FORCE_INLINE static void memory_read_byte(CPUCore& core, u32 dest, VirtualAddress address) {
-    if (dest != 31) {
+FORCE_INLINE static void memory_read_byte(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    if (dest != 31)
+    {
         core.list[dest] = Bus::read_byte(core, address);
     }
 }
 
-FORCE_INLINE static void memory_read_half(CPUCore& core, u32 dest, VirtualAddress address) {
-    if (dest != 31) {
+FORCE_INLINE static void memory_read_half(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    if (dest != 31)
+    {
         core.list[dest] = Bus::read_half(core, address);
     }
 }
 
-FORCE_INLINE static void memory_read_word(CPUCore& core, u32 dest, VirtualAddress address) {
-    if (dest != 31) {
+FORCE_INLINE static void memory_read_word(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    if (dest != 31)
+    {
         core.list[dest] = Bus::read_word(core, address);
     }
 }
 
-FORCE_INLINE static void memory_read_ihalf(CPUCore& core, u32 dest, VirtualAddress address) {
-    if (dest != 31) {
+FORCE_INLINE static void memory_read_ihalf(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    if (dest != 31)
+    {
         core.ilist[dest] = static_cast<i16>(Bus::read_half(core, address));
     }
 }
 
-FORCE_INLINE static void memory_read_ibyte(CPUCore& core, u32 dest, VirtualAddress address) {
-    if (dest != 31) {
+FORCE_INLINE static void memory_read_ibyte(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    if (dest != 31)
+    {
         core.ilist[dest] = static_cast<i8>(Bus::read_byte(core, address));
     }
 }
 
-FORCE_INLINE static void memory_read_single(CPUCore& core, u32 dest, VirtualAddress address) {
-    if (dest != 31) {
+FORCE_INLINE static void memory_read_single(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    if (dest != 31)
+    {
         core.simd[dest].w = Bus::read_word(core, address);
     }
 }
 
-FORCE_INLINE static void memory_read_double(CPUCore& core, u32 dest, VirtualAddress address) {
-    if (dest != 31) {
+FORCE_INLINE static void memory_read_double(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    if (dest != 31)
+    {
         core.simd[dest].dw = Bus::read_dword(core, address);
     }
 }
 
-FORCE_INLINE static void memory_read_qword(CPUCore& core, u32 dest, VirtualAddress address) {
-    if (dest != 31) {
+FORCE_INLINE static void memory_read_qword(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    if (dest != 31)
+    {
         core.simd[dest].qw = Bus::read_qword(core, address);
     }
 }
 
-FORCE_INLINE static void memory_write_byte(CPUCore& core, u32 src, VirtualAddress address) {
+FORCE_INLINE static void memory_write_byte(CPUCore& core, u32 src, VirtualAddress address)
+{
     Bus::write_byte(core, address, static_cast<u8>(core.list[src]));
 }
 
-FORCE_INLINE static void memory_write_half(CPUCore& core, u32 src, VirtualAddress address) {
+FORCE_INLINE static void memory_write_half(CPUCore& core, u32 src, VirtualAddress address)
+{
     Bus::write_half(core, address, static_cast<u16>(core.list[src]));
 }
 
-FORCE_INLINE static void memory_write_word(CPUCore& core, u32 src, VirtualAddress address) {
+FORCE_INLINE static void memory_write_word(CPUCore& core, u32 src, VirtualAddress address)
+{
     Bus::write_word(core, address, core.list[src]);
 }
 
-FORCE_INLINE static void memory_write_single(CPUCore& core, u32 src, VirtualAddress address) {
+FORCE_INLINE static void memory_write_single(CPUCore& core, u32 src, VirtualAddress address)
+{
     Bus::write_word(core, address, core.simd[src].w);
 }
 
-FORCE_INLINE static void memory_write_double(CPUCore& core, u32 src, VirtualAddress address) {
+FORCE_INLINE static void memory_write_double(CPUCore& core, u32 src, VirtualAddress address)
+{
     Bus::write_dword(core, address, core.simd[src].dw);
 }
 
-FORCE_INLINE static void memory_write_qword(CPUCore& core, u32 src, VirtualAddress address) {
+FORCE_INLINE static void memory_write_qword(CPUCore& core, u32 src, VirtualAddress address)
+{
     Bus::write_qword(core, address, core.simd[src].qw);
 }
 
-FORCE_INLINE static void memory_pair_read_word(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address) {
-    if (dest1 != 31) {
+FORCE_INLINE static void memory_pair_read_word(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
+{
+    if (dest1 != 31)
+    {
         core.list[dest1] = Bus::read_word(core, address);
     }
 
-    if (dest2 != 31) {
+    if (dest2 != 31)
+    {
         core.list[dest2] = Bus::read_word(core, address + 4);
     }
 }
 
-FORCE_INLINE static void memory_pair_read_single(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address) {
-    if (dest1 != 31) {
+FORCE_INLINE static void memory_pair_read_single(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
+{
+    if (dest1 != 31)
+    {
         core.simd[dest1].w = Bus::read_word(core, address);
     }
 
-    if (dest2 != 31) {
+    if (dest2 != 31)
+    {
         core.simd[dest2].w = Bus::read_word(core, address + 4);
     }
 }
 
-FORCE_INLINE static void memory_pair_read_double(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address) {
-    if (dest1 != 31) {
+FORCE_INLINE static void memory_pair_read_double(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
+{
+    if (dest1 != 31)
+    {
         core.simd[dest1].dw = Bus::read_dword(core, address);
     }
 
-    if (dest2 != 31) {
+    if (dest2 != 31)
+    {
         core.simd[dest2].dw = Bus::read_dword(core, address + 8);
     }
 }
 
-FORCE_INLINE static void memory_pair_read_qword(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address) {
-    if (dest1 != 31) {
+FORCE_INLINE static void memory_pair_read_qword(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
+{
+    if (dest1 != 31)
+    {
         core.simd[dest1].qw = Bus::read_qword(core, address);
     }
 
-    if (dest2 != 31) {
+    if (dest2 != 31)
+    {
         core.simd[dest2].qw = Bus::read_qword(core, address + 16);
     }
 }
 
-FORCE_INLINE static void memory_pair_write_word(CPUCore& core, u32 src1, u32 src2, VirtualAddress address) {
+FORCE_INLINE static void memory_pair_write_word(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+{
     // fetch
     Bus::write_word(core, address, core.list[src1]);
     Bus::write_word(core, address + 4, core.list[src2]);
 }
 
-FORCE_INLINE static void memory_pair_write_single(CPUCore& core, u32 src1, u32 src2, VirtualAddress address) {
+FORCE_INLINE static void memory_pair_write_single(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+{
     // fetch
     Bus::write_word(core, address, core.simd[src1].w);
     Bus::write_word(core, address + 4, core.simd[src2].w);
 }
 
-FORCE_INLINE static void memory_pair_write_double(CPUCore& core, u32 src1, u32 src2, VirtualAddress address) {
+FORCE_INLINE static void memory_pair_write_double(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+{
     Bus::write_dword(core, address, core.simd[src1].dw);
     Bus::write_dword(core, address + 8, core.simd[src2].dw);
 }
 
-FORCE_INLINE static void memory_pair_write_qword(CPUCore& core, u32 src1, u32 src2, VirtualAddress address) {
+FORCE_INLINE static void memory_pair_write_qword(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+{
     Bus::write_qword(core, address, core.simd[src1].qw);
     Bus::write_qword(core, address + 16, core.simd[src2].qw);
 }
 
 // Non Binary
-static inline void ret(CPUCore& core, u8, u8 src1, u8) {
+static inline void ret(CPUCore& core, u8, u8 src1, u8)
+{
     core.pc = core.list[src1];
     core.handle_pc_change();
 }
 
-static inline void blr(CPUCore& core, u8, u8 src1, u8) {
+static inline void blr(CPUCore& core, u8, u8 src1, u8)
+{
     core.gpr.lr = core.pc;
     core.pc = core.list[src1];
     core.handle_pc_change();
 }
 
-static inline void br(CPUCore& core, u8, u8 src1, u8) {
+static inline void br(CPUCore& core, u8, u8 src1, u8)
+{
     core.pc = core.list[src1];
     core.handle_pc_change();
 }
 
 static inline void eret(CPUCore& core, u8, u8, u8) {}
 static inline void brk(CPUCore& core, u8, u8, u8) {}
-static inline void hlt(CPUCore& core, u8, u8, u8) {
-    core.psr.halt = true;
-}
+static inline void hlt(CPUCore& core, u8, u8, u8) { core.psr.halt = true; }
+
 static inline void sit(CPUCore& core, u8, u8, u8) {}
 static inline void msr(CPUCore& core, u8, u8, u8) {}
 static inline void mrs(CPUCore& core, u8, u8, u8) {}
-static inline void nop(CPUCore& core, u8, u8, u8) {}
+static inline void sysset(CPUCore& core, u8, u8, u8) {}
+static inline void sysclr(CPUCore& core, u8, u8, u8) {}
 
 // Main opcodes
-FORCE_INLINE static void bl(CPUCore& core, u32 inst) {
+FORCE_INLINE static void bl(CPUCore& core, u32 inst)
+{
     const u32 disp_inst = inst >> 6;
     const u32 disp = disp_inst & 0x2000000 ? (0xFC00'0000 | disp_inst) << 2 : disp_inst << 2;
- 
+
     core.gpr.lr = core.pc;
     HANDLE_BRANCH(true, core, disp);
 }
 
-FORCE_INLINE static void b(CPUCore& core, u32 inst) {
+FORCE_INLINE static void b(CPUCore& core, u32 inst)
+{
     const u32 disp_inst = inst >> 6;
     const u32 disp = disp_inst & 0x2000000 ? (0xFC00'0000 | disp_inst) << 2 : disp_inst << 2;
     HANDLE_BRANCH(true, core, disp);
 }
 
-FORCE_INLINE static void bcond(CPUCore& core, u32 inst) {
+FORCE_INLINE static void bcond(CPUCore& core, u32 inst)
+{
     u8 cond = (inst >> 6) & 0xF;
     i32 disp = (inst >> 10);
     disp = disp & 0x200000 ? 0xFFC0'0000 | disp : disp;
     disp <<= 2;
 
-    switch (cond) {
+    switch (cond)
+    {
     case NGP_BEQ:
         HANDLE_BRANCH(core.psr.z, core, disp);
         break;
@@ -383,7 +431,8 @@ FORCE_INLINE static void bcond(CPUCore& core, u32 inst) {
     }
 }
 
-FORCE_INLINE static void logical_add_sub(CPUCore& core, u32 inst) {
+FORCE_INLINE static void logical_add_sub(CPUCore& core, u32 inst)
+{
     u8 las = (inst >> 6) & 0x3F;
     u8 dest = (inst >> 12) & 0x1F;
     u8 src1 = (inst >> 17) & 0x1F;
@@ -391,53 +440,54 @@ FORCE_INLINE static void logical_add_sub(CPUCore& core, u32 inst) {
     u8 src3 = (inst >> 27) & 0x1F;
 
 #define CASE(op, name) case op: name(core, dest, src1, src2, src3); break
-    switch (las) {
-    CASE(NGP_ADD_SHL, add_shl);
-    CASE(NGP_ADD_SHR, add_shr);
-    CASE(NGP_ADD_ASR, add_asr);
-    CASE(NGP_ADC, adc);
-    CASE(NGP_SUB_SHL, sub_shl);
-    CASE(NGP_SUB_SHR, sub_shr);
-    CASE(NGP_SUB_ASR, sub_asr);
-    CASE(NGP_SBC, sbc);
-    CASE(NGP_AND_SHL, and_shl);
-    CASE(NGP_AND_SHR, and_shr);
-    CASE(NGP_AND_ASR, and_asr);
-    CASE(NGP_AND_ROR, and_ror);
-    CASE(NGP_OR_SHL, or_shl);
-    CASE(NGP_OR_SHR, or_shr);
-    CASE(NGP_OR_ASR, or_asr);
-    CASE(NGP_OR_ROR, or_ror);
-    CASE(NGP_ORN_SHL, orn_shl);
-    CASE(NGP_ORN_SHR, orn_shr);
-    CASE(NGP_ORN_ASR, orn_asr);
-    CASE(NGP_ORN_ROR, orn_ror);
-    CASE(NGP_EOR_SHL, eor_shl);
-    CASE(NGP_EOR_SHR, eor_shr);
-    CASE(NGP_EOR_ASR, eor_asr);
-    CASE(NGP_EOR_ROR, eor_ror);
-    CASE(NGP_ADDS_SHL, adds_shl);
-    CASE(NGP_ADDS_SHR, adds_shr);
-    CASE(NGP_ADDS_ASR, adds_asr);
-    CASE(NGP_ADDS_ROR, adds_ror);
-    CASE(NGP_SUBS_SHL, subs_shl);
-    CASE(NGP_SUBS_SHR, subs_shr);
-    CASE(NGP_SUBS_ASR, subs_asr);
-    CASE(NGP_SUBS_ROR, subs_ror);
-    CASE(NGP_ANDS_SHL, ands_shl);
-    CASE(NGP_ANDS_SHR, ands_shr);
-    CASE(NGP_ANDS_ASR, ands_asr);
-    CASE(NGP_ANDS_ROR, ands_ror);
-    CASE(NGP_BIC_SHL, bic_shl);
-    CASE(NGP_BIC_SHR, bic_shr);
-    CASE(NGP_BIC_ASR, bic_asr);
-    CASE(NGP_BIC_ROR, bic_ror);
-    CASE(NGP_BICS_SHL, bics_shl);
-    CASE(NGP_BICS_SHR, bics_shr);
-    CASE(NGP_BICS_ASR, bics_asr);
-    CASE(NGP_BICS_ROR, bics_ror);
-    CASE(NGP_ADCS, adcs);
-    CASE(NGP_SBCS, sbcs);
+    switch (las)
+    {
+        CASE(NGP_ADD_SHL, add_shl);
+        CASE(NGP_ADD_SHR, add_shr);
+        CASE(NGP_ADD_ASR, add_asr);
+        CASE(NGP_ADC, adc);
+        CASE(NGP_SUB_SHL, sub_shl);
+        CASE(NGP_SUB_SHR, sub_shr);
+        CASE(NGP_SUB_ASR, sub_asr);
+        CASE(NGP_SBC, sbc);
+        CASE(NGP_AND_SHL, and_shl);
+        CASE(NGP_AND_SHR, and_shr);
+        CASE(NGP_AND_ASR, and_asr);
+        CASE(NGP_AND_ROR, and_ror);
+        CASE(NGP_OR_SHL, or_shl);
+        CASE(NGP_OR_SHR, or_shr);
+        CASE(NGP_OR_ASR, or_asr);
+        CASE(NGP_OR_ROR, or_ror);
+        CASE(NGP_ORN_SHL, orn_shl);
+        CASE(NGP_ORN_SHR, orn_shr);
+        CASE(NGP_ORN_ASR, orn_asr);
+        CASE(NGP_ORN_ROR, orn_ror);
+        CASE(NGP_EOR_SHL, eor_shl);
+        CASE(NGP_EOR_SHR, eor_shr);
+        CASE(NGP_EOR_ASR, eor_asr);
+        CASE(NGP_EOR_ROR, eor_ror);
+        CASE(NGP_ADDS_SHL, adds_shl);
+        CASE(NGP_ADDS_SHR, adds_shr);
+        CASE(NGP_ADDS_ASR, adds_asr);
+        CASE(NGP_ADDS_ROR, adds_ror);
+        CASE(NGP_SUBS_SHL, subs_shl);
+        CASE(NGP_SUBS_SHR, subs_shr);
+        CASE(NGP_SUBS_ASR, subs_asr);
+        CASE(NGP_SUBS_ROR, subs_ror);
+        CASE(NGP_ANDS_SHL, ands_shl);
+        CASE(NGP_ANDS_SHR, ands_shr);
+        CASE(NGP_ANDS_ASR, ands_asr);
+        CASE(NGP_ANDS_ROR, ands_ror);
+        CASE(NGP_BIC_SHL, bic_shl);
+        CASE(NGP_BIC_SHR, bic_shr);
+        CASE(NGP_BIC_ASR, bic_asr);
+        CASE(NGP_BIC_ROR, bic_ror);
+        CASE(NGP_BICS_SHL, bics_shl);
+        CASE(NGP_BICS_SHR, bics_shr);
+        CASE(NGP_BICS_ASR, bics_asr);
+        CASE(NGP_BICS_ROR, bics_ror);
+        CASE(NGP_ADCS, adcs);
+        CASE(NGP_SBCS, sbcs);
     default:
         // TODO: invalid instruction
         break;
@@ -447,8 +497,9 @@ FORCE_INLINE static void logical_add_sub(CPUCore& core, u32 inst) {
 
 FORCE_INLINE static void fp_op(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE static void load_store_immediate(CPUCore& core, u32 inst) {
-    u8 memopc = (inst>>6) & 0x7;
+FORCE_INLINE static void load_store_immediate(CPUCore& core, u32 inst)
+{
+    u8 memopc = (inst >> 6) & 0x7;
 
     u8 dest = (inst >> 9) & 0x1F;
     u8 base = (inst >> 14) & 0x1F;
@@ -456,7 +507,8 @@ FORCE_INLINE static void load_store_immediate(CPUCore& core, u32 inst) {
     imm = inst & 0x7FF ? -imm : imm;
 
 #define CASE(op, name) case op: name(core, dest, core.list[base] + imm); break
-    switch (memopc) {
+    switch (memopc)
+    {
         CASE(NGP_LD_IMMEDIATE, memory_read_word);
         CASE(NGP_LDSH_IMMEDIATE, memory_read_ihalf);
         CASE(NGP_LDH_IMMEDIATE, memory_read_half);
@@ -479,24 +531,28 @@ FORCE_INLINE static void load_store_pair(CPUCore& core, u32 inst) {}
 
 FORCE_INLINE static void additional(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE static void non_binary(CPUCore& core, u32 inst) {
+FORCE_INLINE static void non_binary(CPUCore& core, u32 inst)
+{
     u16 nonopc = (inst >> 6) & 0x3FF;
     u8 op = (inst >> 16) & 0x3F;
     u8 src1 = (inst >> 22) & 0x1F;
     u8 src2 = (inst >> 27) & 0x1F;
 
 #define CASE(_op, name) case _op: name(core, op, src1, src2); break
-    switch (nonopc) {
-    CASE(NGP_RET, ret);
-    CASE(NGP_BLR, blr);
-    CASE(NGP_BR, br);
-    CASE(NGP_ERET, eret);
-    CASE(NGP_BRK, brk);
-    CASE(NGP_HLT, hlt);
-    CASE(NGP_SIT, sit);
-    CASE(NGP_MSR, msr);
-    CASE(NGP_MRS, mrs);
-    CASE(NGP_NOP, nop);
+    switch (nonopc)
+    {
+        CASE(NGP_RET, ret);
+        CASE(NGP_BR, br);
+        CASE(NGP_BLR, blr);
+        CASE(NGP_BRK, brk);
+        CASE(NGP_ERET, eret);
+        CASE(NGP_WFI, eret);
+        CASE(NGP_MSR, msr);
+        CASE(NGP_MRS, mrs);
+        CASE(NGP_HALT, hlt);
+        CASE(NGP_SYSSET, sysset);
+        CASE(NGP_SYSCLR, sysclr);
+    case NGP_NOP:
     default:
         break;
     }
@@ -509,12 +565,14 @@ FORCE_INLINE static void ld_d_pc(CPUCore& core, u32 inst) {}
 FORCE_INLINE static void ld_q_pc(CPUCore& core, u32 inst) {}
 FORCE_INLINE static void adr_pc(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE static void immediate(CPUCore& core, u32 inst) {
+FORCE_INLINE static void immediate(CPUCore& core, u32 inst)
+{
     u16 imm = inst >> 16;
     u8 immopc = (inst >> 6) & 0x1F;
     u8 reg = (inst >> 11) & 0x1F;
 
-    if (immopc == NGP_MOVT_IMMEDIATE) {
+    if (immopc == NGP_MOVT_IMMEDIATE)
+    {
         core.list[reg] |= (imm << 16);
     }
 }
@@ -528,7 +586,8 @@ FORCE_INLINE static void add_immediate(CPUCore& core, u32 inst) {
     }
 }
 
-FORCE_INLINE static void adds_immediate(CPUCore& core, u32 inst) {
+FORCE_INLINE static void adds_immediate(CPUCore& core, u32 inst)
+{
     u8 dest = (inst >> 6) & 0x1F;
     u8 src = (inst >> 11) & 0x1F;
     u16 imm = inst >> 16;
@@ -536,16 +595,19 @@ FORCE_INLINE static void adds_immediate(CPUCore& core, u32 inst) {
     core.list[dest] = dest == 31 ? result : 0;
 }
 
-FORCE_INLINE static void sub_immediate(CPUCore& core, u32 inst) {
+FORCE_INLINE static void sub_immediate(CPUCore& core, u32 inst)
+{
     u8 dest = (inst >> 6) & 0x1F;
-    if (dest != 31) {
+    if (dest != 31)
+    {
         u8 src = (inst >> 11) & 0x1F;
         u16 imm = inst >> 16;
         core.list[dest] = core.list[src] - imm;
     }
 }
 
-FORCE_INLINE static void subs_immediate(CPUCore& core, u32 inst) {
+FORCE_INLINE static void subs_immediate(CPUCore& core, u32 inst)
+{
     u8 dest = (inst >> 6) & 0x1F;
     u8 src = (inst >> 11) & 0x1F;
     u16 imm = inst >> 16;
@@ -553,16 +615,19 @@ FORCE_INLINE static void subs_immediate(CPUCore& core, u32 inst) {
     core.list[dest] = dest == 31 ? result : 0;
 }
 
-FORCE_INLINE static void and_immediate(CPUCore& core, u32 inst) {
+FORCE_INLINE static void and_immediate(CPUCore& core, u32 inst)
+{
     u8 dest = (inst >> 6) & 0x1F;
-    if (dest != 31) {
+    if (dest != 31)
+    {
         u8 src = (inst >> 11) & 0x1F;
         u16 imm = inst >> 16;
         core.list[dest] = core.list[src] & imm;
     }
 }
 
-FORCE_INLINE static void ands_immediate(CPUCore& core, u32 inst) {
+FORCE_INLINE static void ands_immediate(CPUCore& core, u32 inst)
+{
     u8 dest = (inst >> 6) & 0x1F;
     u8 src = (inst >> 11) & 0x1F;
     u16 imm = inst >> 16;
@@ -570,18 +635,22 @@ FORCE_INLINE static void ands_immediate(CPUCore& core, u32 inst) {
     core.list[dest] = dest == 31 ? result : 0;
 }
 
-FORCE_INLINE static void or_immediate(CPUCore& core, u32 inst) {
+FORCE_INLINE static void or_immediate(CPUCore& core, u32 inst)
+{
     u8 dest = (inst >> 6) & 0x1F;
-    if (dest != 31) {
+    if (dest != 31)
+    {
         u8 src = (inst >> 11) & 0x1F;
         u16 imm = inst >> 16;
         core.list[dest] = core.list[src] | imm;
     }
 }
 
-FORCE_INLINE static void eor_immediate(CPUCore& core, u32 inst) {
+FORCE_INLINE static void eor_immediate(CPUCore& core, u32 inst)
+{
     u8 dest = (inst >> 6) & 0x1F;
-    if (dest != 31) {
+    if (dest != 31)
+    {
         u8 src = (inst >> 11) & 0x1F;
         u16 imm = inst >> 16;
         core.list[dest] = core.list[src] ^ imm;
@@ -603,18 +672,15 @@ void CPUCore::handle_pc_change()
     offset = 0;
 }
 
-u32 CPUCore::fetch_inst() {
+u32 CPUCore::fetch_inst()
+{
     return mem_pc[offset];
 }
 
-#define PROFILE 1
-
-void CPUCore::dispatch(u32 num_cycles) {
-    while (num_cycles--) {
-        if (psr.halt) {
-            break;
-        }
-
+void CPUCore::dispatch(u32 num_cycles)
+{
+    while (num_cycles-- && !psr.halt)
+    {
         u32 inst = fetch_inst();
 
         pc += 4;
@@ -626,36 +692,37 @@ void CPUCore::dispatch(u32 num_cycles) {
         u8 opcode = inst & 0x3F;
 
 #define CASE(op, name) case op: name(*this, inst); break
-        switch (opcode) {
-        CASE(NGP_BL, bl);
-        CASE(NGP_B, b);
-        CASE(NGP_B_COND, bcond);
-        CASE(NGP_LOGICAL_ADD_SUB, logical_add_sub);
-        CASE(NGP_FP_OP, fp_op);
-        CASE(NGP_LOAD_STORE_IMMEDIATE, load_store_immediate);
-        CASE(NGP_LOAD_STORE_FP_IMMEDIATE, load_store_fp_immediate);
-        CASE(NGP_LOAD_STORE_REGISTER, load_store_register);
-        CASE(NGP_LOAD_STORE_PAIR, load_store_pair);
-        CASE(NGP_ADDITIONAL, additional);
-        CASE(NGP_NON_BINARY, non_binary);
-        CASE(NGP_LD_PC, ld_pc);
-        CASE(NGP_LD_S_PC, ld_s_pc);
-        CASE(NGP_LD_D_PC, ld_d_pc);
-        CASE(NGP_LD_Q_PC, ld_q_pc);
-        CASE(NGP_ADR_PC, adr_pc);
-        CASE(NGP_IMMEDIATE, immediate);
-        CASE(NGP_ADD_IMMEDIATE, add_immediate);
-        CASE(NGP_ADDS_IMMEDIATE, adds_immediate);
-        CASE(NGP_SUB_IMMEDIATE, sub_immediate);
-        CASE(NGP_SUBS_IMMEDIATE, subs_immediate);
-        CASE(NGP_AND_IMMEDIATE, and_immediate);
-        CASE(NGP_ANDS_IMMEDIATE, ands_immediate);
-        CASE(NGP_OR_IMMEDIATE, or_immediate);
-        CASE(NGP_EOR_IMMEDIATE, eor_immediate);
-        CASE(NGP_TBZ, tbz);
-        CASE(NGP_TBNZ, tbnz);
-        CASE(NGP_CBZ, cbz);
-        CASE(NGP_CBNZ, cbnz);
+        switch (opcode)
+        {
+            CASE(NGP_BL, bl);
+            CASE(NGP_B, b);
+            CASE(NGP_B_COND, bcond);
+            CASE(NGP_ALU, logical_add_sub);
+            CASE(NGP_FP_OP, fp_op);
+            CASE(NGP_LOAD_STORE_IMMEDIATE, load_store_immediate);
+            CASE(NGP_LOAD_STORE_FP_IMMEDIATE, load_store_fp_immediate);
+            CASE(NGP_LOAD_STORE_REGISTER, load_store_register);
+            CASE(NGP_LOAD_STORE_PAIR, load_store_pair);
+            CASE(NGP_ADDITIONAL, additional);
+            CASE(NGP_NON_BINARY, non_binary);
+            CASE(NGP_LD_PC, ld_pc);
+            CASE(NGP_LD_S_PC, ld_s_pc);
+            CASE(NGP_LD_D_PC, ld_d_pc);
+            CASE(NGP_LD_Q_PC, ld_q_pc);
+            CASE(NGP_ADR_PC, adr_pc);
+            CASE(NGP_IMMEDIATE, immediate);
+            CASE(NGP_ADD_IMMEDIATE, add_immediate);
+            CASE(NGP_ADDS_IMMEDIATE, adds_immediate);
+            CASE(NGP_SUB_IMMEDIATE, sub_immediate);
+            CASE(NGP_SUBS_IMMEDIATE, subs_immediate);
+            CASE(NGP_AND_IMMEDIATE, and_immediate);
+            CASE(NGP_ANDS_IMMEDIATE, ands_immediate);
+            CASE(NGP_OR_IMMEDIATE, or_immediate);
+            CASE(NGP_EOR_IMMEDIATE, eor_immediate);
+            CASE(NGP_TBZ, tbz);
+            CASE(NGP_TBNZ, tbnz);
+            CASE(NGP_CBZ, cbz);
+            CASE(NGP_CBNZ, cbnz);
         default:
             break;
         }
@@ -665,10 +732,10 @@ void CPUCore::dispatch(u32 num_cycles) {
         inst_counter++;
 #endif
     }
-
 }
 
-void CPUCore::print_pegisters() {
+void CPUCore::print_pegisters()
+{
     printf(
         "R0  = %08X R1  = %08X R2  = %08X R3  = %08X R4  = %08X\n"
         "R5  = %08X R6  = %08X R7  = %08X R8  = %08X R9  = %08X\n"

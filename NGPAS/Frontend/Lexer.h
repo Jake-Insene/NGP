@@ -10,7 +10,8 @@
 
 using TokenList = std::vector<Token>;
 
-struct Lexer {
+struct Lexer
+{
     void set(const char* source_file, u8* ctn, u32 s);
     Token get_next();
 

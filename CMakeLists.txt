@@ -6,7 +6,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 include_directories("NGP-Core")
 
-file(COPY "BIOS/" DESTINATION "${CMAKE_BINARY_DIR}/BIOS")
+file(GLOB NGPAS_SOURCES
+    "NGPAS/Backend/Assembler.cpp"
+    "NGPAS/Backend/Directive.cpp"
+    "NGPAS/Backend/Eval.cpp"
+    "NGPAS/Backend/Instruction.cpp"
+    "NGPAS/Frontend/Lexer.cpp"
+    "NGPAS/Frontend/PreProcessor.cpp"
+    "NGPAS/Main.cpp"
+)
+
+add_executable("ngpas" ${NGPAS_SOURCES})
+
+target_include_directories("ngpas" PUBLIC "NGPAS")
+target_link_libraries("ngpas" "ngp-core")
+
 
 file(GLOB NGP_CORE_SOURCES
     "NGP-Core/CPU/CPUCore.cpp"
@@ -14,8 +28,8 @@ file(GLOB NGP_CORE_SOURCES
     "NGP-Core/IO/IO.cpp"
     "NGP-Core/IO/Pad.cpp"
     "NGP-Core/Memory/Bus.cpp"
-    "NGP-Core/Video/GPU.cpp"
-    )
+    "NGP-Core/Video/GU.cpp"
+)
 
 
 if(WIN32)
@@ -24,7 +38,7 @@ if(WIN32)
         "NGP-Core/Platform/Win32/Win32Thread.cpp"
         "NGP-Core/Platform/Win32/Win32Time.cpp"
         "NGP-Core/Video/Win32/Win32Window.cpp"
-        "NGP-Core/Video/D3D12/D3D12GPU.cpp"
+        "NGP-Core/Video/D3D12/D3D12GU.cpp"
     )
 
     set(NGP_CORE_PLATFORM_LIBRARIES "d3d12")
@@ -45,23 +59,13 @@ file(GLOB NGP_SOURCES
 )
 
 add_executable("ngp" ${NGP_SOURCES})
+
 target_link_libraries("ngp" "ngp-core")
-
-set_property(TARGET "ngp" PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-
-
-file(GLOB NGPAS_SOURCES
-    "NGPAS/Backend/Assembler.cpp"
-    "NGPAS/Backend/Directive.cpp"
-    "NGPAS/Backend/Eval.cpp"
-    "NGPAS/Backend/Instruction.cpp"
-    "NGPAS/Frontend/Lexer.cpp"
-    "NGPAS/Frontend/PreProcessor.cpp"
-    "NGPAS/Main.cpp"
+add_custom_command(TARGET "ngp"
+    POST_BUILD COMMAND .\\ngpas.exe ..\\..\\BIOS\\BIOS.asm
 )
 
-add_executable("ngpas" ${NGPAS_SOURCES})
-
-target_include_directories("ngpas" PUBLIC "NGPAS")
-target_link_libraries("ngpas" "ngp-core")
+add_custom_command(TARGET "ngp"
+    POST_BUILD COMMAND COPY /Y ..\\..\\BIOS\\BIOS.BIN BIOS.BIN
+)
 

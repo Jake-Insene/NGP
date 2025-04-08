@@ -9,7 +9,8 @@
 #include "Backend/Assembler.h"
 #include <cstring>
 
-void print_help() {
+void print_help()
+{
     puts(
         "usage: ngpas <source> [-o output]\n"
         "options:\n"
@@ -18,8 +19,10 @@ void print_help() {
     );
 }
 
-int main(int argc, char** argv) {
-    if (argc < 2) {
+int main(int argc, char** argv)
+{
+    if (argc < 2)
+    {
         puts(
             "error: not input file specified\n"
             "error: use -help for help"
@@ -29,55 +32,67 @@ int main(int argc, char** argv) {
 
     Assembler as{};
     i32 index = 1;
-    const char* input_file = nullptr;
+    const char* input_file = "";
     std::string output_file = {};
 
-    while (index < argc) {
+    while (index < argc)
+    {
         char* arg = argv[index++];
 
-        if (arg[0] == '-') {
+        if (arg[0] == '-')
+        {
             // Options
             arg++;
             u32 arg_len = u32(std::strlen(arg));
 
-            if (arg_len == 4) {
-                if (std::memcmp(arg, "help", 4) == 0) {
+            if (arg_len == 4)
+            {
+                if (std::memcmp(arg, "help", 4) == 0)
+                {
                     print_help();
                     return 0;
                 }
-                else {
+                else
+                {
                     printf("error: unknown option '%s'\n", arg--);
                     return -1;
                 }
             }
-            else if (arg_len == 1) {
-                if (arg[0] == 'o') {
-                    if (index == argc) {
+            else if (arg_len == 1)
+            {
+                if (arg[0] == 'o')
+                {
+                    if (index == argc)
+                    {
                         printf("error: -o require a path");
                         return -1;
                     }
-                    else {
+                    else
+                    {
                         output_file = argv[index++];
                     }
                 }
-                else if (arg[0] == 'v') {
+                else if (arg[0] == 'v')
+                {
                     printf("NGP assebmler version: %s\n", NGP_VERSION);
                     return 0;
                 }
             }
         }
-        else {
+        else
+        {
             input_file = arg;
         }
     }
 
     Time::initialize();
 
-    if (output_file.empty()) {
+    if (output_file.empty())
+    {
         output_file = { input_file };
         output_file = output_file.substr(0, output_file.find_last_of('.'));
     }
-    
+
     auto start = Time::get_time();
     bool result = as.assemble_file(input_file, output_file.c_str());
     f64 duration = Time::get_time() - start;

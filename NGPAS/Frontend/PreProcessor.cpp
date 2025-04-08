@@ -9,22 +9,24 @@
 #include "ErrorManager.h"
 #include <fstream>  
 
-void PreProcessor::process(const char* file_path) {
+void PreProcessor::process(const char* file_path)
+{
     sources.clear();
 
     std::ifstream input{ file_path, std::ios::binary | std::ios::ate };
-    if (!input.is_open()) {
+    if (!input.is_open())
+    {
         printf("error: couldt'n load the file '%s'\n", file_path);
         exit(-1);
     }
 
     auto& source = sources.emplace_back();
     source.file_path = file_path;
-    source.index= u32(sources.size() - 1);
+    source.index = u32(sources.size() - 1);
 
     u32 size = (u32)input.tellg();
     input.seekg(0);
-    source.source_code = new u8[size +1];
+    source.source_code = new u8[size + 1];
     source.source_len = size + 1;
     input.read((char*)source.source_code, size);
     source.source_code[size] = '\0';
@@ -38,9 +40,12 @@ void PreProcessor::process(const char* file_path) {
     process_source();
 }
 
-void PreProcessor::process_source() {
-    while (current.is_not(TOKEN_END_OF_FILE)) {
-        switch (current.type) {
+void PreProcessor::process_source()
+{
+    while (current.is_not(TOKEN_END_OF_FILE))
+    {
+        switch (current.type)
+        {
         case TOKEN_DIRECTIVE:
             process_directive();
             break;
@@ -52,13 +57,16 @@ void PreProcessor::process_source() {
     }
 }
 
-void PreProcessor::process_directive() {
+void PreProcessor::process_directive()
+{
     advance();
 
-    switch (last.subtype) {
+    switch (last.subtype)
+    {
     case TD_INCLUDE:
     {
-        if (!expected(TOKEN_STRING, "a file path was expected")) {
+        if (!expected(TOKEN_STRING, "a file path was expected"))
+        {
             return;
         }
 
@@ -75,7 +83,8 @@ void PreProcessor::process_directive() {
         file_path = source_folder + "/" + file_path;
 
         std::ifstream input{ file_path, std::ios::binary | std::ios::ate };
-        if (!input.is_open()) {
+        if (!input.is_open())
+        {
             ErrorManager::error(
                 last.source_file, last.line,
                 "the file '%s' was not founded", file_path.c_str()
@@ -97,7 +106,7 @@ void PreProcessor::process_directive() {
         input.close();
 
         lexer.set(
-            new_source.file_path.c_str(), 
+            new_source.file_path.c_str(),
             new_source.source_code,
             new_source.source_len
         );
@@ -111,24 +120,25 @@ void PreProcessor::process_directive() {
         current = last_current;
         next = last_next;
     }
-        break;
+    break;
     default:
         tokens.emplace_back(last);
         break;
     }
-
-    
 }
 
-void PreProcessor::advance() {
+void PreProcessor::advance()
+{
     last = current;
     current = next;
     next = lexer.get_next();
 }
 
-bool PreProcessor::expected(TokenType type, const char* format, ...) {
+bool PreProcessor::expected(TokenType type, const char* format, ...)
+{
     advance();
-    if (last.type != type) {
+    if (last.type != type)
+    {
         va_list args;
         va_start(args, format);
         ErrorManager::errorV(last.source_file, last.line, format, args);

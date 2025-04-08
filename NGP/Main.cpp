@@ -6,7 +6,7 @@
 /******************************************************/
 #include "CPU/CPUCore.h"
 #include "Memory/Bus.h"
-#include "Video/GPU.h"
+#include "Video/GU.h"
 #include "Video/Window.h"
 #include "Platform/OS.h"
 #include "Platform/Time.h"
@@ -17,6 +17,8 @@
 #include <string>
 
 #define DEBUGGING 1
+
+static constexpr const char* DefaultBIOSPath = "BIOS.BIN";
 
 void start_cores();
 void end_cores();
@@ -37,7 +39,7 @@ void print_help() {
 int main(int argc, char** argv) {
     printf("NGP Emulator %s\n", NGP_VERSION);
 
-    const char* bios_file = "BIOS/BIOS.BIN";
+    const char* bios_file = DefaultBIOSPath;
 
     i32 index = 1;
     while (index < argc) {
@@ -108,10 +110,10 @@ int main(int argc, char** argv) {
     start_cores();
     IO::initialize();
 
-    Window::initialize(960, 540);
+    Window::initialize(Window::DeviceWindowWidth, Window::DeviceWindowHeight);
 
 #ifdef _WIN32
-    GPU::initialize(DriverApi::D3D12);
+    GPU::initialize(GPU::D3D12);
 #endif
 
     // The main thread use the main core
@@ -123,7 +125,6 @@ int main(int argc, char** argv) {
 
     while (Window::is_open) {
 #if DEBUGGING
-        // For debugging
         if (main_core.psr.halt) {
             break;
         }
@@ -149,7 +150,7 @@ void thread_core_callback(void* arg) {
     CPUCore& core = cores[core_index];
 
     core.pc = Bus::BIOS_START;
-    core.current_el = CPUCore::MaxExceptionLevel - 1;
+    core.current_el = CPUCore::MaxExceptionLevel;
 
     f64 elapsed = 0.0;
     u32 cycle_counter = 0;
@@ -161,9 +162,12 @@ void thread_core_callback(void* arg) {
             continue;
         }
 
+#if DEBUGGING
         f64 start = Time::get_time();
+#endif
         core.dispatch(CYCLES_PER_FRAME);
 
+#if DEBUGGING
         elapsed += Time::get_time() - start;
         cycle_counter += core.cycle_counter;
         core.cycle_counter = 0;
@@ -180,6 +184,7 @@ void thread_core_callback(void* arg) {
             core.inst_counter = 0;
             cycle_counter = 0;
         }
+#endif
     }
 }
 

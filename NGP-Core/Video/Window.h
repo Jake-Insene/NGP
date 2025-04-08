@@ -7,7 +7,12 @@
 #pragma once
 #include "Core/Header.h"
 
-struct Window {
+struct Window
+{
+
+    static constexpr u32 DeviceWindowWidth = 960;
+    static constexpr u32 DeviceWindowHeight = 540;
+
     static void initialize(u32 width, u32 height);
     static void shutdown();
 

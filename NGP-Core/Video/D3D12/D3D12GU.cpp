@@ -4,26 +4,29 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "Video/D3D12/D3D12GPU.h"
+#include "Video/D3D12/D3D12GU.h"
 
 #include <stdio.h>
 #define DX_ERROR(expr, ...)\
-    if((expr) != S_OK){\
+    if((expr) != S_OK)\
+    {\
         OutputDebugStringA(__VA_ARGS__);\
         exit(-1);\
     }
 
-GPUDriver D3D12GPU::get() {
+GPUDriver D3D12GU::get()
+{
     return GPUDriver{
-        .initialize = D3D12GPU::initialize,
-        .shutdown = D3D12GPU::shutdown,
+        .initialize = D3D12GU::initialize,
+        .shutdown = D3D12GU::shutdown,
     };
 }
 
-void D3D12GPU::initialize() {
+void D3D12GU::initialize()
+{
 #if NDEBUG == 0
     ID3D12Debug3* debug = nullptr;
-    if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))))
+    if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))))
     {
         debug->EnableDebugLayer();
         debug->SetEnableGPUBasedValidation(TRUE);
@@ -36,7 +39,8 @@ void D3D12GPU::initialize() {
     );
 
 #if NDEBUG == 0
-    if (debug != nullptr) {
+    if (debug != nullptr)
+    {
         ID3D12InfoQueue* info_queue = nullptr;
         device->QueryInterface(IID_PPV_ARGS(&info_queue));
         info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
@@ -91,9 +95,28 @@ void D3D12GPU::initialize() {
         "Couldn't create the main fence"
     );
 
+    D3D12_HEAP_DESC heap_desc =
+    {
+        .SizeInBytes = MB(64),
+        .Properties = D3D12_HEAP_PROPERTIES
+        {
+            .Type = D3D12_HEAP_TYPE_DEFAULT,
+            .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+            .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+            .CreationNodeMask = 0,
+            .VisibleNodeMask = 0,
+        },
+        .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+        .Flags = D3D12_HEAP_FLAG_NONE,
+    };
+
+    device->CreateHeap1(
+       &heap_desc, nullptr, IID_PPV_ARGS(&heap)
+    );
 }
 
-void D3D12GPU::shutdown() {
+void D3D12GU::shutdown()
+{
     main_fence->Release();
 
     cmd_graphics->Release();

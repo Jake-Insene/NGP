@@ -9,13 +9,16 @@
 #include <unordered_map>
 #include <string>
 
-struct SourceFile {
-    SourceFile() {}
+struct SourceFile
+{
+    SourceFile()
+    {}
 
     SourceFile(SourceFile&&) = default;
     SourceFile& operator=(SourceFile&&) = default;
 
-    ~SourceFile() {
+    ~SourceFile()
+    {
         delete[] source_code;
     }
 
@@ -28,10 +31,13 @@ struct SourceFile {
 
 using SourceFileList = std::vector<SourceFile>;
 
-struct PreProcessor {
-    PreProcessor() {}
-    ~PreProcessor() {}
-    
+struct PreProcessor
+{
+    PreProcessor()
+    {}
+    ~PreProcessor()
+    {}
+
     void process(const char* file_path);
 
     void process_source();

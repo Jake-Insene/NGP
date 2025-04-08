@@ -18,14 +18,16 @@ void Lexer::set(const char* source_file, u8* ctn, u32 s)
     current = content[index];
 }
 
-struct SymbolInfo {
+struct SymbolInfo
+{
     const char* symbol;
     u8 size;
     TokenType type;
     u8 subtype;
 };
 
-SymbolInfo symbols[] = {
+SymbolInfo symbols[] =
+{
     // directives
     {.symbol = "format", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_FORMAT },
     {.symbol = "raw", .size = 3, .type = TOKEN_DIRECTIVE, .subtype = TD_FORMAT_RAW },
@@ -181,11 +183,12 @@ SymbolInfo symbols[] = {
     {.symbol = "zr", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R31 },
     {.symbol = "lr", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R30 },
     {.symbol = "sp", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R29 },
-    
+
 
     // instructions
-    { .symbol = "bl", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_BL },
-    { .symbol = "b", .size = 1, .type = TOKEN_INSTRUCTION, .subtype = TI_B },
+    {.symbol = "nop", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_NOP },
+    {.symbol = "bl", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_BL },
+    {.symbol = "b", .size = 1, .type = TOKEN_INSTRUCTION, .subtype = TI_B },
     {.symbol = "adr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ADR },
 
     {.symbol = "beq", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BEQ },
@@ -263,10 +266,10 @@ SymbolInfo symbols[] = {
     {.symbol = "sth", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STH },
     {.symbol = "stb", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_STB },
 
-    { .symbol = "tbz", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_TBZ },
-    { .symbol = "tbnz", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_TBNZ },
-    { .symbol = "cbz", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_CBZ },
-    { .symbol = "cbnz", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_CBNZ },
+    {.symbol = "tbz", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_TBZ },
+    {.symbol = "tbnz", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_TBNZ },
+    {.symbol = "cbz", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_CBZ },
+    {.symbol = "cbnz", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_CBNZ },
 
     {.symbol = "mul", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MUL },
     {.symbol = "div", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_DIV },
@@ -276,12 +279,12 @@ SymbolInfo symbols[] = {
     {.symbol = "movt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_MOVT },
     {.symbol = "mvn", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MVN },
 
-    { .symbol = "ret", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_RET },
-    { .symbol = "blr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLR },
-    { .symbol = "br", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_BR },
-    { .symbol = "eret", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_ERET },
+    {.symbol = "ret", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_RET },
+    {.symbol = "blr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLR },
+    {.symbol = "br", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_BR },
+    {.symbol = "eret", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_ERET },
     {.symbol = "brk", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BRK },
-    {.symbol = "hlt", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_HLT },
+    {.symbol = "halt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_HALT },
     {.symbol = "sit", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SIT },
 };
 
@@ -300,16 +303,19 @@ SymbolInfo symbols[] = {
     advance();\
 }
 
-Token Lexer::get_next() {
+Token Lexer::get_next()
+{
     Token tk = {};
 
     skip_white_space();
 
-    switch (current) {
+    switch (current)
+    {
     case ';':
     {
         u32 last_line = line;
-        while (last_line == line) {
+        while (last_line == line)
+        {
             advance();
         }
 
@@ -320,40 +326,51 @@ Token Lexer::get_next() {
         tk = get_immediate();
         break;
     case '=':
-        if (peek(1) == '=') {
+        if (peek(1) == '=')
+        {
             MAKE_TOKEN_TWO(TOKEN_EQUALEQUAL);
-        }else{
+        }
+        else
+        {
             MAKE_TOKEN(TOKEN_EQUAL);
         }
 
         break;
     case '!':
-        if (peek(1) == '=') {
+        if (peek(1) == '=')
+        {
             MAKE_TOKEN_TWO(TOKEN_NOTEQUAL);
         }
-        else {
+        else
+        {
             MAKE_TOKEN(TOKEN_NOT);
         }
         break;
     case '<':
-        if (peek(1) == '=') {
+        if (peek(1) == '=')
+        {
             MAKE_TOKEN_TWO(TOKEN_LESSEQUAL);
         }
-        else if (peek(1) == '<') {
+        else if (peek(1) == '<')
+        {
             MAKE_TOKEN_TWO(TOKEN_SHL);
         }
-        else {
+        else
+        {
             MAKE_TOKEN(TOKEN_LESS);
         }
         break;
     case '>':
-        if (peek(1) == '=') {
+        if (peek(1) == '=')
+        {
             MAKE_TOKEN_TWO(TOKEN_GREATEREQUAL);
         }
-        else if (peek(1) == '>') {
+        else if (peek(1) == '>')
+        {
             MAKE_TOKEN_TWO(TOKEN_SHR);
         }
-        else {
+        else
+        {
             MAKE_TOKEN(TOKEN_GREATER);
         }
         break;
@@ -412,13 +429,16 @@ Token Lexer::get_next() {
         MAKE_TOKEN(TOKEN_END_OF_FILE);
         break;
     default:
-        if (is_alpha(current) || current == '_' || current == '.') {
+        if (is_alpha(current) || current == '_' || current == '.')
+        {
             tk = get_symbol_or_label();
         }
-        else if (is_num(current)) {
+        else if (is_num(current))
+        {
             tk = get_immediate();
         }
-        else {
+        else
+        {
             ErrorManager::error(file_path, line, "invalid token '%c'", current);
         }
         break;
@@ -427,26 +447,33 @@ Token Lexer::get_next() {
     return tk;
 }
 
-void Lexer::skip_white_space() {
+void Lexer::skip_white_space()
+{
     while (current == ' '
         || current == '\r'
-        || current == '\t') {
+        || current == '\t')
+    {
         advance();
     }
 }
 
-char Lexer::peek(u8 offset) {
+char Lexer::peek(u8 offset)
+{
     return (index + offset < size) ? content[index + offset] : '\0';
 }
 
-void Lexer::advance() {
-    if (index + 1 < size) {
-        if (current == '\n') {
+void Lexer::advance()
+{
+    if (index + 1 < size)
+    {
+        if (current == '\n')
+        {
             line++;
         }
         current = content[++index];
     }
-    else {
+    else
+    {
         index = size;
         current = '\0';
     }
@@ -460,24 +487,31 @@ Token Lexer::get_symbol_or_label()
     };
 
     u64 start = index;
-    while (is_alnum(current) || current == '_' || current == '.') {
+    while (is_alnum(current) || current == '_' || current == '.')
+    {
         advance();
     }
     tk.str = std::string_view((char*)content + start, index - start);
 
-    if (current == ':') {
+    if (current == ':')
+    {
         advance();
         tk.type = TOKEN_LABEL;
         return tk;
     }
-    else {
+    else
+    {
         tk.type = TOKEN_SYMBOL;
     }
 
-    for (auto& sym : symbols) {
-        if (sym.size == tk.str.size()) {
-            for (u8 i = 0; i < sym.size; i++) {
-                if (sym.symbol[i] != std::tolower(tk.str[i])) {
+    for (auto& sym : symbols)
+    {
+        if (sym.size == tk.str.size())
+        {
+            for (u8 i = 0; i < sym.size; i++)
+            {
+                if (sym.symbol[i] != std::tolower(tk.str[i]))
+                {
                     goto next;
                 }
             }
@@ -485,32 +519,38 @@ Token Lexer::get_symbol_or_label()
             tk.type = sym.type;
             tk.subtype = sym.subtype;
         next:
-            {}
+            {
+            }
         }
     }
 
     return tk;
 }
 
-Token Lexer::get_immediate() {
+Token Lexer::get_immediate()
+{
     Token tk = {
         .source_file = file_path,
         .line = line,
         .type = TOKEN_IMMEDIATE,
     };
 
-    if (current == '#') {
+    if (current == '#')
+    {
         advance();
     }
 
     int base = 10;
-    if (current == '0') {
-        if (peek(1) == 'X' || peek(1) == 'x') {
+    if (current == '0')
+    {
+        if (peek(1) == 'X' || peek(1) == 'x')
+        {
             base = 16;
             advance();
             advance();
         }
-        else if (peek(1) == 'b' || peek(1) == 'B') {
+        else if (peek(1) == 'b' || peek(1) == 'B')
+        {
             base = 2;
             advance();
             advance();
@@ -519,65 +559,79 @@ Token Lexer::get_immediate() {
 
     u32 start = index;
     u32 i = 0;
-    while (is_hex(current) && i < 32) {
+    while (is_hex(current) && i < 32)
+    {
         advance();
         i++;
     }
 
-    if (i >= 32) {
+    if (i >= 32)
+    {
         ErrorManager::error(file_path, line, "constant number too long", current);
     }
 
     bool is_single = false;
-    if (current == '.') {
-        if (peek(1) == 'f' || peek(1) == 'F') {
+    if (current == '.')
+    {
+        if (peek(1) == 'f' || peek(1) == 'F')
+        {
             is_single = true;
         }
 
-        while (is_num(current) && i < 32) {
+        while (is_num(current) && i < 32)
+        {
             advance();
             i++;
         }
 
-        if (i >= 32) {
+        if (i >= 32)
+        {
             ErrorManager::error(file_path, line, "constant number too long", current);
         }
 
-        if (is_single) {
-            tk.s = std::strtof((char*)content +start, nullptr);
+        if (is_single)
+        {
+            tk.s = std::strtof((char*)content + start, nullptr);
         }
-        else {
+        else
+        {
             tk.d = std::strtod((char*)content + start, nullptr);
         }
     }
-    else {
+    else
+    {
         tk.u = std::stoull((char*)content + start, nullptr, base);
     }
 
     return tk;
 }
 
-bool Lexer::is_alpha(u8 c) const {
+bool Lexer::is_alpha(u8 c) const
+{
     return (c >= 'a' && c <= 'z')
         || (c >= 'A' && c <= 'Z');
 }
 
-bool Lexer::is_num(u8 c) const {
+bool Lexer::is_num(u8 c) const
+{
     return (c >= '0' && c <= '9');
 }
 
-bool Lexer::is_alnum(u8 c) const {
+bool Lexer::is_alnum(u8 c) const
+{
     return is_alpha(c) || is_num(c);
 }
 
-bool Lexer::is_hex(u8 c) const {
+bool Lexer::is_hex(u8 c) const
+{
     return
         is_num(c) ||
         (c >= 'A' && c <= 'F') ||
         (c >= 'a' && c <= 'f');
 }
 
-Token Lexer::get_string() {
+Token Lexer::get_string()
+{
     Token tk = {
         .source_file = file_path,
         .line = line,
@@ -588,8 +642,10 @@ Token Lexer::get_string() {
 
     advance(); // " || '
     u32 start = index;
-    while ((cuot ? current != '\'' : current != '"') && current != '\0') {
-        if (current == '\'' || current == '"') {
+    while ((cuot ? current != '\'' : current != '"') && current != '\0')
+    {
+        if (current == '\'' || current == '"')
+        {
             ErrorManager::error(file_path, line, "inconsist string");
             return tk;
         }
@@ -597,10 +653,12 @@ Token Lexer::get_string() {
     }
     tk.str = std::string_view((char*)content + start, index - start);
 
-    if (current == '\0') {
+    if (current == '\0')
+    {
         ErrorManager::error(file_path, line, "bad string");
     }
-    else {
+    else
+    {
         advance(); // " || '
     }
 

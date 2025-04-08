@@ -7,14 +7,16 @@
 #include "Backend/Assembler.h"
 #include "ErrorManager.h"
 
-struct ParseFn {
+struct ParseFn
+{
     Token(Assembler::* prefix)(Token, Token);
     Token(Assembler::* infix)(Token, Token);
 
     ParsePrecedence precedence;
 };
 
-static inline ParseFn rules[TOKEN_COUNT] = {
+static inline ParseFn rules[TOKEN_COUNT] =
+{
     {}, // ERROR
     {}, // END OF FILE
     {&Assembler::parse_immediate, nullptr, ParsePrecedence::None},
@@ -44,7 +46,7 @@ static inline ParseFn rules[TOKEN_COUNT] = {
     {&Assembler::parse_minus, &Assembler::parse_sub, ParsePrecedence::Term},
     {nullptr, &Assembler::parse_mul, ParsePrecedence::Term},
     {nullptr, &Assembler::parse_div, ParsePrecedence::Factor},
-    
+
     {nullptr, &Assembler::parse_xor, ParsePrecedence::BitwiseXor},
     {&Assembler::parse_not, nullptr, ParsePrecedence::None},
     {nullptr, &Assembler::parse_and, ParsePrecedence::BitwiseAnd},
@@ -56,36 +58,44 @@ static inline ParseFn rules[TOKEN_COUNT] = {
     {&Assembler::parse_register, nullptr, ParsePrecedence::None},
 };
 
-static inline ParseFn get_rule(TokenType type) {
+static inline ParseFn get_rule(TokenType type)
+{
     return rules[type];
 }
 
 // Prefix
 #define CHECK_IMMEDIATE(tk) \
-    if(tk.type != TOKEN_IMMEDIATE) {\
+    if(tk.type != TOKEN_IMMEDIATE)\
+    {\
         MAKE_ERROR(tk, return tk, "invalid expresion");\
     }
 
-Token Assembler::parse_minus(Token, Token) {
+Token Assembler::parse_minus(Token, Token)
+{
     Token tk = parse_expresion(ParsePrecedence::Unary);
     tk.i = -tk.i;
     return tk;
 }
 
-Token Assembler::parse_not(Token, Token) {
+Token Assembler::parse_not(Token, Token)
+{
     Token tk = parse_expresion(ParsePrecedence::Unary);
     tk.u = ~tk.u;
     return tk;
 }
 
-Token Assembler::parse_immediate(Token, Token) {
+Token Assembler::parse_immediate(Token, Token)
+{
     return *last;
 }
 
-Token Assembler::parse_symbol(Token, Token) {
+Token Assembler::parse_symbol(Token, Token)
+{
     auto it = find_label(last->str);
-    if (it != symbols.end()) {
-        if (it->second.ivalue == -1) {
+    if (it != symbols.end())
+    {
+        if (it->second.ivalue == -1)
+        {
             context.undefined_label = true;
         }
 
@@ -98,7 +108,7 @@ Token Assembler::parse_symbol(Token, Token) {
     }
 
     ErrorManager::error(
-        last->source_file, last->line, 
+        last->source_file, last->line,
         "undefined reference to %.*s", last->str.size(), last->str.data()
     );
     context.unknown_label = true;
@@ -109,24 +119,28 @@ Token Assembler::parse_symbol(Token, Token) {
     };
 }
 
-Token Assembler::parse_register(Token, Token) {
+Token Assembler::parse_register(Token, Token)
+{
     return *last;
 }
 
-Token Assembler::parse_group(Token, Token) {
+Token Assembler::parse_group(Token, Token)
+{
     Token result = parse_expresion(ParsePrecedence::Start);
     expected(TOKEN_RIGHT_PARENT, "')' was expected");
     return result;
 }
 
-Token Assembler::parse_dollar(Token, Token) {
+Token Assembler::parse_dollar(Token, Token)
+{
     return Token{
         .type = TOKEN_IMMEDIATE,
         .u = program_index
     };
 }
 
-Token Assembler::parse_string(Token, Token) {
+Token Assembler::parse_string(Token, Token)
+{
     return *last;
 }
 
@@ -144,31 +158,36 @@ Token Assembler::parse_string(Token, Token) {
 #define OP_IN_CASE_BIN(field, op) \
         lhs.field = lhs.field op rhs.field;\
 
-Token Assembler::parse_add(Token lhs, Token rhs) {
+Token Assembler::parse_add(Token lhs, Token rhs)
+{
     CHECK_INFIX();
     OP_IN_CASE(+);
     return lhs;
 }
 
-Token Assembler::parse_sub(Token lhs, Token rhs) {
+Token Assembler::parse_sub(Token lhs, Token rhs)
+{
     CHECK_INFIX();
     OP_IN_CASE(-);
     return lhs;
 }
 
-Token Assembler::parse_and(Token lhs, Token rhs) {
+Token Assembler::parse_and(Token lhs, Token rhs)
+{
     CHECK_INFIX();
     OP_IN_CASE_BIN(u, &);
     return lhs;
 }
 
-Token Assembler::parse_or(Token lhs, Token rhs) {
+Token Assembler::parse_or(Token lhs, Token rhs)
+{
     CHECK_INFIX();
-    OP_IN_CASE_BIN(u, |);
+    OP_IN_CASE_BIN(u, | );
     return lhs;
 }
 
-Token Assembler::parse_xor(Token lhs, Token rhs) {
+Token Assembler::parse_xor(Token lhs, Token rhs)
+{
     CHECK_INFIX();
     OP_IN_CASE_BIN(u, ^);
     return lhs;
@@ -180,43 +199,51 @@ Token Assembler::parse_shl(Token lhs, Token rhs) {
     return lhs;
 }
 
-Token Assembler::parse_shr(Token lhs, Token rhs) {
+Token Assembler::parse_shr(Token lhs, Token rhs)
+{
     CHECK_INFIX();
-    OP_IN_CASE_BIN(u, >>);
+    OP_IN_CASE_BIN(u, >> );
     return lhs;
 }
 
-Token Assembler::parse_asr(Token lhs, Token rhs) {
+Token Assembler::parse_asr(Token lhs, Token rhs)
+{
     CHECK_INFIX();
-    OP_IN_CASE_BIN(i, >>);
+    OP_IN_CASE_BIN(i, >> );
     return lhs;
 }
 
-Token Assembler::parse_mul(Token lhs, Token rhs) {
+Token Assembler::parse_mul(Token lhs, Token rhs)
+{
     CHECK_INFIX();
     OP_IN_CASE(*);
     return lhs;
 }
 
-Token Assembler::parse_div(Token lhs, Token rhs) {
+Token Assembler::parse_div(Token lhs, Token rhs)
+{
     CHECK_INFIX();
-    OP_IN_CASE(/);
+    OP_IN_CASE(/ );
     return lhs;
 }
 
-Token Assembler::parse_expresion(ParsePrecedence precedence) {
+Token Assembler::parse_expresion(ParsePrecedence precedence)
+{
     ParseFn rule = get_rule(current->type);
     advance();
 
     Token result = {};
-    if (rule.prefix) {
+    if (rule.prefix)
+    {
         result = (this->*rule.prefix)(Token{}, Token{});
     }
-    else         {
+    else
+    {
         MAKE_ERROR((*last), return result, "invalid expresion");
     }
 
-    while (u32(precedence) <= u32((rule = get_rule(current->type)).precedence)) {
+    while (u32(precedence) <= u32((rule = get_rule(current->type)).precedence))
+    {
         advance();
         result = (this->*rule.infix)(result, {});
     }

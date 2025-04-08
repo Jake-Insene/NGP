@@ -7,16 +7,13 @@
 #pragma once
 #include "Core/Header.h"
 
-namespace IO {
+namespace IO
+{
 
-enum DMARegister {
-    DMA_ENABLE_MASK = 0x100,
-    DMA_IRQ_MASK = 0x104,
-    DMA_PRIORITY_MASK = 0x108,
-    DMA_WAIT_ON_MASK = 0x10C,
-};
 
-enum DMAChannel {
+
+enum DMAChannel
+{
     DMA_RAM = 0,
     DMA_GPU = 1,
     DMA_IOPU = 2,
@@ -24,27 +21,30 @@ enum DMAChannel {
     DMA_SPU = 4,
 };
 
-enum DMAChannelBit {
+enum DMAChannelBit
+{
     DMA_RAM_MASK = 0x1,
     DMA_GPU_MASK = 0x2,
-    DMA_IOPU_MASK = 0x4,
-    DMA_CPU_MASK = 0x8,
-    DMA_SPU_MASK = 0x10,
+    DMA_EMD_MASK = 0x4,
+    DMA_SPU_MASK = 0x8,
 };
 
-enum DMACtrFlags {
+enum DMACtrFlags
+{
     DMA_START = 0x1,
     DMA_BUSY = 0x1,
 };
 
-enum DMAChannelRegister {
+enum DMAChannelRegister
+{
     DMA_CTR = 0,
     DMA_SRC = 1,
     DMA_DST = 2,
     DMA_CNT = 3,
 };
 
-struct DMAChannelRegs {
+struct DMAChannelRegs
+{
     u32 ctr;
     u32 src;
     u32 dst;

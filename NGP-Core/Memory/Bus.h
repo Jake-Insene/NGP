@@ -16,12 +16,12 @@ namespace Bus {
 // RAM	20000000 - 1FFFFFFF = 256 MB
 
 static constexpr u32 BIOS_START = 0x0000'0000;
-static constexpr u32 IO_START = 0x1000'0000;
-static constexpr u32 RAM_START = 0x2000'0000;
-
 static constexpr u32 BIOS_END = 0x003F'FFFF;
+
+static constexpr u32 IO_START = 0x1000'0000;
 static constexpr u32 IO_END = 0x1000'0FFF;
-static constexpr u32 RAM_END = 0x1FFF'FFFF;
+
+static constexpr u32 RAM_START = 0x2000'0000;
 
 static constexpr u32 BIOS_SIZE = MB(4U);
 static constexpr u32 IO_SIZE = KB(4U);

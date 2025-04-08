@@ -6,9 +6,10 @@
 /******************************************************/
 #pragma once
 #include "Platform/Header.h"
-#include "Video/GPU.h"
+#include "Video/GU.h"
 
-struct D3D12GPU {
+struct D3D12GU
+{
     static GPUDriver get();
 
     static void initialize();
@@ -27,9 +28,12 @@ struct D3D12GPU {
     static inline ID3D12Fence* main_fence = nullptr;
     static inline u64 fence_value = 0;
 
-    static inline D3D12_VIEWPORT VIEWPORT = {
+    static inline D3D12_VIEWPORT VIEWPORT =
+    {
         0.0f, 0.0f,
         0.f, 0.f,
         0.f, 1.f,
     };
+
+    static inline ID3D12Heap1* heap = nullptr;
 };

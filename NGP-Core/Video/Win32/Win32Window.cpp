@@ -14,8 +14,10 @@ static inline IO::PadButton _wp_to_buttons(WPARAM wp) {
     return buttons_map[wp & 0xFF];
 }
 
-LRESULT wnd_proc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp) {
-    switch (msg) {
+LRESULT wnd_proc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp)
+{
+    switch (msg)
+    {
     case WM_CLOSE:
         Window::is_open = false;
         PostQuitMessage(0);
@@ -58,7 +60,8 @@ void Window::initialize(u32 width, u32 height)
     current_height = height;
 
     static bool is_register = false;
-    if (!is_register) {
+    if (!is_register)
+    {
         WNDCLASSEXA wc = {
             .cbSize = sizeof(WNDCLASSEXA),
             .style = CS_HREDRAW | CS_VREDRAW,
@@ -93,7 +96,8 @@ void Window::initialize(u32 width, u32 height)
     is_open = true;
 }
 
-void Window::shutdown() {
+void Window::shutdown()
+{
     DestroyWindow((HWND)handle);
 }
 

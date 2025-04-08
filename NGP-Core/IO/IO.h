@@ -10,13 +10,18 @@
 
 struct CPUCore;
 
-namespace IO {
+namespace IO
+{
 
-static constexpr u32 IRQ_STATUS = 0x1000'0110;
-static constexpr u32 IRQ_ENABLE_MASK = 0x1000'0114;
+static constexpr u32 DMA_CHANNELS_START = 0x1000'0000;
 
-using IOFuncRead = Word(*)();
-using IOFuncWrite = void(*)(Word);
+static constexpr u32 DMA_ENABLE_MASK = 0x1000'1000;
+static constexpr u32 DMA_IRQ_MASK = 0x104;
+static constexpr u32 DMA_PRIORITY_MASK = 0x108;
+static constexpr u32 DMA_WAIT_ON_MASK = 0x10C;
+
+static constexpr u32 IRQ_STATUS = 0x1000'1000;
+static constexpr u32 IRQ_ENABLE_MASK = 0x1000'1004;
 
 void initialize();
 void shutdown();
@@ -36,39 +41,51 @@ void write_io_dword(CPUCore& core, u32 address, DWord value);
 void write_io_qword(CPUCore& core, u32 address, QWord value);
 
 template<typename T>
-T read_io(CPUCore& core, u32 address) {
-    if constexpr (std::same_as<T, u8>) {
+T read_io(CPUCore& core, u32 address)
+{
+    if constexpr (std::same_as<T, u8>)
+    {
         return read_io_byte(core, address);
     }
-    else if constexpr (std::same_as<T, u16>) {
+    else if constexpr (std::same_as<T, u16>)
+    {
         return read_io_half(core, address);
     }
-    else if constexpr (std::same_as<T, Word>) {
+    else if constexpr (std::same_as<T, Word>)
+    {
         return read_io_word(core, address);
     }
-    else if constexpr (std::same_as<T, DWord>) {
+    else if constexpr (std::same_as<T, DWord>)
+    {
         return read_io_dword(core, address);
     }
-    else if constexpr (std::same_as<T, QWord>) {
+    else if constexpr (std::same_as<T, QWord>)
+    {
         return read_io_qword(core, address);
     }
 }
 
 template<typename T>
-void write_io(CPUCore& core, u32 address, T value) {
-    if constexpr (std::same_as<T, u8>) {
+void write_io(CPUCore& core, u32 address, T value)
+{
+    if constexpr (std::same_as<T, u8>)
+    {
         write_io_byte(core, address, value);
     }
-    else if constexpr (std::same_as<T, u16>) {
+    else if constexpr (std::same_as<T, u16>)
+    {
         write_io_half(core, address, value);
     }
-    else if constexpr (std::same_as<T, Word>) {
+    else if constexpr (std::same_as<T, Word>)
+    {
         write_io_word(core, address, value);
     }
-    else if constexpr (std::same_as<T, DWord>) {
+    else if constexpr (std::same_as<T, DWord>)
+    {
         write_io_dword(core, address, value);
     }
-    else if constexpr (std::same_as<T, QWord>) {
+    else if constexpr (std::same_as<T, QWord>)
+    {
         write_io_qword(core, address, value);
     }
 }

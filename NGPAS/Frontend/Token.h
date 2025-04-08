@@ -53,7 +53,8 @@ enum TokenType : u8 {
     TOKEN_COUNT,
 };
 
-enum TokenRegister : u8 {
+enum TokenRegister : u8
+{
     TOKEN_R0 = 0,
     TOKEN_R1,
     TOKEN_R2,
@@ -187,7 +188,8 @@ enum TokenRegister : u8 {
     TOKEN_Q31,
 };
 
-enum TokenDirective : u8 {
+enum TokenDirective : u8
+{
     TD_FORMAT,
     TD_FORMAT_RAW,
     TD_FORMAT_ROM,
@@ -203,7 +205,10 @@ enum TokenDirective : u8 {
     TD_SPACE,
 };
 
-enum TokenInstruction : u8 {
+enum TokenInstruction : u8
+{
+    TI_NOP,
+
     TI_BL,
     TI_B,
     TI_ADR,
@@ -294,7 +299,7 @@ enum TokenInstruction : u8 {
     TI_MUL,
     TI_DIV,
     TI_UDIV,
-    
+
     TI_MOV,
     TI_MOVT,
     TI_MVN,
@@ -303,23 +308,25 @@ enum TokenInstruction : u8 {
 
     TI_BLR,
     TI_BR,
-    
+
     TI_ERET,
     TI_BRK,
-    TI_HLT,
+    TI_HALT,
     TI_SIT,
 
 };
 
-struct Token {
+struct Token
+{
     const char* source_file;
     u32 line;
     TokenType type;
     u8 subtype;
-    
+
     std::string_view str;
 
-    union {
+    union
+    {
         u8 byte[8] = {};
         u16 ishort[4];
         u16 ushort[4];
@@ -331,22 +338,37 @@ struct Token {
         f64 d;
     };
 
-    [[nodiscard]] constexpr bool is(TokenType tk) const { return type == tk; }
-    [[nodiscard]] constexpr bool is_one_of(TokenType tk1, TokenType tk2) const { return type == tk1 || type == tk2; }
-    
-    [[nodiscard]] constexpr bool is_not(TokenType tk) const { return type != tk; }
+    [[nodiscard]] constexpr bool is(TokenType tk) const
+    {
+        return type == tk;
+    }
+    [[nodiscard]] constexpr bool is_one_of(TokenType tk1, TokenType tk2) const
+    {
+        return type == tk1 || type == tk2;
+    }
 
-    [[nodiscard]] constexpr bool is_fpreg() const { return is_single_reg() || is_double_reg() || is_qword_reg(); }
+    [[nodiscard]] constexpr bool is_not(TokenType tk) const
+    {
+        return type != tk;
+    }
 
-    [[nodiscard]] constexpr bool is_single_reg() const {
+    [[nodiscard]] constexpr bool is_fpreg() const
+    {
+        return is_single_reg() || is_double_reg() || is_qword_reg();
+    }
+
+    [[nodiscard]] constexpr bool is_single_reg() const
+    {
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_S0 && subtype <= TOKEN_S31);
     }
 
-    [[nodiscard]] constexpr bool is_double_reg() const {
+    [[nodiscard]] constexpr bool is_double_reg() const
+    {
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_D0 && subtype <= TOKEN_D31);
     }
 
-    [[nodiscard]] constexpr bool is_qword_reg() const {
+    [[nodiscard]] constexpr bool is_qword_reg() const
+    {
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_Q0 && subtype <= TOKEN_Q31);
     }
 

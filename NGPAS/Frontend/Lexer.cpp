@@ -314,7 +314,7 @@ Token Lexer::get_next()
     case ';':
     {
         u32 last_line = line;
-        while (last_line == line)
+        while (last_line == line && current != '\0')
         {
             advance();
         }
@@ -548,12 +548,24 @@ Token Lexer::get_immediate()
             base = 16;
             advance();
             advance();
+
+            if (!is_hex(current))
+            {
+                ErrorManager::error(file_path, line, "invalid constant", current);
+                return tk;
+            }
         }
         else if (peek(1) == 'b' || peek(1) == 'B')
         {
             base = 2;
             advance();
             advance();
+
+            if (!is_bin(current))
+            {
+                ErrorManager::error(file_path, line, "invalid constant", current);
+                return tk;
+            }
         }
     }
 
@@ -628,6 +640,11 @@ bool Lexer::is_hex(u8 c) const
         is_num(c) ||
         (c >= 'A' && c <= 'F') ||
         (c >= 'a' && c <= 'f');
+}
+
+bool Lexer::is_bin(u8 c) const
+{
+    return c == '0' || c == '1';
 }
 
 Token Lexer::get_string()

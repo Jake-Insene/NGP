@@ -14,15 +14,26 @@ struct GPUDriver
 {
     void(*initialize)();
     void(*shutdown)();
+
+    void(*present)();
+
+    VirtualAddress(*create_framebuffer)();
+    void(*update_framebuffer)(void*);
 };
 
-struct GPU
+struct GU
 {
+    static constexpr i32 MaxDeviceScreenWidth = 256;
+    static constexpr i32 MaxDeviceScreenHeight = 144;
+
     enum DriverApi
     {
         D3D12 = 0,
+        VGPU = 1,
     };
 
     static void initialize(DriverApi api);
     static void shutdown();
+
+    static void present();
 };

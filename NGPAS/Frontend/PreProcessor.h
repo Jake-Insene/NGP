@@ -18,9 +18,7 @@ struct SourceFile
     SourceFile& operator=(SourceFile&&) = default;
 
     ~SourceFile()
-    {
-        delete[] source_code;
-    }
+    {}
 
     std::string file_path;
 

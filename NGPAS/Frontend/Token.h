@@ -318,10 +318,10 @@ enum TokenInstruction : u8
 
 struct Token
 {
-    const char* source_file;
-    u32 line;
-    TokenType type;
-    u8 subtype;
+    const char* source_file = nullptr;
+    u32 line = 0;
+    TokenType type = TOKEN_END_OF_FILE;
+    u8 subtype = 0;
 
     std::string_view str;
 
@@ -342,14 +342,10 @@ struct Token
     {
         return type == tk;
     }
+
     [[nodiscard]] constexpr bool is_one_of(TokenType tk1, TokenType tk2) const
     {
         return type == tk1 || type == tk2;
-    }
-
-    [[nodiscard]] constexpr bool is_not(TokenType tk) const
-    {
-        return type != tk;
     }
 
     [[nodiscard]] constexpr bool is_fpreg() const

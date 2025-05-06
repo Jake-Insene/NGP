@@ -64,7 +64,7 @@ void Assembler::phase1() {
     advance();
     advance();
 
-    while (current->is_not(TOKEN_END_OF_FILE)) {
+    while (!current->is(TOKEN_END_OF_FILE)) {
         if (ErrorManager::must_syncronize) {
             syncronize();
         }
@@ -96,7 +96,7 @@ void Assembler::phase1() {
         case TOKEN_INSTRUCTION:
         {
             u32 line = current->line;
-            while (line == current->line && current->is_not(TOKEN_END_OF_FILE)) {
+            while (line == current->line && !current->is(TOKEN_END_OF_FILE)) {
                 if (current->is(TOKEN_SYMBOL) && current->str[0] == '.') {
                     std::string composed = std::string(last_label) + std::string(current->str);
                     auto it = find_label(composed);
@@ -115,7 +115,7 @@ void Assembler::phase1() {
         case TOKEN_LABEL:
         {
             Symbol& symbol = make_label(*current, u64(-1), current->source_file, current->line);
-            symbol.isDefined = false;
+            symbol.is_defined = false;
             current->str = symbol.symbol;
             advance();
         }
@@ -188,11 +188,15 @@ void Assembler::phase2() {
     advance();
     advance();
 
-    while (current->is_not(TOKEN_END_OF_FILE)) {
+    while (!current->is(TOKEN_END_OF_FILE)) {
         context.undefined_label = false;
 
         if (ErrorManager::must_syncronize) {
             syncronize();
+            if (current->is(TOKEN_END_OF_FILE))
+            {
+                continue;
+            }
         }
 
         switch (current->type) {
@@ -203,7 +207,7 @@ void Assembler::phase2() {
 
             auto it = find_label(name->str);
             if (it != symbols.end()) {
-                if (it->second.isDefined) {
+                if (it->second.is_defined) {
                     goto_next_line();
                 }
             }
@@ -237,7 +241,7 @@ void Assembler::phase2() {
         }
             break;
         case TOKEN_INSTRUCTION:
-            assembleInstruction();
+            assemble_instruction();
             break;
         default:
             ErrorManager::error(current->source_file, current->line, "invalid token");
@@ -256,7 +260,7 @@ void Assembler::resolve_instructions() {
         advance();
         advance();
 
-        assembleInstruction();
+        assemble_instruction();
     }
 
     program_index = index;
@@ -268,13 +272,6 @@ void Assembler::advance()
     current = next;
     if (token_index < pre_processor.tokens.size()) {
         next = &pre_processor.tokens[token_index++];
-    }
-    else {
-        static Token end_of_file = Token{
-            .type = TOKEN_END_OF_FILE
-        };
-
-        next = &end_of_file;
     }
 }
 
@@ -324,13 +321,13 @@ bool Assembler::expected(TokenType tk, const char* format, ...) {
 void Assembler::goto_next_line()
 {
     u32 line = current->line;
-    while (line == current->line && current->is_not(TOKEN_END_OF_FILE)) {
+    while (line == current->line && !current->is(TOKEN_END_OF_FILE)) {
         advance();
     }
 }
 
 void Assembler::advance_to_next_line() {
-    while (current->is_not(TOKEN_NEW_LINE)) {
+    while (!current->is(TOKEN_NEW_LINE)) {
         advance();
     }
 }

@@ -4,6 +4,9 @@ project("NGP")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:>")
+
 include_directories("NGP-Core")
 
 file(GLOB NGPAS_SOURCES
@@ -24,11 +27,14 @@ target_link_libraries("ngpas" "ngp-core")
 
 file(GLOB NGP_CORE_SOURCES
     "NGP-Core/CPU/CPUCore.cpp"
-    "NGP-Core/IO/DMA.cpp"
     "NGP-Core/IO/IO.cpp"
-    "NGP-Core/IO/Pad.cpp"
+    "NGP-Core/IO/DMA/DMA.cpp"
+    "NGP-Core/IO/IRQ/IRQ.cpp"
+    "NGP-Core/IO/Pad/Pad.cpp"
     "NGP-Core/Memory/Bus.cpp"
     "NGP-Core/Video/GU.cpp"
+    "NGP-Core/Video/VGPU/VGPU.cpp"
+    "NGP-Core/Emulator.cpp"
 )
 
 
@@ -41,7 +47,7 @@ if(WIN32)
         "NGP-Core/Video/D3D12/D3D12GU.cpp"
     )
 
-    set(NGP_CORE_PLATFORM_LIBRARIES "d3d12")
+    set(NGP_CORE_PLATFORM_LIBRARIES "d3d12" "dxgi" "d3dcompiler")
 else()
     file(GLOB NGP_CORE_PLATFORM_SOURCE
         "NGP-Core/Platform/Linux/LinuxOS.cpp"
@@ -62,7 +68,7 @@ add_executable("ngp" ${NGP_SOURCES})
 
 target_link_libraries("ngp" "ngp-core")
 add_custom_command(TARGET "ngp"
-    POST_BUILD COMMAND .\\ngpas.exe ..\\..\\BIOS\\BIOS.asm
+    POST_BUILD COMMAND .\\ngpas ..\\..\\BIOS\\BIOS.asm
 )
 
 add_custom_command(TARGET "ngp"

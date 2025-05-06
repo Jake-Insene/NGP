@@ -4,9 +4,10 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "Platform/Header.h"
 #include "Video/Window.h"
-#include "IO/Pad.h"
+
+#include "Platform/Header.h"
+#include "IO/Pad/Pad.h"
 
 IO::PadButton buttons_map[256] = {};
 
@@ -29,17 +30,15 @@ LRESULT wnd_proc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp)
         Window::current_height = HIWORD(lp);
         break;
     case WM_KEYDOWN:
-        IO::pad_update(0, _wp_to_buttons(wp), true);
-        break;
     case WM_KEYUP:
-        IO::pad_update(0, _wp_to_buttons(wp), false);
+        IO::pad_update(0, _wp_to_buttons(wp), msg == WM_KEYDOWN);
         break;
     }
 
     return DefWindowProcA(wnd, msg, wp, lp);
 }
 
-void Window::initialize(u32 width, u32 height)
+void Window::initialize(i32 width, i32 height)
 {
     buttons_map['A'] = IO::PAD_LEFT;
     buttons_map['D'] = IO::PAD_RIGHT;
@@ -81,15 +80,20 @@ void Window::initialize(u32 width, u32 height)
         is_register = true;
     }
 
-    RECT rect = {};
-    GetWindowRect(GetDesktopWindow(), &rect);
+    RECT desktop_rect = {};
+    GetWindowRect(GetDesktopWindow(), &desktop_rect);
 
-    i32 centerX = ((rect.right - rect.left) / 2) - (width / 2);
-    i32 centerY = ((rect.bottom - rect.top) / 2) - (height / 2);
+    RECT window_rect = {};
+    window_rect.right = width;
+    window_rect.bottom = height;
+    AdjustWindowRectEx(&window_rect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
+
+    i32 centerX = ((desktop_rect.right - desktop_rect.left) / 2) - (width / 2);
+    i32 centerY = ((desktop_rect.bottom - desktop_rect.top) / 2) - (height / 2);
 
     handle = CreateWindowExA(
-        WS_EX_APPWINDOW, "ngpw", "NGP", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-        centerX, centerY, width, height,
+        WS_EX_OVERLAPPEDWINDOW, "ngpw", "NGP", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        centerX, centerY, window_rect.right - window_rect.left, window_rect.bottom - window_rect.top,
         nullptr, nullptr, nullptr, nullptr
     );
 
@@ -104,7 +108,8 @@ void Window::shutdown()
 void Window::update()
 {
     MSG msg = {};
-    while (PeekMessageA(&msg, 0, 0, 0, PM_REMOVE) == TRUE) {
+    while (PeekMessageA(&msg, 0, 0, 0, PM_REMOVE) == TRUE)
+    {
         TranslateMessage(&msg);
         DispatchMessageA(&msg);
     }

@@ -10,7 +10,7 @@
 // Base
 // [0 - 5] | opcode
 
-// Call/Branch
+// Branch/BranchLinkage
 // [6 - 31] -> Disp26
 
 // Binary (Immediate)
@@ -22,10 +22,17 @@
 // [6 - 10] -> Dest/Src
 // [11 - 31] -> Rel21
 
+// TBZ/TBNZ
+// [6 - 10] -> Src
+// [11 - 15] -> Imm5
+// [16 - 31] -> Disp16
+
 // Registers X0-X31
 // R31 = ZR,
 // R30 = LR
 // R29 = SP
+
+static const u32 ZeroRegister = 31;
 
 enum NGPBaseOpcode : u8
 {

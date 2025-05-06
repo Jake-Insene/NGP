@@ -75,13 +75,13 @@
 
 
 
-void Assembler::assembleInstruction()
+void Assembler::assemble_instruction()
 {
     advance(); // inst
 
-    if (align_up(u32(program_index), 4) != u32(program_index) && !ErrorManager::is_panic_mode)
+    if (align_up(u32(program_index), 4) != program_index && !ErrorManager::is_panic_mode)
     {
-        MAKE_ERROR((*last), {}, "rom isn't aligned");
+        MAKE_ERROR((*last), {}, "bad file alignment");
     }
     u32& inst = new_word();
 
@@ -94,7 +94,16 @@ void Assembler::assembleInstruction()
         RELATIVE(bl, TI_BL);
         break;
     case TI_B:
-        RELATIVE(b, TI_B);
+    {
+        u32 index = token_index - 3; auto target = parse_expresion(ParsePrecedence::Start); if (context.undefined_label == false)
+        {
+            inst = b(i32(target.u - program_index) / 4);
+        }
+        else if (context.is_in_resolve == false)
+        {
+            auto& tr = to_resolve.emplace_back(); tr.address = u32(program_index - 4); tr.index = index; advance_to_next_line();
+        }
+    };
         break;
     case TI_ADR:
     {
@@ -427,13 +436,13 @@ void Assembler::assembleInstruction()
 
     if (ErrorManager::is_panic_mode)
     {
-        while (current->is_not(TOKEN_END_OF_FILE) && current->is_not(TOKEN_NEW_LINE))
+        while (!current->is(TOKEN_END_OF_FILE) && !current->is(TOKEN_NEW_LINE))
         {
             advance();
         }
     }
 
-    if (current->is_not(TOKEN_END_OF_FILE))
+    if (!current->is(TOKEN_END_OF_FILE))
     {
         expected(TOKEN_NEW_LINE, "a new line was expected");
     }
@@ -464,10 +473,10 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
     }
     EXPECTED_COMMA(return);
 
-    if (handle_symbol)
+    if (handle_symbol && !current->is(TOKEN_LEFT_KEY))
     {
         Token symbol = parse_expresion(ParsePrecedence::Start);
-        if (context.undefined_label == false)
+        if (context.undefined_label == false && !context.is_in_resolve)
         {
             if (fp_type == 1)
             {
@@ -494,9 +503,6 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             advance_to_next_line();
             return;
         }
-        else
-        {
-        }
     }
 
     EXPECTED_KEY_LEFT(return);
@@ -512,7 +518,7 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
         advance();
         inst = memoryi(imm_opcode, dest, base, 0, 0);
     }
-    else if (current->is_not(TOKEN_NEW_LINE))
+    else if (!current->is(TOKEN_NEW_LINE))
     {
         expected(TOKEN_COMMA, "',' was expected");
 
@@ -680,7 +686,7 @@ void Assembler::assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediat
         u8 amount = 0;
         check_for_amount(adder, amount);
 
-        inst = alu(opc + adder, 31, src1, src2, amount);
+        inst = alu(opc + adder, ZeroRegister, src1, src2, amount);
     }
     else if (second_source.is(TOKEN_IMMEDIATE))
     {
@@ -688,7 +694,7 @@ void Assembler::assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediat
         {
             MAKE_ERROR(second_source, return, "immediate value too long");
         }
-        inst = binaryi(opc_imm, 0, src1, second_source.ushort[0]);
+        inst = binaryi(opc_imm, ZeroRegister, src1, second_source.ushort[0]);
     }
     else if (second_source.is(TOKEN_NEW_LINE))
     {

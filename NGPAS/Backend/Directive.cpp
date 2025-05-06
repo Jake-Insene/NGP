@@ -27,7 +27,7 @@ void Assembler::assemble_directive() {
         }
 
         if (current->is(TOKEN_DIRECTIVE) && current->subtype == TD_AS) {
-            if (next->is_not(TOKEN_STRING)) {
+            if (!next->is(TOKEN_STRING)) {
                 MAKE_ERROR((*current), return, "a file extension was expected");
             }
 
@@ -41,7 +41,7 @@ void Assembler::assemble_directive() {
     case TD_ORG:
     {
         Token result = parse_expresion(ParsePrecedence::Start);
-        if (result.is_not(TOKEN_IMMEDIATE)) {
+        if (!result.is(TOKEN_IMMEDIATE)) {
             MAKE_ERROR(result, break, "a immediate value was expected");
         }
 
@@ -57,7 +57,7 @@ void Assembler::assemble_directive() {
     {
         Token string = parse_expresion(ParsePrecedence::Start);
 
-        if (string.is_not(TOKEN_STRING)) {
+        if (!string.is(TOKEN_STRING)) {
             MAKE_ERROR(string, break, "a string was expected");
         }
 
@@ -79,7 +79,7 @@ void Assembler::assemble_directive() {
             }
             
             Token byte = parse_expresion(ParsePrecedence::Start);
-            if (byte.is_not(TOKEN_IMMEDIATE)) {
+            if (!byte.is(TOKEN_IMMEDIATE)) {
                 MAKE_ERROR(byte, break, "a immediate value was expected");
             }
 
@@ -104,7 +104,7 @@ void Assembler::assemble_directive() {
             }
 
             Token half = parse_expresion(ParsePrecedence::Start);
-            if (half.is_not(TOKEN_IMMEDIATE)) {
+            if (!half.is(TOKEN_IMMEDIATE)) {
                 MAKE_ERROR(half, break, "a immediate value was expected");
             }
 
@@ -129,7 +129,7 @@ void Assembler::assemble_directive() {
             }
 
             Token word = parse_expresion(ParsePrecedence::Start);
-            if (word.is_not(TOKEN_IMMEDIATE)) {
+            if (!word.is(TOKEN_IMMEDIATE)) {
                 MAKE_ERROR(word, break, "a immediate value was expected");
             }
 
@@ -154,7 +154,7 @@ void Assembler::assemble_directive() {
             }
 
             Token dword = parse_expresion(ParsePrecedence::Start);
-            if (dword.is_not(TOKEN_IMMEDIATE)) {
+            if (!dword.is(TOKEN_IMMEDIATE)) {
                 MAKE_ERROR(dword, break, "a immediate value was expected");
             }
 
@@ -166,7 +166,7 @@ void Assembler::assemble_directive() {
     case TD_ZERO:
     {
         Token count = parse_expresion(ParsePrecedence::Start);
-        if (count.is_not(TOKEN_IMMEDIATE)) {
+        if (!count.is(TOKEN_IMMEDIATE)) {
             MAKE_ERROR(count, break, "a immediate value was expected");
         }
 

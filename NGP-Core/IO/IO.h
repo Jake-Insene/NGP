@@ -13,32 +13,38 @@ struct CPUCore;
 namespace IO
 {
 
-static constexpr u32 DMA_CHANNELS_START = 0x1000'0000;
+// The MMIO is segmented, each segment has a size of 4096 bytes.
+static constexpr u32 IO_BASE = 0x1000'0000;
 
-static constexpr u32 DMA_ENABLE_MASK = 0x1000'1000;
-static constexpr u32 DMA_IRQ_MASK = 0x104;
-static constexpr u32 DMA_PRIORITY_MASK = 0x108;
-static constexpr u32 DMA_WAIT_ON_MASK = 0x10C;
+enum IOSegments
+{
+    DMA_SEGMENT = 0x0,
+    IRQ_SEGMENT = 0x1,
+    PAD_SEGMENT = 0x2,
 
-static constexpr u32 IRQ_STATUS = 0x1000'1000;
-static constexpr u32 IRQ_ENABLE_MASK = 0x1000'1004;
+    GPU_SEGMENT = 0x10,
+};
+
+static constexpr u32 DMA_BASE = IO_BASE | 0x0000;
+static constexpr u32 IRQ_BASE = IO_BASE | 0x1000;
+static constexpr u32 PAD_BASE = IO_BASE | 0x2000;
+static constexpr u32 GPU_BASE = IO_BASE | 0x10000;
+
 
 void initialize();
 void shutdown();
 
-void* io_start_address();
+u8 read_io_byte(CPUCore& core, VirtualAddress address);
+u16 read_io_half(CPUCore& core, VirtualAddress address);
+Word read_io_word(CPUCore& core, VirtualAddress address);
+DWord read_io_dword(CPUCore& core, VirtualAddress address);
+QWord read_io_qword(CPUCore& core, VirtualAddress address);
 
-u8 read_io_byte(CPUCore& core, u32 address);
-u16 read_io_half(CPUCore& core, u32 address);
-Word read_io_word(CPUCore& core, u32 address);
-DWord read_io_dword(CPUCore& core, u32 address);
-QWord read_io_qword(CPUCore& core, u32 address);
-
-void write_io_byte(CPUCore& core, u32 address, u8 value);
-void write_io_half(CPUCore& core, u32 address, u16 value);
-void write_io_word(CPUCore& core, u32 address, Word value);
-void write_io_dword(CPUCore& core, u32 address, DWord value);
-void write_io_qword(CPUCore& core, u32 address, QWord value);
+void write_io_byte(CPUCore& core, VirtualAddress address, u8 value);
+void write_io_half(CPUCore& core, VirtualAddress address, u16 value);
+void write_io_word(CPUCore& core, VirtualAddress address, Word value);
+void write_io_dword(CPUCore& core, VirtualAddress address, DWord value);
+void write_io_qword(CPUCore& core, VirtualAddress address, QWord value);
 
 template<typename T>
 T read_io(CPUCore& core, u32 address)

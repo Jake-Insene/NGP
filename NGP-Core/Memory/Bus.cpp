@@ -13,18 +13,24 @@
 namespace Bus
 {
 
-u8* ram = nullptr;
-u8* bios = nullptr;
+static inline u8* ram = nullptr;
+static inline u8* bios = nullptr;
+static inline u8* io = nullptr;
 
 // Default to 256 MB
-u32 ram_size = MB(256);
+usize ram_size = MB(256);
+// Default to 32 MB
+usize vram_size = MB(32);
 
-static constexpr u64 MAPPED_BIOS_ADDRESS = 0x1'0000'0000;
+static constexpr u64 MAPPED_BUS_ADDRESS_START = 0x1'0000'0000;
 
 void initialize()
 {
-    bios = (u8*)OS::allocate_virtual_memory((void*)MAPPED_BIOS_ADDRESS, BIOS_SIZE);
-    ram = (u8*)OS::allocate_virtual_memory((void*)u64(RAM_START), ram_size);
+    bios = (u8*)OS::allocate_virtual_memory((void*)MAPPED_BUS_ADDRESS_START, BIOS_SIZE, OS::PAGE_READ_WRITE);
+
+    ram = (u8*)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + RAM_START), ram_size, OS::PAGE_READ_WRITE);
+
+    io = (u8*)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + IO_START), RAM_START - IO_START, OS::PAGE_READ_WRITE);
 
 #if !NDEBUG
     printf("DEBUG: BIOS mapped at 0x%p\n", bios);
@@ -34,7 +40,8 @@ void initialize()
 
 void shutdown()
 {
-    // There is not reason to deallocate bios/ram, it just will make the exit slower
+    OS::deallocate_virtual_memory(bios);
+    OS::deallocate_virtual_memory(ram);
 }
 
 void set_ram_size(u32 new_size)
@@ -48,7 +55,17 @@ void set_ram_size(u32 new_size)
 
 u32 get_ram_size()
 {
-    return ram_size;
+    return (u32)ram_size;
+}
+
+void set_vram_size(usize new_size)
+{
+    vram_size = new_size;
+}
+
+usize get_vram_size()
+{
+    return vram_size;
 }
 
 u8* bios_start_address()
@@ -61,9 +78,15 @@ u8* ram_start_address()
     return ram;
 }
 
+u8* io_start_address()
+{
+    return io;
+}
+
 void invalid_read(CPUCore& core, VirtualAddress addr)
 {
     // TODO: Generate a exception
+    __debugbreak();
 }
 
 void invalid_write(CPUCore& core, VirtualAddress addr)
@@ -82,7 +105,7 @@ bool load_bios(const char* path)
 
     u32 size = (u32)file.tellg();
     file.seekg(0);
-    if (size != MB(4))
+    if (size != BIOS_SIZE)
     {
         return false;
     }
@@ -96,43 +119,14 @@ bool load_bios(const char* path)
 
 PhysicalAddress get_physical_addr(CPUCore& core, VirtualAddress addr)
 {
-    if (addr < BIOS_END && core.current_el == BIOS_REQUESTED_LEVEL)
-    {
-        return (u64(addr) + MAPPED_BIOS_ADDRESS);
-    }
-    else if (addr >= RAM_START && addr < get_ram_size())
-    {
-        return (u64)addr;
-    }
-    else
-    {
-        invalid_read(core, addr);
-    }
-
-    return 0;
+    return u64(addr + MAPPED_BUS_ADDRESS_START);
 }
 
 template<typename T>
 inline T read_at(CPUCore& core, VirtualAddress addr)
 {
-    if (addr + sizeof(T) <= BIOS_END)
-    {
-        return *reinterpret_cast<T*>(addr + MAPPED_BIOS_ADDRESS);
-    }
-    else if (addr >= IO_START && addr + sizeof(T) <= IO_END && core.current_el > 0)
-    {
-        return IO::read_io<T>(core, addr);
-    }
-    else if (addr >= RAM_START)
-    {
-        return *reinterpret_cast<T*>(PhysicalAddress(addr));
-    }
-
-    invalid_read(core, addr);
-
-    return T();
+    return *(T*)(MAPPED_BUS_ADDRESS_START + addr);
 }
-
 
 QWord read_qword(CPUCore& core, VirtualAddress addr)
 {
@@ -163,22 +157,12 @@ u8 read_byte(CPUCore& core, VirtualAddress addr)
 template<typename T>
 inline void write_at(CPUCore& core, VirtualAddress addr, T value)
 {
-    if (addr + sizeof(T) <= BIOS_END)
+    if ((addr & 0xF000'0000) == 1)
     {
-        *reinterpret_cast<T*>(addr + MAPPED_BIOS_ADDRESS) = value;
+        return IO::write_io<T>(core, addr, value);
     }
-    else if (addr >= IO_START && addr + sizeof(T) <= IO_END && core.current_el > 0)
-    {
-        IO::write_io<T>(core, addr, value);
-    }
-    else if (addr >= RAM_START)
-    {
-        *reinterpret_cast<T*>(PhysicalAddress(addr)) = value;
-    }
-    else
-    {
-        invalid_write(core, addr);
-    }
+
+    *(T*)(MAPPED_BUS_ADDRESS_START + addr) = value;
 }
 
 void write_qword(CPUCore& core, VirtualAddress addr, QWord qword)

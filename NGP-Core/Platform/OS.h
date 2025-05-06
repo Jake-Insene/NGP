@@ -7,10 +7,25 @@
 #pragma once
 #include "Core/Header.h"
 
-struct OS {
+struct OS
+{
+    enum PageAccess
+    {
+        PAGE_NONE = 0x0,
+        PAGE_READ_ONLY = 0x1,
+        PAGE_READ_WRITE = 0x2,
+        PAGE_NO_ACCESS = 0x3,
+    };
+
+    using PageFaultHandler = void(*)(void*);
+
+    static void initialize();
+    static void shutdown();
 
     static void sleep(i32 milisec);
 
-    static void* allocate_virtual_memory(void* address, u64 size);
+    static void* allocate_virtual_memory(void* address, u64 size, PageAccess access);
+    static void deallocate_virtual_memory(void* address);
 
+    static u32 exception_handler(void*);
 };

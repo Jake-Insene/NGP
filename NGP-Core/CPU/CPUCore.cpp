@@ -1,4 +1,3 @@
-#include "CPUCore.h"
 /******************************************************/
 /*              This file is part of NGP              */
 /******************************************************/
@@ -6,56 +5,11 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #include "CPU/CPUCore.h"
+
 #include "FileFormat/ISA.h"
 #include "Memory/Bus.h"
 #include <stdio.h>
 
-
-// Logical Add sub
-FORCE_INLINE static void setFlags(CPUCore& core, u32 src1, u32 src2, u64 res, bool is_sub) {
-    // Set Z flag (zero flag)
-    core.psr.z = !bool(u32(res));
-
-    // Set C flag (carry flag)
-    if (is_sub) {
-        // Carry for subtraction (borrow logic)
-        core.psr.c = src1 >= src2;
-    }
-    else {
-        // Carry for addition
-        core.psr.c = ((u64)src1 + (u64)src2) > 0xFFFF'FFFF;
-    }
-
-    // Set N flag (negative flag)
-    core.psr.n = bool(res & 0x8000'0000);
-
-    // Set V flag (overflow flag)
-    core.psr.v = ((~((u64)src1 ^ (u64)src2) & ((u64)src1 ^ res)) & 0x8000'0000) != 0;
-}
-
-// Comparision
-FORCE_INLINE static u32 add_with_carry_setting_flags(CPUCore& core, u32 src1, u32 src2, u32 carry) {
-    const u64 lhs = u64(src1);
-    const u64 rhs = u64(src2);
-    const u64 res = lhs + rhs + carry;
-    setFlags(core, src1, src2, res, false);
-
-    return u32(res);
-}
-
-// Comparision
-FORCE_INLINE static u32 add_with_carry(u32 src1, u32 src2, u32 carry) {
-    u64 res = u64(src1) + u64(src2) + carry;
-    return u32(res);
-}
-
-FORCE_INLINE static u32 and_setting_flags(CPUCore& core, u32 src1, u32 src2) {
-    u64 res = (u64)src1 & (u64)src2;
-    core.psr.n = (res & 0x8000'0000) != 0;
-    core.psr.z = res == 0;
-
-    return u32(res);
-}
 
 #define MAKE_SIMPLE_LAS(name, op) \
     static inline void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
@@ -78,15 +32,69 @@ FORCE_INLINE static u32 and_setting_flags(CPUCore& core, u32 src1, u32 src2) {
 
 #define HANDLE_BRANCH(cond, core, disp) if(cond) { core.pc += disp; core.handle_pc_change(); }
 
+#define HANDLE_PRE_READWRITE(core, reg) core.pending_register_read_write1 = reg
+
+// Logical Add sub
+FORCE_INLINE static void set_flags(CPUCore& core, u32 src1, u32 src2, u64 res, bool is_sub)
+{
+    // Set Z flag (zero flag)
+    core.psr.ZERO = ~(u32(res));
+
+    // Set C flag (carry flag)
+    if (is_sub)
+    {
+        // Carry for subtraction (borrow logic)
+        core.psr.CARRY = src1 >= src2;
+    }
+    else
+    {
+        // Carry for addition
+        core.psr.CARRY = ((u64)src1 + (u64)src2) > 0xFFFF'FFFF;
+    }
+
+    // Set N flag (negative flag)
+    core.psr.NEGATIVE = bool(res & 0x8000'0000);
+
+    // Set V flag (overflow flag)
+    core.psr.OVERFLOW = ((~((u64)src1 ^ (u64)src2) & ((u64)src1 ^ res)) & 0x8000'0000) != 0;
+}
+
+// Comparision
+FORCE_INLINE static u32 add_with_carry_setting_flags(CPUCore& core, u32 src1, u32 src2, u32 carry)
+{
+    const u64 lhs = u64(src1);
+    const u64 rhs = u64(src2);
+    const u64 res = lhs + rhs + carry;
+    set_flags(core, src1, src2, res, false);
+
+    return u32(res);
+}
+
+// Comparision
+FORCE_INLINE static u32 add_with_carry(u32 src1, u32 src2, u32 carry)
+{
+    u64 res = u64(src1) + u64(src2) + carry;
+    return u32(res);
+}
+
+FORCE_INLINE static u32 and_setting_flags(CPUCore& core, u32 src1, u32 src2)
+{
+    u64 res = (u64)src1 & (u64)src2;
+    core.psr.NEGATIVE = (res & 0x8000'0000) != 0;
+    core.psr.ZERO = res == 0;
+
+    return u32(res);
+}
+
 MAKE_SIMPLE_LAS(add_shl, core.list[src1] + (core.list[src2] << src3))
 MAKE_SIMPLE_LAS(add_shr, core.list[src1] + (core.list[src2] >> src3))
 MAKE_SIMPLE_LAS(add_asr, core.list[src1] + (core.ilist[src2] >> src3))
-MAKE_SIMPLE_LAS(adc, add_with_carry(core.list[src1], core.list[src2], core.psr.c));
+MAKE_SIMPLE_LAS(adc, add_with_carry(core.list[src1], core.list[src2], core.psr.CARRY));
 
 MAKE_SIMPLE_LAS(sub_shl, core.list[src1] - (core.list[src2] << src3))
 MAKE_SIMPLE_LAS(sub_shr, core.list[src1] - (core.list[src2] >> src3))
 MAKE_SIMPLE_LAS(sub_asr, core.list[src1] - (core.ilist[src2] >> src3))
-MAKE_SIMPLE_LAS(sbc, add_with_carry(core.list[src1], ~core.list[src2], core.psr.c));
+MAKE_SIMPLE_LAS(sbc, add_with_carry(core.list[src1], ~core.list[src2], core.psr.CARRY));
 
 MAKE_SIMPLE_LAS(and_shl, core.list[src1] & (core.list[src2] << src3))
 MAKE_SIMPLE_LAS(and_shr, core.list[src1] & (core.list[src2] >> src3))
@@ -150,14 +158,15 @@ MAKE_SETTING_FLAGS(bics_asr, and_setting_flags(core, core.list[src1], !(core.ili
 // TODO: implement ROR
 MAKE_SETTING_FLAGS(bics_ror, and_setting_flags(core, core.list[src1], core.list[src2]));
 
-MAKE_SIMPLE_LAS(adcs, add_with_carry_setting_flags(core, core.list[src1], core.list[src2], core.psr.c));
-MAKE_SIMPLE_LAS(sbcs, add_with_carry_setting_flags(core, core.list[src1], ~core.list[src2], core.psr.c));
+MAKE_SIMPLE_LAS(adcs, add_with_carry_setting_flags(core, core.list[src1], core.list[src2], core.psr.CARRY));
+MAKE_SIMPLE_LAS(sbcs, add_with_carry_setting_flags(core, core.list[src1], ~core.list[src2], core.psr.CARRY));
 
 // Memory
 FORCE_INLINE static void memory_read_byte(CPUCore& core, u32 dest, VirtualAddress address)
 {
     if (dest != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest);
         core.list[dest] = Bus::read_byte(core, address);
     }
 }
@@ -166,6 +175,7 @@ FORCE_INLINE static void memory_read_half(CPUCore& core, u32 dest, VirtualAddres
 {
     if (dest != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest);
         core.list[dest] = Bus::read_half(core, address);
     }
 }
@@ -174,6 +184,7 @@ FORCE_INLINE static void memory_read_word(CPUCore& core, u32 dest, VirtualAddres
 {
     if (dest != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest);
         core.list[dest] = Bus::read_word(core, address);
     }
 }
@@ -182,6 +193,7 @@ FORCE_INLINE static void memory_read_ihalf(CPUCore& core, u32 dest, VirtualAddre
 {
     if (dest != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest);
         core.ilist[dest] = static_cast<i16>(Bus::read_half(core, address));
     }
 }
@@ -190,6 +202,7 @@ FORCE_INLINE static void memory_read_ibyte(CPUCore& core, u32 dest, VirtualAddre
 {
     if (dest != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest);
         core.ilist[dest] = static_cast<i8>(Bus::read_byte(core, address));
     }
 }
@@ -198,6 +211,7 @@ FORCE_INLINE static void memory_read_single(CPUCore& core, u32 dest, VirtualAddr
 {
     if (dest != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest);
         core.simd[dest].w = Bus::read_word(core, address);
     }
 }
@@ -206,6 +220,7 @@ FORCE_INLINE static void memory_read_double(CPUCore& core, u32 dest, VirtualAddr
 {
     if (dest != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest);
         core.simd[dest].dw = Bus::read_dword(core, address);
     }
 }
@@ -214,37 +229,44 @@ FORCE_INLINE static void memory_read_qword(CPUCore& core, u32 dest, VirtualAddre
 {
     if (dest != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest);
         core.simd[dest].qw = Bus::read_qword(core, address);
     }
 }
 
 FORCE_INLINE static void memory_write_byte(CPUCore& core, u32 src, VirtualAddress address)
 {
+    HANDLE_PRE_READWRITE(core, src);
     Bus::write_byte(core, address, static_cast<u8>(core.list[src]));
 }
 
 FORCE_INLINE static void memory_write_half(CPUCore& core, u32 src, VirtualAddress address)
 {
+    HANDLE_PRE_READWRITE(core, src);
     Bus::write_half(core, address, static_cast<u16>(core.list[src]));
 }
 
 FORCE_INLINE static void memory_write_word(CPUCore& core, u32 src, VirtualAddress address)
 {
+    HANDLE_PRE_READWRITE(core, src);
     Bus::write_word(core, address, core.list[src]);
 }
 
 FORCE_INLINE static void memory_write_single(CPUCore& core, u32 src, VirtualAddress address)
 {
+    HANDLE_PRE_READWRITE(core, src);
     Bus::write_word(core, address, core.simd[src].w);
 }
 
 FORCE_INLINE static void memory_write_double(CPUCore& core, u32 src, VirtualAddress address)
 {
+    HANDLE_PRE_READWRITE(core, src);
     Bus::write_dword(core, address, core.simd[src].dw);
 }
 
 FORCE_INLINE static void memory_write_qword(CPUCore& core, u32 src, VirtualAddress address)
 {
+    HANDLE_PRE_READWRITE(core, src);
     Bus::write_qword(core, address, core.simd[src].qw);
 }
 
@@ -252,11 +274,13 @@ FORCE_INLINE static void memory_pair_read_word(CPUCore& core, u32 dest1, u32 des
 {
     if (dest1 != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest1);
         core.list[dest1] = Bus::read_word(core, address);
     }
 
     if (dest2 != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest2);
         core.list[dest2] = Bus::read_word(core, address + 4);
     }
 }
@@ -265,11 +289,13 @@ FORCE_INLINE static void memory_pair_read_single(CPUCore& core, u32 dest1, u32 d
 {
     if (dest1 != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest1);
         core.simd[dest1].w = Bus::read_word(core, address);
     }
 
     if (dest2 != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest2);
         core.simd[dest2].w = Bus::read_word(core, address + 4);
     }
 }
@@ -278,11 +304,13 @@ FORCE_INLINE static void memory_pair_read_double(CPUCore& core, u32 dest1, u32 d
 {
     if (dest1 != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest1);
         core.simd[dest1].dw = Bus::read_dword(core, address);
     }
 
     if (dest2 != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest2);
         core.simd[dest2].dw = Bus::read_dword(core, address + 8);
     }
 }
@@ -291,11 +319,13 @@ FORCE_INLINE static void memory_pair_read_qword(CPUCore& core, u32 dest1, u32 de
 {
     if (dest1 != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest1);
         core.simd[dest1].qw = Bus::read_qword(core, address);
     }
 
     if (dest2 != 31)
     {
+        HANDLE_PRE_READWRITE(core, dest2);
         core.simd[dest2].qw = Bus::read_qword(core, address + 16);
     }
 }
@@ -303,26 +333,34 @@ FORCE_INLINE static void memory_pair_read_qword(CPUCore& core, u32 dest1, u32 de
 FORCE_INLINE static void memory_pair_write_word(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
 {
     // fetch
+    HANDLE_PRE_READWRITE(core, src1);
     Bus::write_word(core, address, core.list[src1]);
+    HANDLE_PRE_READWRITE(core, src2);
     Bus::write_word(core, address + 4, core.list[src2]);
 }
 
 FORCE_INLINE static void memory_pair_write_single(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
 {
     // fetch
+    HANDLE_PRE_READWRITE(core, src1);
     Bus::write_word(core, address, core.simd[src1].w);
+    HANDLE_PRE_READWRITE(core, src2);
     Bus::write_word(core, address + 4, core.simd[src2].w);
 }
 
 FORCE_INLINE static void memory_pair_write_double(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
 {
+    HANDLE_PRE_READWRITE(core, src1);
     Bus::write_dword(core, address, core.simd[src1].dw);
+    HANDLE_PRE_READWRITE(core, src2);
     Bus::write_dword(core, address + 8, core.simd[src2].dw);
 }
 
 FORCE_INLINE static void memory_pair_write_qword(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
 {
+    HANDLE_PRE_READWRITE(core, src1);
     Bus::write_qword(core, address, core.simd[src1].qw);
+    HANDLE_PRE_READWRITE(core, src2);
     Bus::write_qword(core, address + 16, core.simd[src2].qw);
 }
 
@@ -348,7 +386,7 @@ static inline void br(CPUCore& core, u8, u8 src1, u8)
 
 static inline void eret(CPUCore& core, u8, u8, u8) {}
 static inline void brk(CPUCore& core, u8, u8, u8) {}
-static inline void hlt(CPUCore& core, u8, u8, u8) { core.psr.halt = true; }
+static inline void hlt(CPUCore& core, u8, u8, u8) { core.psr.HALT = true; }
 
 static inline void sit(CPUCore& core, u8, u8, u8) {}
 static inline void msr(CPUCore& core, u8, u8, u8) {}
@@ -383,40 +421,40 @@ FORCE_INLINE static void bcond(CPUCore& core, u32 inst)
     switch (cond)
     {
     case NGP_BEQ:
-        HANDLE_BRANCH(core.psr.z, core, disp);
+        HANDLE_BRANCH(core.psr.ZERO, core, disp);
         break;
     case NGP_BNE:
-        HANDLE_BRANCH(!core.psr.z, core, disp);
+        HANDLE_BRANCH(!core.psr.ZERO, core, disp);
         break;
     case NGP_BLT:
-        HANDLE_BRANCH(core.psr.n != core.psr.v, core, disp);
+        HANDLE_BRANCH(core.psr.NEGATIVE != core.psr.OVERFLOW, core, disp);
         break;
     case NGP_BLE:
-        HANDLE_BRANCH(core.psr.z || core.psr.n ^ core.psr.v, core, disp);
+        HANDLE_BRANCH(core.psr.ZERO || core.psr.NEGATIVE ^ core.psr.OVERFLOW, core, disp);
         break;
     case NGP_BGT:
-        HANDLE_BRANCH(!core.psr.z && core.psr.n == core.psr.v, core, disp);
+        HANDLE_BRANCH(!core.psr.ZERO && core.psr.NEGATIVE == core.psr.OVERFLOW, core, disp);
         break;
     case NGP_BGE:
-        HANDLE_BRANCH(core.psr.n == core.psr.v, core, disp);
+        HANDLE_BRANCH(core.psr.NEGATIVE == core.psr.OVERFLOW, core, disp);
         break;
     case NGP_BCS:
-        HANDLE_BRANCH(core.psr.c, core, disp);
+        HANDLE_BRANCH(core.psr.CARRY, core, disp);
         break;
     case NGP_BCC:
-        HANDLE_BRANCH(!core.psr.c, core, disp);
+        HANDLE_BRANCH(!core.psr.CARRY, core, disp);
         break;
     case NGP_BMI:
-        HANDLE_BRANCH(core.psr.n, core, disp);
+        HANDLE_BRANCH(core.psr.NEGATIVE, core, disp);
         break;
     case NGP_BPL:
-        HANDLE_BRANCH(!core.psr.n, core, disp);
+        HANDLE_BRANCH(!core.psr.NEGATIVE, core, disp);
         break;
     case NGP_BVS:
-        HANDLE_BRANCH(core.psr.v, core, disp);
+        HANDLE_BRANCH(core.psr.OVERFLOW, core, disp);
         break;
     case NGP_BVC:
-        HANDLE_BRANCH(!core.psr.v, core, disp);
+        HANDLE_BRANCH(!core.psr.OVERFLOW, core, disp);
         break;
     case NGP_BHI:
         break;
@@ -611,8 +649,8 @@ FORCE_INLINE static void subs_immediate(CPUCore& core, u32 inst)
     u8 dest = (inst >> 6) & 0x1F;
     u8 src = (inst >> 11) & 0x1F;
     u16 imm = inst >> 16;
-    u32 result = add_with_carry_setting_flags(core, core.list[src], !imm, 1);
-    core.list[dest] = dest == 31 ? result : 0;
+    u32 result = add_with_carry_setting_flags(core, core.list[src], ~imm, 1);
+    core.list[dest] = dest == 31 ? 0 : result;
 }
 
 FORCE_INLINE static void and_immediate(CPUCore& core, u32 inst)
@@ -662,7 +700,11 @@ FORCE_INLINE static void tbnz(CPUCore& core, u32 inst) {}
 FORCE_INLINE static void cbz(CPUCore& core, u32 inst) {}
 FORCE_INLINE static void cbnz(CPUCore& core, u32 inst) {}
 
-void CPUCore::initialize() {}
+#include <immintrin.h>
+
+void CPUCore::initialize()
+{
+}
 
 void CPUCore::shutdown() {}
 
@@ -677,20 +719,57 @@ u32 CPUCore::fetch_inst()
     return mem_pc[offset];
 }
 
-void CPUCore::dispatch(u32 num_cycles)
+void CPUCore::dispatch(u64 num_cycles)
 {
-    while (num_cycles-- && !psr.halt)
+    // One cycle for fetching, decoding and simple arithmetic
+    cycles_in_second += num_cycles;
+    while (num_cycles && !psr.HALT)
     {
+        num_cycles--;
+        
         u32 inst = fetch_inst();
 
         pc += 4;
         offset += 1;
 
-        // One cycle for fetching, decoding and simple arithmetic
-        cycle_counter++;
-
         u8 opcode = inst & 0x3F;
 
+#if 1
+        typedef void (*func_ptr)(CPUCore&, u32);
+        static func_ptr dispatch_table[] =
+        {
+            &bl,
+            &b,
+            &bcond,
+            &logical_add_sub,
+            &fp_op,
+            &load_store_immediate,
+            &load_store_fp_immediate,
+            &load_store_register,
+            &load_store_pair,
+            &additional,
+            &non_binary,
+            &ld_pc,
+            &ld_s_pc,
+            &ld_d_pc,
+            &ld_q_pc,
+            &adr_pc,
+            &immediate,
+            &add_immediate,
+            &adds_immediate,
+            &sub_immediate,
+            &subs_immediate,
+            &and_immediate,
+            &ands_immediate,
+            &or_immediate,
+            &eor_immediate,
+            &tbz,
+            &tbnz,
+            &cbz,
+            &cbnz,
+        };
+        dispatch_table[opcode](*this, inst);
+#else
 #define CASE(op, name) case op: name(*this, inst); break
         switch (opcode)
         {
@@ -727,11 +806,13 @@ void CPUCore::dispatch(u32 num_cycles)
             break;
         }
 #undef CASE
+#endif
 
 #if PROFILE == 1
         inst_counter++;
 #endif
     }
+    cycles_in_second -= num_cycles;
 }
 
 void CPUCore::print_pegisters()

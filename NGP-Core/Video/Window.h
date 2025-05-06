@@ -9,17 +9,16 @@
 
 struct Window
 {
+    static constexpr i32 DefaultWindowWidth = 1080;
+    static constexpr i32 DefaultWindowHeight = 720;
 
-    static constexpr u32 DeviceWindowWidth = 960;
-    static constexpr u32 DeviceWindowHeight = 540;
-
-    static void initialize(u32 width, u32 height);
+    static void initialize(i32 width, i32 height);
     static void shutdown();
 
     static void update();
 
-    static inline u32 current_width = 0;
-    static inline u32 current_height = 0;
+    static inline i32 current_width = 0;
+    static inline i32 current_height = 0;
 
     static inline bool is_open = false;
     static inline void* handle = nullptr;

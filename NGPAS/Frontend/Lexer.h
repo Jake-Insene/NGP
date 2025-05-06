@@ -27,6 +27,7 @@ struct Lexer
     bool is_num(u8 c) const;
     bool is_alnum(u8 c) const;
     bool is_hex(u8 c) const;
+    bool is_bin(u8 c) const;
 
     const char* file_path = nullptr;
     u8* content = nullptr;

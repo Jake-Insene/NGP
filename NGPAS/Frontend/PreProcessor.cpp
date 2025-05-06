@@ -38,11 +38,14 @@ void PreProcessor::process(const char* file_path)
     advance();
 
     process_source();
+
+    Token end_of_file{ .type = TOKEN_END_OF_FILE };
+    tokens.emplace_back(end_of_file);
 }
 
 void PreProcessor::process_source()
 {
-    while (current.is_not(TOKEN_END_OF_FILE))
+    while (!current.is(TOKEN_END_OF_FILE))
     {
         switch (current.type)
         {
@@ -79,8 +82,13 @@ void PreProcessor::process_directive()
         encode_string((u8*)file_path.data(), last.str);
 
         std::string source_folder = last.source_file;
-        source_folder = source_folder.substr(0, source_folder.find_last_of('/'));
-        file_path = source_folder + "/" + file_path;
+        u64 pos = source_folder.find_last_of('/');
+        pos = pos == std::string::npos ? source_folder.find_last_of('\\') : pos;
+        if(pos != std::string::npos)
+        {
+            source_folder = source_folder.substr(0, pos);
+            file_path = source_folder + "/" + file_path;
+        }
 
         std::ifstream input{ file_path, std::ios::binary | std::ios::ate };
         if (!input.is_open())

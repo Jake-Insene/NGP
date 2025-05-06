@@ -26,6 +26,9 @@ using u32 = unsigned int;
 using i64 = long long;
 using u64 = unsigned long long;
 
+using isize = i64;
+using usize = u64;
+
 using f32 = float;
 using f64 = double;
 

@@ -107,10 +107,14 @@ Token Assembler::parse_symbol(Token, Token)
         };
     }
 
-    ErrorManager::error(
-        last->source_file, last->line,
-        "undefined reference to %.*s", last->str.size(), last->str.data()
-    );
+    if(context.is_in_resolve)
+    {
+        ErrorManager::error(
+            last->source_file, last->line,
+            "undefined reference to %.*s", last->str.size(), last->str.data()
+        );
+    }
+    context.undefined_label = true;
     context.unknown_label = true;
     return Token{
         nullptr,

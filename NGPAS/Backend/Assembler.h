@@ -33,7 +33,7 @@ struct Symbol {
 
     const char* source_file;
     u32 line;
-    bool isDefined;
+    bool is_defined;
 
     union {
         u32 address;
@@ -62,7 +62,7 @@ struct Assembler {
     void phase2();
 
     void assemble_directive();
-    void assembleInstruction();
+    void assemble_instruction();
 
     // assemble_instruction();
     void assemble_load_store(u32& inst, u8 imm_opcode, u8 index_opc, u8 alignment, bool handle_symbol);

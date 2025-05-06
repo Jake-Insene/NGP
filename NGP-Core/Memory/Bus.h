@@ -12,22 +12,22 @@ struct CPUCore;
 namespace Bus {
 
 // BIOS	00000000 - 003FFFFF = 4 MB
-// IO   100000000 - 00000FFF = 4 KB
-// RAM	20000000 - 1FFFFFFF = 256 MB
+// IO   100000000 - 1FFFFFFF = N MB
+// RAM	20000000 - FFFFFFFF = N MB
+// VRAM is in its own address space = N MB
 
 static constexpr u32 BIOS_START = 0x0000'0000;
 static constexpr u32 BIOS_END = 0x003F'FFFF;
 
 static constexpr u32 IO_START = 0x1000'0000;
-static constexpr u32 IO_END = 0x1000'0FFF;
+static constexpr u32 IO_END = 0x1FFF'FFFF;
 
 static constexpr u32 RAM_START = 0x2000'0000;
 
 static constexpr u32 BIOS_SIZE = MB(4U);
-static constexpr u32 IO_SIZE = KB(4U);
 
-static constexpr u32 MAX_ALLOWED_RAM = MB(3584U);
-static constexpr u32 MAX_ALLOWED_RAM_MB = 3584U;
+static constexpr u32 MAX_ALLOWED_RAM = 0x1'0000'0000 - 0x2000'0000;
+static constexpr u32 MAX_ALLOWED_RAM_MB = MAX_ALLOWED_RAM / 1'024 / 1'024;
 
 void initialize();
 void shutdown();
@@ -35,8 +35,12 @@ void shutdown();
 void set_ram_size(u32 new_size);
 u32 get_ram_size();
 
+void set_vram_size(usize new_size);
+usize get_vram_size();
+
 u8* bios_start_address();
 u8* ram_start_address();
+u8* io_start_address();
 
 void invalid_read(CPUCore& core, VirtualAddress addr);
 void invalid_write(CPUCore& core, VirtualAddress addr);

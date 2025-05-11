@@ -34,7 +34,7 @@ struct Emulator
 
     static inline ThreadCore* cores = nullptr;
     static inline u32 number_of_cores = 1;
-    static inline u64 clock_cycles = DEFUALT_CORE_CLOCK_SPEED;
+    static inline u64 clock_cycles = MHZ(100);
     static inline const char* bios_file = DefaultBIOSPath;
     static inline bool allow_continue = false;
     static inline bool pending_restart = false;

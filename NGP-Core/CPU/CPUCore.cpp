@@ -8,37 +8,62 @@
 
 #include "FileFormat/ISA.h"
 #include "Memory/Bus.h"
-#include <stdio.h>
+#include <cstdio>
+#include <bit>
+
+#undef OVERFLOW
 
 
-#define MAKE_SIMPLE_LAS(name, op) \
-    static inline void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
-        if(dest != 31)\
+#define MAKE_SIMPLE_ARITH_LOGIC(name, op) \
+    static FORCE_INLINE  void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
+        if(dest != ZeroRegister)\
         { core.list[dest] = op; }\
     }
 
 #define MAKE_SIMPLE_OP(name, op) \
-    static inline void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
-        if(dest != 31)\
+    static FORCE_INLINE  void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
+        if(dest != ZeroRegister)\
         { core.list[dest] = op; }\
     }
 
 #define MAKE_SETTING_FLAGS(name, op) \
-    static inline void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
+    static FORCE_INLINE  void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
         const u32 result = op;\
-        if(dest != 31)\
+        if(dest != ZeroRegister)\
         { core.list[dest] = result; }\
+    }
+
+#define MAKE_IMMEDIATE_OP(name, op) \
+    static FORCE_INLINE  void name(CPUCore& core, u32 inst)\
+    {\
+        u8 dest = (inst >> 6) & 0x1F;\
+        if (dest != ZeroRegister)\
+        {\
+            u8 src = (inst >> 11) & 0x1F;\
+            u16 imm = inst >> 16;\
+            core.list[dest] = op;\
+        }\
     }
 
 #define HANDLE_BRANCH(cond, core, disp) if(cond) { core.pc += disp; core.handle_pc_change(); }
 
-#define HANDLE_PRE_READWRITE(core, reg) core.pending_register_read_write1 = reg
+#define HANDLE_READ(core, dest, type, address) \
+    core.list[dest] = dest == CPUCore::ZeroRegister ? 0 : Bus::read_at<type>(core, address)
+
+#define HANDLE_SIMD_READ(core, dest, index, type, address) \
+    core.simd[dest].index = dest == CPUCore::ZeroRegister ? type{0} : Bus::read_at<type>(core, address)
+
+#define HANDLE_WRITE(core, src, type, func, address) \
+    func(core, address, static_cast<type>(core.list[src]));
+
+#define HANDLE_SIMD_WRITE(core, src, index, func, address) \
+    func(core, address, core.simd[src].index)
 
 // Logical Add sub
-FORCE_INLINE static void set_flags(CPUCore& core, u32 src1, u32 src2, u64 res, bool is_sub)
+static FORCE_INLINE void set_flags(CPUCore& core, u32 src1, u32 src2, u64 res, bool is_sub)
 {
     // Set Z flag (zero flag)
-    core.psr.ZERO = ~(u32(res));
+    core.psr.ZERO = u32(res) == 0;
 
     // Set C flag (carry flag)
     if (is_sub)
@@ -60,358 +85,338 @@ FORCE_INLINE static void set_flags(CPUCore& core, u32 src1, u32 src2, u64 res, b
 }
 
 // Comparision
-FORCE_INLINE static u32 add_with_carry_setting_flags(CPUCore& core, u32 src1, u32 src2, u32 carry)
+static FORCE_INLINE u32 add_with_carry_setting_flags(CPUCore& core, u32 src1, u32 src2, u32 carry)
 {
-    const u64 lhs = u64(src1);
-    const u64 rhs = u64(src2);
+    const u64 lhs = src1;
+    const u64 rhs = src2;
     const u64 res = lhs + rhs + carry;
     set_flags(core, src1, src2, res, false);
 
     return u32(res);
 }
 
-// Comparision
-FORCE_INLINE static u32 add_with_carry(u32 src1, u32 src2, u32 carry)
+static u32 FORCE_INLINE and_setting_flags(CPUCore& core, u32 src1, u32 src2)
+{
+    u32 res = src1 & src2;
+    core.psr.NEGATIVE = (res & 0x8000'0000) != 0;
+    core.psr.ZERO = res == 0;
+
+    return res;
+}
+
+static FORCE_INLINE u32 add_with_carry(u32 src1, u32 src2, u32 carry)
 {
     u64 res = u64(src1) + u64(src2) + carry;
     return u32(res);
 }
 
-FORCE_INLINE static u32 and_setting_flags(CPUCore& core, u32 src1, u32 src2)
-{
-    u64 res = (u64)src1 & (u64)src2;
-    core.psr.NEGATIVE = (res & 0x8000'0000) != 0;
-    core.psr.ZERO = res == 0;
+MAKE_SIMPLE_ARITH_LOGIC(add_shl, core.list[src1] + (core.list[src2] << src3));
+MAKE_SIMPLE_ARITH_LOGIC(add_shr, core.list[src1] + (core.list[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(add_asr, core.list[src1] + (core.ilist[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(adc, add_with_carry(core.list[src1], core.list[src2], core.psr.CARRY));
 
-    return u32(res);
-}
+MAKE_SIMPLE_ARITH_LOGIC(sub_shl, core.list[src1] - (core.list[src2] << src3));
+MAKE_SIMPLE_ARITH_LOGIC(sub_shr, core.list[src1] - (core.list[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(sub_asr, core.list[src1] - (core.ilist[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(sbc, add_with_carry(core.list[src1], ~core.list[src2], core.psr.CARRY));
 
-MAKE_SIMPLE_LAS(add_shl, core.list[src1] + (core.list[src2] << src3))
-MAKE_SIMPLE_LAS(add_shr, core.list[src1] + (core.list[src2] >> src3))
-MAKE_SIMPLE_LAS(add_asr, core.list[src1] + (core.ilist[src2] >> src3))
-MAKE_SIMPLE_LAS(adc, add_with_carry(core.list[src1], core.list[src2], core.psr.CARRY));
+MAKE_SIMPLE_ARITH_LOGIC(and_shl, core.list[src1] & (core.list[src2] << src3));
+MAKE_SIMPLE_ARITH_LOGIC(and_shr, core.list[src1] & (core.list[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(and_asr, core.list[src1] & (core.ilist[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(and_ror, core.list[src1] & (std::rotr(core.list[src2], src3)));
 
-MAKE_SIMPLE_LAS(sub_shl, core.list[src1] - (core.list[src2] << src3))
-MAKE_SIMPLE_LAS(sub_shr, core.list[src1] - (core.list[src2] >> src3))
-MAKE_SIMPLE_LAS(sub_asr, core.list[src1] - (core.ilist[src2] >> src3))
-MAKE_SIMPLE_LAS(sbc, add_with_carry(core.list[src1], ~core.list[src2], core.psr.CARRY));
+MAKE_SIMPLE_ARITH_LOGIC(or_shl, core.list[src1] | (core.list[src2] << src3));
+MAKE_SIMPLE_ARITH_LOGIC(or_shr, core.list[src1] | (core.list[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(or_asr, core.list[src1] | (core.ilist[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(or_ror, core.list[src1] | (core.ilist[src2]));
 
-MAKE_SIMPLE_LAS(and_shl, core.list[src1] & (core.list[src2] << src3))
-MAKE_SIMPLE_LAS(and_shr, core.list[src1] & (core.list[src2] >> src3))
-MAKE_SIMPLE_LAS(and_asr, core.list[src1] & (core.ilist[src2] >> src3))
-// TODO: implement ROR
-MAKE_SIMPLE_LAS(and_ror, core.list[src1] & (core.ilist[src2]))
+MAKE_SIMPLE_ARITH_LOGIC(orn_shl, core.list[src1] | ~(core.list[src2] << src3));
+MAKE_SIMPLE_ARITH_LOGIC(orn_shr, core.list[src1] | ~(core.list[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(orn_asr, core.list[src1] | ~(core.ilist[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(orn_ror, core.list[src1] | ~(std::rotr(core.list[src2], src3)));
 
-MAKE_SIMPLE_LAS(or_shl, core.list[src1] | (core.list[src2] << src3))
-MAKE_SIMPLE_LAS(or_shr, core.list[src1] | (core.list[src2] >> src3))
-MAKE_SIMPLE_LAS(or_asr, core.list[src1] | (core.ilist[src2] >> src3))
-// TODO: implement ROR
-MAKE_SIMPLE_LAS(or_ror, core.list[src1] | (core.ilist[src2]))
-
-MAKE_SIMPLE_LAS(orn_shl, core.list[src1] | !(core.list[src2] << src3))
-MAKE_SIMPLE_LAS(orn_shr, core.list[src1] | !(core.list[src2] >> src3))
-MAKE_SIMPLE_LAS(orn_asr, core.list[src1] | !(core.ilist[src2] >> src3))
-// TODO: implement ROR
-MAKE_SIMPLE_LAS(orn_ror, core.list[src1] | !(core.ilist[src2]))
-
-MAKE_SIMPLE_LAS(eor_shl, core.list[src1] ^ (core.list[src2] << src3))
-MAKE_SIMPLE_LAS(eor_shr, core.list[src1] ^ (core.list[src2] >> src3))
-MAKE_SIMPLE_LAS(eor_asr, core.list[src1] ^ (core.ilist[src2] >> src3))
-// TODO: implement ROR
-MAKE_SIMPLE_LAS(eor_ror, core.list[src1] ^ (core.ilist[src2]))
+MAKE_SIMPLE_ARITH_LOGIC(eor_shl, core.list[src1] ^ (core.list[src2] << src3));
+MAKE_SIMPLE_ARITH_LOGIC(eor_shr, core.list[src1] ^ (core.list[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(eor_asr, core.list[src1] ^ (core.ilist[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(eor_ror, core.list[src1] ^ std::rotr(core.list[src2], src3));
 
 MAKE_SETTING_FLAGS(adds_shl, add_with_carry_setting_flags(core, core.list[src1], core.list[src2] << src3, 0));
 MAKE_SETTING_FLAGS(adds_shr, add_with_carry_setting_flags(core, core.list[src1], core.list[src2] >> src3, 0));
 MAKE_SETTING_FLAGS(adds_asr, add_with_carry_setting_flags(core, core.list[src1], core.ilist[src2] >> src3, 0));
-// TODO: implement ROR
-MAKE_SETTING_FLAGS(adds_ror, add_with_carry_setting_flags(core, core.list[src1], core.ilist[src2], 0));
+MAKE_SETTING_FLAGS(adds_ror, add_with_carry_setting_flags(core, core.list[src1], std::rotr(core.list[src2], src3), 0));
 
-FORCE_INLINE static void subs_shl(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
-{
-    const u32 result = add_with_carry_setting_flags(core, core.list[src1], ~(core.list[src2] << src3), 1);
-    if (dest != 31)
-    {
-        core.list[dest] = result;
-    }
-};
 
+MAKE_SETTING_FLAGS(subs_shl, add_with_carry_setting_flags(core, core.list[src1], ~(core.list[src2] << src3), 1));
 MAKE_SETTING_FLAGS(subs_shr, add_with_carry_setting_flags(core, core.list[src1], ~(core.list[src2] >> src3), 1));
 MAKE_SETTING_FLAGS(subs_asr, add_with_carry_setting_flags(core, core.list[src1], ~(core.ilist[src2] >> src3), 1));
-// TODO: implement ROR
-MAKE_SETTING_FLAGS(subs_ror, add_with_carry_setting_flags(core, core.list[src1], core.ilist[src2], 1));
+MAKE_SETTING_FLAGS(subs_ror, add_with_carry_setting_flags(core, core.list[src1], std::rotr(core.list[src2], src3), 1));
 
 MAKE_SETTING_FLAGS(ands_shl, and_setting_flags(core, core.list[src1], core.list[src2] << src3));
 MAKE_SETTING_FLAGS(ands_shr, and_setting_flags(core, core.list[src1], core.list[src2] >> src3));
 MAKE_SETTING_FLAGS(ands_asr, and_setting_flags(core, core.list[src1], core.ilist[src2] >> src3));
-// TODO: implement ROR
-MAKE_SETTING_FLAGS(ands_ror, and_setting_flags(core, core.list[src1], core.list[src2]));
+MAKE_SETTING_FLAGS(ands_ror, and_setting_flags(core, core.list[src1], std::rotr(core.list[src2], src3)));
 
-MAKE_SIMPLE_LAS(bic_shl, core.list[src1] & !(core.list[src2] << src3));
-MAKE_SIMPLE_LAS(bic_shr, core.list[src1] & !(core.list[src2] >> src3));
-MAKE_SIMPLE_LAS(bic_asr, core.list[src1] & !(core.ilist[src2] >> src3));
-// TODO: implement ROR
-MAKE_SIMPLE_LAS(bic_ror, core.list[src1] & !(core.ilist[src2]));
+MAKE_SIMPLE_ARITH_LOGIC(bic_shl, core.list[src1] & ~(core.list[src2] << src3));
+MAKE_SIMPLE_ARITH_LOGIC(bic_shr, core.list[src1] & ~(core.list[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(bic_asr, core.list[src1] & ~(core.ilist[src2] >> src3));
+MAKE_SIMPLE_ARITH_LOGIC(bic_ror, core.list[src1] & ~(std::rotr(core.list[src2], src3)));
 
-MAKE_SETTING_FLAGS(bics_shl, and_setting_flags(core, core.list[src1], !(core.list[src2] << src3)));
-MAKE_SETTING_FLAGS(bics_shr, and_setting_flags(core, core.list[src1], !(core.list[src2] >> src3)));
-MAKE_SETTING_FLAGS(bics_asr, and_setting_flags(core, core.list[src1], !(core.ilist[src2] >> src3)));
-// TODO: implement ROR
-MAKE_SETTING_FLAGS(bics_ror, and_setting_flags(core, core.list[src1], core.list[src2]));
+MAKE_SETTING_FLAGS(bics_shl, and_setting_flags(core, core.list[src1], ~(core.list[src2] << src3)));
+MAKE_SETTING_FLAGS(bics_shr, and_setting_flags(core, core.list[src1], ~(core.list[src2] >> src3)));
+MAKE_SETTING_FLAGS(bics_asr, and_setting_flags(core, core.list[src1], ~(core.ilist[src2] >> src3)));
+MAKE_SETTING_FLAGS(bics_ror, and_setting_flags(core, core.list[src1], std::rotr(core.list[src2], src3)));
 
-MAKE_SIMPLE_LAS(adcs, add_with_carry_setting_flags(core, core.list[src1], core.list[src2], core.psr.CARRY));
-MAKE_SIMPLE_LAS(sbcs, add_with_carry_setting_flags(core, core.list[src1], ~core.list[src2], core.psr.CARRY));
+MAKE_SIMPLE_ARITH_LOGIC(adcs, add_with_carry_setting_flags(core, core.list[src1], core.list[src2], core.psr.CARRY));
+MAKE_SIMPLE_ARITH_LOGIC(sbcs, add_with_carry_setting_flags(core, core.list[src1], ~core.list[src2], core.psr.CARRY));
 
 // Memory
-FORCE_INLINE static void memory_read_byte(CPUCore& core, u32 dest, VirtualAddress address)
+static FORCE_INLINE void memory_read_byte(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    if (dest != 31)
+    HANDLE_READ(core, dest, u8, address);
+}
+
+static FORCE_INLINE void memory_read_half(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    HANDLE_READ(core, dest, u16, address);
+}
+
+static FORCE_INLINE void memory_read_word(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    HANDLE_READ(core, dest, Word, address);
+}
+
+static FORCE_INLINE void memory_read_ihalf(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    HANDLE_READ(core, dest, i16, address);
+}
+
+static FORCE_INLINE void memory_read_ibyte(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    HANDLE_READ(core, dest, i8, address);
+}
+
+static FORCE_INLINE void memory_read_single(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    HANDLE_SIMD_READ(core, dest, w, Word, address);
+}
+
+static FORCE_INLINE void memory_read_double(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    HANDLE_SIMD_READ(core, dest, dw, DWord, address);
+}
+
+static FORCE_INLINE void memory_read_qword(CPUCore& core, u32 dest, VirtualAddress address)
+{
+    HANDLE_SIMD_READ(core, dest, qw, QWord, address);
+}
+
+static FORCE_INLINE void memory_write_byte(CPUCore& core, u32 src, VirtualAddress address)
+{
+    HANDLE_WRITE(core, src, u8, Bus::write_byte, address);
+}
+
+static FORCE_INLINE void memory_write_half(CPUCore& core, u32 src, VirtualAddress address)
+{
+    HANDLE_WRITE(core, src, u16, Bus::write_half, address);
+}
+
+static FORCE_INLINE void memory_write_word(CPUCore& core, u32 src, VirtualAddress address)
+{
+    HANDLE_WRITE(core, src, Word, Bus::write_word, address);
+}
+
+static FORCE_INLINE void memory_write_single(CPUCore& core, u32 src, VirtualAddress address)
+{
+    HANDLE_SIMD_WRITE(core, src, w, Bus::write_word, address);
+}
+
+static FORCE_INLINE void memory_write_double(CPUCore& core, u32 src, VirtualAddress address)
+{
+    HANDLE_SIMD_WRITE(core, src, dw, Bus::write_dword, address);
+}
+
+static FORCE_INLINE void memory_write_qword(CPUCore& core, u32 src, VirtualAddress address)
+{
+    HANDLE_SIMD_WRITE(core, src, qw, Bus::write_qword, address);
+}
+
+static FORCE_INLINE void memory_pair_read_word(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
+{
+    HANDLE_READ(core, dest1, Word, address);
+    HANDLE_READ(core, dest2, Word, address + 4);
+}
+
+static FORCE_INLINE void memory_pair_read_single(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
+{
+    HANDLE_SIMD_READ(core, dest1, w, Word, address);
+    HANDLE_SIMD_READ(core, dest2, w, Word, address + 4);
+}
+
+static FORCE_INLINE void memory_pair_read_double(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
+{
+    HANDLE_SIMD_READ(core, dest1, dw, DWord, address);
+    HANDLE_SIMD_READ(core, dest2, dw, DWord, address + 8);
+}
+
+static FORCE_INLINE void memory_pair_read_qword(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
+{
+    HANDLE_SIMD_READ(core, dest1, qw, QWord, address);
+    HANDLE_SIMD_READ(core, dest2, qw, QWord, address + 16);
+}
+
+static FORCE_INLINE void memory_pair_write_word(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+{
+    HANDLE_WRITE(core, src1, Word, Bus::write_word, address);
+    HANDLE_WRITE(core, src2, Word, Bus::write_word, address + 4);
+}
+
+static FORCE_INLINE void memory_pair_write_single(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+{
+    HANDLE_SIMD_WRITE(core, src1, w, Bus::write_word, address);
+    HANDLE_SIMD_WRITE(core, src2, w, Bus::write_word, address + 4);
+}
+
+static FORCE_INLINE void memory_pair_write_double(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+{
+    HANDLE_SIMD_WRITE(core, src1, dw, Bus::write_dword, address);
+    HANDLE_SIMD_WRITE(core, src2, dw, Bus::write_dword, address + 8);
+}
+
+static FORCE_INLINE void memory_pair_write_qword(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+{
+    HANDLE_SIMD_WRITE(core, src1, qw, Bus::write_qword, address);
+    HANDLE_SIMD_WRITE(core, src2, qw, Bus::write_qword, address + 16);
+}
+
+// ExtendedAlu
+static FORCE_INLINE void madd(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
+{
+    core.list[dest] =
+        dest == ZeroRegister ? 0 : core.list[src3] + (core.list[src1] * core.list[src2]);
+}
+
+static FORCE_INLINE void msub(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
+{
+    core.list[dest] =
+        dest == ZeroRegister ? 0 : core.list[src3] - (core.list[src1] * core.list[src2]);
+}
+
+static FORCE_INLINE void udiv(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
+{
+    if (core.list[src2] == 0)
     {
-        HANDLE_PRE_READWRITE(core, dest);
-        core.list[dest] = Bus::read_byte(core, address);
-    }
-}
-
-FORCE_INLINE static void memory_read_half(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    if (dest != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest);
-        core.list[dest] = Bus::read_half(core, address);
-    }
-}
-
-FORCE_INLINE static void memory_read_word(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    if (dest != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest);
-        core.list[dest] = Bus::read_word(core, address);
-    }
-}
-
-FORCE_INLINE static void memory_read_ihalf(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    if (dest != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest);
-        core.ilist[dest] = static_cast<i16>(Bus::read_half(core, address));
-    }
-}
-
-FORCE_INLINE static void memory_read_ibyte(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    if (dest != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest);
-        core.ilist[dest] = static_cast<i8>(Bus::read_byte(core, address));
-    }
-}
-
-FORCE_INLINE static void memory_read_single(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    if (dest != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest);
-        core.simd[dest].w = Bus::read_word(core, address);
-    }
-}
-
-FORCE_INLINE static void memory_read_double(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    if (dest != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest);
-        core.simd[dest].dw = Bus::read_dword(core, address);
-    }
-}
-
-FORCE_INLINE static void memory_read_qword(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    if (dest != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest);
-        core.simd[dest].qw = Bus::read_qword(core, address);
-    }
-}
-
-FORCE_INLINE static void memory_write_byte(CPUCore& core, u32 src, VirtualAddress address)
-{
-    HANDLE_PRE_READWRITE(core, src);
-    Bus::write_byte(core, address, static_cast<u8>(core.list[src]));
-}
-
-FORCE_INLINE static void memory_write_half(CPUCore& core, u32 src, VirtualAddress address)
-{
-    HANDLE_PRE_READWRITE(core, src);
-    Bus::write_half(core, address, static_cast<u16>(core.list[src]));
-}
-
-FORCE_INLINE static void memory_write_word(CPUCore& core, u32 src, VirtualAddress address)
-{
-    HANDLE_PRE_READWRITE(core, src);
-    Bus::write_word(core, address, core.list[src]);
-}
-
-FORCE_INLINE static void memory_write_single(CPUCore& core, u32 src, VirtualAddress address)
-{
-    HANDLE_PRE_READWRITE(core, src);
-    Bus::write_word(core, address, core.simd[src].w);
-}
-
-FORCE_INLINE static void memory_write_double(CPUCore& core, u32 src, VirtualAddress address)
-{
-    HANDLE_PRE_READWRITE(core, src);
-    Bus::write_dword(core, address, core.simd[src].dw);
-}
-
-FORCE_INLINE static void memory_write_qword(CPUCore& core, u32 src, VirtualAddress address)
-{
-    HANDLE_PRE_READWRITE(core, src);
-    Bus::write_qword(core, address, core.simd[src].qw);
-}
-
-FORCE_INLINE static void memory_pair_read_word(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
-{
-    if (dest1 != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest1);
-        core.list[dest1] = Bus::read_word(core, address);
-    }
-
-    if (dest2 != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest2);
-        core.list[dest2] = Bus::read_word(core, address + 4);
-    }
-}
-
-FORCE_INLINE static void memory_pair_read_single(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
-{
-    if (dest1 != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest1);
-        core.simd[dest1].w = Bus::read_word(core, address);
-    }
-
-    if (dest2 != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest2);
-        core.simd[dest2].w = Bus::read_word(core, address + 4);
-    }
-}
-
-FORCE_INLINE static void memory_pair_read_double(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
-{
-    if (dest1 != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest1);
-        core.simd[dest1].dw = Bus::read_dword(core, address);
+        core.make_exception(CPUCore::DivideByZeroException, 0, 0);
     }
 
-    if (dest2 != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest2);
-        core.simd[dest2].dw = Bus::read_dword(core, address + 8);
-    }
+    core.list[dest] =
+        dest == ZeroRegister ? 0 : core.list[src1] / core.list[src2];
 }
 
-FORCE_INLINE static void memory_pair_read_qword(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
+static FORCE_INLINE void div(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    if (dest1 != 31)
+    if (core.list[src2] == 0)
     {
-        HANDLE_PRE_READWRITE(core, dest1);
-        core.simd[dest1].qw = Bus::read_qword(core, address);
+        core.make_exception(CPUCore::DivideByZeroException, 0, 0);
     }
 
-    if (dest2 != 31)
-    {
-        HANDLE_PRE_READWRITE(core, dest2);
-        core.simd[dest2].qw = Bus::read_qword(core, address + 16);
-    }
+    core.ilist[dest] =
+        dest == ZeroRegister ? 0 : core.ilist[src1] / core.ilist[src2];
 }
 
-FORCE_INLINE static void memory_pair_write_word(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+static FORCE_INLINE void shl(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    // fetch
-    HANDLE_PRE_READWRITE(core, src1);
-    Bus::write_word(core, address, core.list[src1]);
-    HANDLE_PRE_READWRITE(core, src2);
-    Bus::write_word(core, address + 4, core.list[src2]);
+    core.ilist[dest] = dest == ZeroRegister ? 0 : (core.ilist[src1] << src2);
 }
 
-FORCE_INLINE static void memory_pair_write_single(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+static FORCE_INLINE void shr(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    // fetch
-    HANDLE_PRE_READWRITE(core, src1);
-    Bus::write_word(core, address, core.simd[src1].w);
-    HANDLE_PRE_READWRITE(core, src2);
-    Bus::write_word(core, address + 4, core.simd[src2].w);
+    core.ilist[dest] = dest == ZeroRegister ? 0 : (core.ilist[src1] >> src2);
 }
 
-FORCE_INLINE static void memory_pair_write_double(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+static FORCE_INLINE void asr(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    HANDLE_PRE_READWRITE(core, src1);
-    Bus::write_dword(core, address, core.simd[src1].dw);
-    HANDLE_PRE_READWRITE(core, src2);
-    Bus::write_dword(core, address + 8, core.simd[src2].dw);
+    core.ilist[dest] = dest == ZeroRegister ? 0 : (core.ilist[src1] >> src2);
 }
 
-FORCE_INLINE static void memory_pair_write_qword(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
+static FORCE_INLINE void ror(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    HANDLE_PRE_READWRITE(core, src1);
-    Bus::write_qword(core, address, core.simd[src1].qw);
-    HANDLE_PRE_READWRITE(core, src2);
-    Bus::write_qword(core, address + 16, core.simd[src2].qw);
+    core.list[dest] = dest == ZeroRegister ? 0 : std::rotr(core.list[src1], (i32)src2);
+}
+
+static FORCE_INLINE void abs(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
+{
+    core.ilist[dest] = 
+        dest == ZeroRegister ? 0 
+        : core.ilist[src1] >= 0 ? core.ilist[src1] 
+        : -core.ilist[src1];
 }
 
 // Non Binary
-static inline void ret(CPUCore& core, u8, u8 src1, u8)
+static FORCE_INLINE void ret(CPUCore& core, u8, u8 src1, u8)
 {
     core.pc = core.list[src1];
     core.handle_pc_change();
 }
 
-static inline void blr(CPUCore& core, u8, u8 src1, u8)
+static FORCE_INLINE void br(CPUCore& core, u8, u8 src1, u8)
+{
+    core.pc = core.list[src1];
+    core.handle_pc_change();
+}
+
+static FORCE_INLINE void blr(CPUCore& core, u8, u8 src1, u8)
 {
     core.gpr.lr = core.pc;
     core.pc = core.list[src1];
     core.handle_pc_change();
 }
 
-static inline void br(CPUCore& core, u8, u8 src1, u8)
+static FORCE_INLINE void brk(CPUCore& core, u8 op, u8 src1, u8 src2)
 {
-    core.pc = core.list[src1];
-    core.handle_pc_change();
+    core.handle_breakpoint(op | src1 << 6 | src2 << 11);
 }
 
-static inline void eret(CPUCore& core, u8, u8, u8) {}
-static inline void brk(CPUCore& core, u8, u8, u8) {}
-static inline void hlt(CPUCore& core, u8, u8, u8) { core.psr.HALT = true; }
+static FORCE_INLINE void svc(CPUCore& core, u8 op, u8 src1, u8 src2)
+{
+    core.make_exception(CPUCore::SupervisorException, 0x0, op | src1 << 6 | src2 << 11);
+}
 
-static inline void sit(CPUCore& core, u8, u8, u8) {}
-static inline void msr(CPUCore& core, u8, u8, u8) {}
-static inline void mrs(CPUCore& core, u8, u8, u8) {}
-static inline void sysset(CPUCore& core, u8, u8, u8) {}
-static inline void sysclr(CPUCore& core, u8, u8, u8) {}
+static FORCE_INLINE void evc(CPUCore& core, u8 op, u8 src1, u8 src2)
+{
+    core.make_exception(CPUCore::ExtendedSupervisorException, 0x0, op | src1 << 6 | src2 << 11);
+}
+
+static FORCE_INLINE void smc(CPUCore& core, u8 op, u8 src1, u8 src2)
+{
+    core.make_exception(CPUCore::SecureMachineControllerException, 0x0, op | src1 << 6 | src2 << 11);
+}
+
+static FORCE_INLINE void eret(CPUCore& core, u8, u8, u8) { core.return_exception(); }
+static FORCE_INLINE void wfi(CPUCore& core, u8, u8, u8) {}
+
+static FORCE_INLINE void msr(CPUCore& core, u8, u8, u8) {}
+static FORCE_INLINE void mrs(CPUCore& core, u8, u8, u8) {}
+
+static FORCE_INLINE void hlt(CPUCore& core, u8, u8, u8) { core.psr.HALT = true; }
 
 // Main opcodes
-FORCE_INLINE static void bl(CPUCore& core, u32 inst)
+static FORCE_INLINE void bl(CPUCore& core, u32 inst)
 {
     const u32 disp_inst = inst >> 6;
-    const u32 disp = disp_inst & 0x2000000 ? (0xFC00'0000 | disp_inst) << 2 : disp_inst << 2;
+    const u32 disp = inst & 0x8000000 ? (0xFC00'0000 | disp_inst) << 2 : disp_inst << 2;
 
     core.gpr.lr = core.pc;
     HANDLE_BRANCH(true, core, disp);
 }
 
-FORCE_INLINE static void b(CPUCore& core, u32 inst)
+static FORCE_INLINE void b(CPUCore& core, u32 inst)
 {
     const u32 disp_inst = inst >> 6;
-    const u32 disp = disp_inst & 0x2000000 ? (0xFC00'0000 | disp_inst) << 2 : disp_inst << 2;
+    const u32 disp = inst & 0x8000000 ? (0xFC00'0000 | disp_inst) << 2 : disp_inst << 2;
     HANDLE_BRANCH(true, core, disp);
 }
 
-FORCE_INLINE static void bcond(CPUCore& core, u32 inst)
+ static FORCE_INLINE void bcond(CPUCore& core, u32 inst)
 {
     u8 cond = (inst >> 6) & 0xF;
     i32 disp = (inst >> 10);
@@ -469,7 +474,7 @@ FORCE_INLINE static void bcond(CPUCore& core, u32 inst)
     }
 }
 
-FORCE_INLINE static void logical_add_sub(CPUCore& core, u32 inst)
+ static FORCE_INLINE void logical_add_sub(CPUCore& core, u32 inst)
 {
     u8 las = (inst >> 6) & 0x3F;
     u8 dest = (inst >> 12) & 0x1F;
@@ -533,16 +538,16 @@ FORCE_INLINE static void logical_add_sub(CPUCore& core, u32 inst)
 #undef CASE
 }
 
-FORCE_INLINE static void fp_op(CPUCore& core, u32 inst) {}
+ static FORCE_INLINE void fp_op(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE static void load_store_immediate(CPUCore& core, u32 inst)
+ static FORCE_INLINE void load_store_immediate(CPUCore& core, u32 inst)
 {
     u8 memopc = (inst >> 6) & 0x7;
 
     u8 dest = (inst >> 9) & 0x1F;
     u8 base = (inst >> 14) & 0x1F;
     i16 imm = (inst >> 20);
-    imm = inst & 0x7FF ? -imm : imm;
+    imm = inst & 0x8'0000 ? -imm : imm;
 
 #define CASE(op, name) case op: name(core, dest, core.list[base] + imm); break
     switch (memopc)
@@ -561,15 +566,39 @@ FORCE_INLINE static void load_store_immediate(CPUCore& core, u32 inst)
 #undef CASE
 }
 
-FORCE_INLINE static void load_store_fp_immediate(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void load_store_fp_immediate(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE static void load_store_register(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void load_store_register(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE static void load_store_pair(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void load_store_pair(CPUCore& core, u32 inst) {}
 
-FORCE_INLINE static void additional(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void extendedalu(CPUCore& core, u32 inst)
+{
+    u8 extopc = (inst >> 6) & 0x3F;
+    u8 dest = (inst >> 12) & 0x1F;
+    u8 src1 = (inst >> 17) & 0x1F;
+    u8 src2 = (inst >> 22) & 0x1F;
+    u8 src3 = (inst >> 27) & 0x1F;
 
-FORCE_INLINE static void non_binary(CPUCore& core, u32 inst)
+#define CASE(_op, name) case _op: name(core, dest, src1, src2, src3); break
+    switch (extopc)
+    {
+        CASE(NGP_MADD, madd);
+        CASE(NGP_MSUB, msub);
+        CASE(NGP_UDIV, udiv);
+        CASE(NGP_DIV, div);
+        CASE(NGP_SHL, shl);
+        CASE(NGP_SHR, shr);
+        CASE(NGP_ASR, asr);
+        CASE(NGP_ROR, ror);
+        CASE(NGP_ABS, abs);
+    default:
+        break;
+    }
+#undef CASE
+}
+
+static FORCE_INLINE void non_binary(CPUCore& core, u32 inst)
 {
     u16 nonopc = (inst >> 6) & 0x3FF;
     u8 op = (inst >> 16) & 0x3F;
@@ -583,13 +612,13 @@ FORCE_INLINE static void non_binary(CPUCore& core, u32 inst)
         CASE(NGP_BR, br);
         CASE(NGP_BLR, blr);
         CASE(NGP_BRK, brk);
+        CASE(NGP_SVC, svc);
+        CASE(NGP_SMC, smc);
         CASE(NGP_ERET, eret);
-        CASE(NGP_WFI, eret);
+        CASE(NGP_WFI, wfi);
         CASE(NGP_MSR, msr);
         CASE(NGP_MRS, mrs);
         CASE(NGP_HALT, hlt);
-        CASE(NGP_SYSSET, sysset);
-        CASE(NGP_SYSCLR, sysclr);
     case NGP_NOP:
     default:
         break;
@@ -597,13 +626,27 @@ FORCE_INLINE static void non_binary(CPUCore& core, u32 inst)
 #undef CASE
 }
 
-FORCE_INLINE static void ld_pc(CPUCore& core, u32 inst) {}
-FORCE_INLINE static void ld_s_pc(CPUCore& core, u32 inst) {}
-FORCE_INLINE static void ld_d_pc(CPUCore& core, u32 inst) {}
-FORCE_INLINE static void ld_q_pc(CPUCore& core, u32 inst) {}
-FORCE_INLINE static void adr_pc(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void ld_pc(CPUCore& core, u32 inst)
+{
+    u8 dest = (inst >> 6) & 0x1F;
+    const u32 disp_inst = inst >> 11;
+    const u32 disp = inst & 0x8000'0000 ? (0xFFE0'0000 | disp_inst) << 2 : disp_inst << 2;
+    core.list[dest] = dest == ZeroRegister ? 0 : Bus::read_word(core, core.pc + disp);
+}
 
-FORCE_INLINE static void immediate(CPUCore& core, u32 inst)
+static FORCE_INLINE void ld_s_pc(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void ld_d_pc(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void ld_q_pc(CPUCore& core, u32 inst) {}
+
+static FORCE_INLINE void adr_pc(CPUCore& core, u32 inst)
+{
+    u8 dest = (inst >> 6) & 0x1F;
+    const u32 disp_inst = inst >> 11;
+    const u32 disp = inst & 0x8000'0000 ? (0xFFE0'0000 | disp_inst) << 2 : disp_inst << 2;
+    core.list[dest] = dest == ZeroRegister ? 0 : core.pc + disp;
+}
+
+static FORCE_INLINE void immediate(CPUCore& core, u32 inst)
 {
     u16 imm = inst >> 16;
     u8 immopc = (inst >> 6) & 0x1F;
@@ -615,109 +658,52 @@ FORCE_INLINE static void immediate(CPUCore& core, u32 inst)
     }
 }
 
-FORCE_INLINE static void add_immediate(CPUCore& core, u32 inst) {
-    u8 dest = (inst >> 6) & 0x1F;
-    if (dest != 31) {
-        u8 src = (inst >> 11) & 0x1F;
-        u16 imm = inst >> 16;
-        core.list[dest] = core.list[src] + imm;
-    }
-}
+MAKE_IMMEDIATE_OP(add_immediate, core.list[src] + imm);
 
-FORCE_INLINE static void adds_immediate(CPUCore& core, u32 inst)
+static FORCE_INLINE void adds_immediate(CPUCore& core, u32 inst)
 {
     u8 dest = (inst >> 6) & 0x1F;
     u8 src = (inst >> 11) & 0x1F;
     u16 imm = inst >> 16;
     u32 result = add_with_carry_setting_flags(core, core.list[src], imm, 0);
-    core.list[dest] = dest == 31 ? result : 0;
+    core.list[dest] = dest == ZeroRegister ? result : 0;
 }
 
-FORCE_INLINE static void sub_immediate(CPUCore& core, u32 inst)
-{
-    u8 dest = (inst >> 6) & 0x1F;
-    if (dest != 31)
-    {
-        u8 src = (inst >> 11) & 0x1F;
-        u16 imm = inst >> 16;
-        core.list[dest] = core.list[src] - imm;
-    }
-}
+MAKE_IMMEDIATE_OP(sub_immediate, core.list[src] - imm);
 
-FORCE_INLINE static void subs_immediate(CPUCore& core, u32 inst)
+static FORCE_INLINE void subs_immediate(CPUCore& core, u32 inst)
 {
     u8 dest = (inst >> 6) & 0x1F;
     u8 src = (inst >> 11) & 0x1F;
     u16 imm = inst >> 16;
     u32 result = add_with_carry_setting_flags(core, core.list[src], ~imm, 1);
-    core.list[dest] = dest == 31 ? 0 : result;
+    core.list[dest] = dest == ZeroRegister ? 0 : result;
 }
 
-FORCE_INLINE static void and_immediate(CPUCore& core, u32 inst)
-{
-    u8 dest = (inst >> 6) & 0x1F;
-    if (dest != 31)
-    {
-        u8 src = (inst >> 11) & 0x1F;
-        u16 imm = inst >> 16;
-        core.list[dest] = core.list[src] & imm;
-    }
-}
+MAKE_IMMEDIATE_OP(and_immediate, core.list[src] & imm);
 
-FORCE_INLINE static void ands_immediate(CPUCore& core, u32 inst)
+static FORCE_INLINE void ands_immediate(CPUCore& core, u32 inst)
 {
     u8 dest = (inst >> 6) & 0x1F;
     u8 src = (inst >> 11) & 0x1F;
     u16 imm = inst >> 16;
     u32 result = and_setting_flags(core, core.list[src], imm);
-    core.list[dest] = dest == 31 ? result : 0;
+    core.list[dest] = dest == ZeroRegister ? result : 0;
 }
 
-FORCE_INLINE static void or_immediate(CPUCore& core, u32 inst)
-{
-    u8 dest = (inst >> 6) & 0x1F;
-    if (dest != 31)
-    {
-        u8 src = (inst >> 11) & 0x1F;
-        u16 imm = inst >> 16;
-        core.list[dest] = core.list[src] | imm;
-    }
-}
+MAKE_IMMEDIATE_OP(or_immediate, core.list[src] | imm);
+MAKE_IMMEDIATE_OP(eor_immediate, core.list[src] ^ imm);
 
-FORCE_INLINE static void eor_immediate(CPUCore& core, u32 inst)
-{
-    u8 dest = (inst >> 6) & 0x1F;
-    if (dest != 31)
-    {
-        u8 src = (inst >> 11) & 0x1F;
-        u16 imm = inst >> 16;
-        core.list[dest] = core.list[src] ^ imm;
-    }
-}
-
-FORCE_INLINE static void tbz(CPUCore& core, u32 inst) {}
-FORCE_INLINE static void tbnz(CPUCore& core, u32 inst) {}
-FORCE_INLINE static void cbz(CPUCore& core, u32 inst) {}
-FORCE_INLINE static void cbnz(CPUCore& core, u32 inst) {}
-
-#include <immintrin.h>
+ static FORCE_INLINE void tbz(CPUCore& core, u32 inst) {}
+ static FORCE_INLINE void tbnz(CPUCore& core, u32 inst) {}
+ static FORCE_INLINE void cbz(CPUCore& core, u32 inst) {}
+ static FORCE_INLINE void cbnz(CPUCore& core, u32 inst) {}
 
 void CPUCore::initialize()
 {
 }
 
 void CPUCore::shutdown() {}
-
-void CPUCore::handle_pc_change()
-{
-    mem_pc = (u32*)Bus::get_physical_addr(*this, pc);
-    offset = 0;
-}
-
-u32 CPUCore::fetch_inst()
-{
-    return mem_pc[offset];
-}
 
 void CPUCore::dispatch(u64 num_cycles)
 {
@@ -734,7 +720,7 @@ void CPUCore::dispatch(u64 num_cycles)
 
         u8 opcode = inst & 0x3F;
 
-#if 1
+#if 0
         typedef void (*func_ptr)(CPUCore&, u32);
         static func_ptr dispatch_table[] =
         {
@@ -782,7 +768,7 @@ void CPUCore::dispatch(u64 num_cycles)
             CASE(NGP_LOAD_STORE_FP_IMMEDIATE, load_store_fp_immediate);
             CASE(NGP_LOAD_STORE_REGISTER, load_store_register);
             CASE(NGP_LOAD_STORE_PAIR, load_store_pair);
-            CASE(NGP_ADDITIONAL, additional);
+            CASE(NGP_EXTENDEDALU, extendedalu);
             CASE(NGP_NON_BINARY, non_binary);
             CASE(NGP_LD_PC, ld_pc);
             CASE(NGP_LD_S_PC, ld_s_pc);
@@ -833,5 +819,51 @@ void CPUCore::print_pegisters()
         gpr.r25, gpr.r26, gpr.r27, gpr.r28,
         gpr.sp, gpr.lr, pc
     );
+}
+
+void CPUCore::make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 comment)
+{
+    switch (code)
+    {
+    case DivideByZeroException:
+        break;
+    case SupervisorException:
+    case ExtendedSupervisorException:
+    case SecureMachineControllerException:
+    {
+        u8 target_exception_level = code - SupervisorException;
+        elr.elr_el[target_exception_level] = pc;
+        spsr.spsr[target_exception_level] = psr;
+        psr.CURRENT_EL = target_exception_level + 1;
+        ecr.ecr_el[target_exception_level] = comment;
+
+        VirtualAddress vba = vbar.vbar_el[target_exception_level];
+        if (Bus::check_virtual_address(vba, Bus::WriteableAddress) == Bus::ValidVirtualAddress
+            && Bus::check_virtual_address(vba + VBASize, Bus::WriteableAddress) == Bus::ValidVirtualAddress)
+        {
+            pc = Bus::read_word(*this, vba + vec_offset);
+        }
+        else
+        {
+            hlt(*this, 0, 0, 0);
+        }
+    }
+    break;
+    }
+}
+
+void CPUCore::return_exception()
+{
+    VirtualAddress target_pc = elr.elr_el[psr.CURRENT_EL];
+    ProgramStateRegister last_psr = spsr.spsr[psr.CURRENT_EL];
+
+    psr = last_psr;
+    pc = target_pc;
+    handle_pc_change();
+}
+
+void CPUCore::handle_breakpoint(u16 comment)
+{
+    
 }
 

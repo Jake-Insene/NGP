@@ -95,14 +95,7 @@ void Assembler::assemble_instruction()
         break;
     case TI_B:
     {
-        u32 index = token_index - 3; auto target = parse_expresion(ParsePrecedence::Start); if (context.undefined_label == false)
-        {
-            inst = b(i32(target.u - program_index) / 4);
-        }
-        else if (context.is_in_resolve == false)
-        {
-            auto& tr = to_resolve.emplace_back(); tr.address = u32(program_index - 4); tr.index = index; advance_to_next_line();
-        }
+        RELATIVE(b, TI_B);
     };
         break;
     case TI_ADR:
@@ -256,14 +249,14 @@ void Assembler::assemble_instruction()
     case TI_NOT:
         assemble_one_operand(inst, [](u8 dest, u8 src)
             {
-                return alu(NGP_ORN_SHL, dest, 31, src, 0);
+                return alu(NGP_ORN_SHL, dest, ZeroRegister, src, 0);
             }
         );
         break;
     case TI_NEG:
         assemble_one_operand(inst, [](u8 dest, u8 src)
             {
-                return alu(NGP_SUB_SHL, dest, 31, src, 0);
+                return alu(NGP_SUB_SHL, dest, ZeroRegister, src, 0);
             }
         );
         break;
@@ -315,7 +308,7 @@ void Assembler::assemble_instruction()
     case TI_MUL:
         assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2)
             {
-                return additional(NGP_MADD, dest, src1, src2, 31);
+                return additional(NGP_MADD, dest, src1, src2, ZeroRegister);
             }
         );
         break;
@@ -343,7 +336,7 @@ void Assembler::assemble_instruction()
         if (operand.is(TOKEN_REGISTER))
         {
             INVALIDATE_FP(operand, break);
-            inst = alu(NGP_OR_SHL, dest, 31, get_register(operand), 0);
+            inst = alu(NGP_OR_SHL, dest, ZeroRegister, get_register(operand), 0);
         }
         else if (operand.is(TOKEN_IMMEDIATE))
         {
@@ -351,7 +344,7 @@ void Assembler::assemble_instruction()
             {
                 MAKE_ERROR(operand, break, "immediate value too long");
             }
-            inst = binaryi(NGP_OR_IMMEDIATE, dest, 31, operand.ushort[0]);
+            inst = binaryi(NGP_OR_IMMEDIATE, dest, ZeroRegister, operand.ushort[0]);
         }
         else if (operand.is(TOKEN_NEW_LINE))
         {
@@ -414,7 +407,26 @@ void Assembler::assemble_instruction()
     }
     break;
     case TI_RET:
+    {
         inst = non_binary(NGP_RET, 0, 30, 0);
+    }
+        break;
+    case TI_BLR:
+    {
+        GET_REG(reg, "a target branch register was expected", break);
+        inst = non_binary(NGP_BLR, 0, reg, 0);
+    }
+        break;
+    case TI_BR:
+    {
+        GET_REG(reg, "a target branch register was expected", break);
+        inst = non_binary(NGP_BLR, 0, reg, 0);
+    }
+        break;
+    case TI_ERET:
+    {
+        inst = non_binary(NGP_ERET, 0, 0, 0);
+    }
         break;
     case TI_BRK:
     {
@@ -424,6 +436,36 @@ void Assembler::assemble_instruction()
         }
 
         inst = exception(NGP_BRK, (u16)last->uword);
+    }
+    break;
+    case TI_SVC:
+    {
+        if (!expected(TOKEN_IMMEDIATE, "a immediate value was expected!"))
+        {
+            break;
+        }
+
+        inst = exception(NGP_SVC, (u16)last->uword);
+    }
+    break;
+    case TI_EVC:
+    {
+        if (!expected(TOKEN_IMMEDIATE, "a immediate value was expected!"))
+        {
+            break;
+        }
+
+        inst = exception(NGP_EVC, (u16)last->uword);
+    }
+    break;
+    case TI_SMC:
+    {
+        if (!expected(TOKEN_IMMEDIATE, "a immediate value was expected!"))
+        {
+            break;
+        }
+
+        inst = exception(NGP_SMC, (u16)last->uword);
     }
     break;
     case TI_HALT:
@@ -494,6 +536,7 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             {
                 inst = pcrel(NGP_LD_PC, dest, i32((symbol.u - program_index) / 4));
             }
+            return;
         }
         else if (context.is_in_resolve == false)
         {
@@ -554,8 +597,8 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             }
 
             // check if we need to subtract or add
-            bool sub = current->i < 0 ? 1 : 0;
-            u16 offset = (u16)abs(current->i);
+            bool sub = indice.i < 0 ? 1 : 0;
+            u16 offset = (u16)abs(indice.i);
             if (fp_type == 1)
             {
                 inst = fmemoryi(NGP_LD_S_IMMEDIATE, dest, base, offset / alignment, sub);
@@ -572,7 +615,6 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             {
                 inst = memoryi(imm_opcode, dest, base, offset / alignment, sub);
             }
-            advance(); // imm
             EXPECTED_KEY_RIGHT(return);
         }
         else if (indice.is(TOKEN_REGISTER))
@@ -644,7 +686,7 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
             inst = alu(opc, dest, src1, get_register(second_operand), amount);
         }
     }
-    else if (second_operand.is(TOKEN_IMMEDIATE) && immediate_limit != -1)
+    else if (second_operand.is(TOKEN_IMMEDIATE) && immediate_limit != 0)
     {
         if (second_operand.u > immediate_limit)
         {
@@ -808,7 +850,7 @@ void Assembler::assemble_shift(u32& inst, u8 opcode)
         }
 
         u8 logopc = opcode - NGP_SHL;
-        inst = alu(NGP_OR_SHL + logopc, dest, 31, src1, third_operand.byte[0]);
+        inst = alu(NGP_OR_SHL + logopc, dest, ZeroRegister, src1, third_operand.byte[0]);
     }
     else if (third_operand.is(TOKEN_NEW_LINE))
     {
@@ -859,7 +901,7 @@ void Assembler::check_for_amount(u8& adder, u8& amount)
             return;
         }
 
-        if (last->u > 31)
+        if (last->u > ZeroRegister)
         {
             ErrorManager::error(
                 current->source_file, current->line,

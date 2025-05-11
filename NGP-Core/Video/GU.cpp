@@ -6,13 +6,11 @@
 /******************************************************/
 #include "Video/GU.h"
 
-#include "Video/vGPU/VGPU.h"
+#include "Video/VGU/VGU.h"
 
 #ifdef _WIN32
 #include <Video/D3D12/D3D12GU.h>
 #endif // _WIN32
-
-GPUDriver driver_impl = {};
 
 void GU::initialize(GU::DriverApi api)
 {
@@ -20,24 +18,16 @@ void GU::initialize(GU::DriverApi api)
 	{
 #ifdef _WIN32
 	case DriverApi::D3D12:
-		driver_impl = D3D12GU::get_driver();
-#endif // _WIN32
+		main_driver = D3D12GU::get_driver();
 		break;
-	case DriverApi::VGPU:
-		driver_impl = VGPU::get_driver();
+#endif // _WIN32
+	case DriverApi::VGU:
+		main_driver = VGPU::get_driver();
+		break;
 	default:
 		break;
 	}
 
-	driver_impl.initialize();
+	main_driver.initialize();
 }
 
-void GU::shutdown()
-{
-	driver_impl.shutdown();
-}
-
-void GU::present()
-{
-	driver_impl.present();
-}

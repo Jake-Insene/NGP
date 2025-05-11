@@ -6,7 +6,10 @@
 /******************************************************/
 #pragma once
 #include "Frontend/Token.h"
-#include <FileFormat/ISA.h>
+#include "FileFormat/ISA.h"
+
+#include <string_view>
+
 
 [[nodiscard]] static constexpr u32 one_arg(u8 opcode, u32 arg)
 {
@@ -59,7 +62,7 @@
 [[nodiscard]] static constexpr u32 additional(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3)
 {
     return u32(
-        NGP_ADDITIONAL
+        NGP_EXTENDEDALU
         | (opcode << 6)
         | (dest << 12)
         | (src1 << 17)
@@ -124,6 +127,38 @@
 [[nodiscard]] static constexpr u32 iimmediate(u8 opcode, u8 dest, u16 immediate)
 {
     return u32(NGP_IMMEDIATE | (opcode << 6) | (dest << 11) | (immediate << 16));
+}
+
+inline u32 get_real_string_len(std::string_view str)
+{
+    u32 i = 0;
+    u32 len = 0;
+    while (i < str.size())
+    {
+        switch (str[i])
+        {
+        case '\\':
+        {
+            len++;
+            i++;
+            if (str[i] == '0')
+            {
+                i++;
+            }
+            else if (str[i] == 'n')
+            {
+                i++;
+            }
+        }
+        break;
+        default:
+            len++;
+            i++;
+            break;
+        }
+    }
+
+    return len;
 }
 
 // String

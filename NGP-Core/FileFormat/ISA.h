@@ -48,7 +48,7 @@ enum NGPBaseOpcode : u8
     NGP_LOAD_STORE_REGISTER = 0x7,
     NGP_LOAD_STORE_PAIR = 0x8,
 
-    NGP_ADDITIONAL = 0x9,
+    NGP_EXTENDEDALU = 0x9,
     NGP_NON_BINARY = 0xA,
 
     NGP_LD_PC = 0xB,
@@ -339,12 +339,12 @@ enum NGPLoadStorePair
     NGP_STP_Q = 0x7,
 };
 
-// SpecialMath Opcode
+// ExtendedALU Opcode
 // [6 - 11] -> Opcode
 // [12 - 16] -> Dest 
 // [17 - 21] -> Src1
 // [22 - 26] -> Src2
-// [27 - 31] -> Imm5/Src2
+// [27 - 31] -> Imm5/Src3
 enum NGPExtendedALU
 {
     // Rd = R[Dest]
@@ -384,16 +384,17 @@ enum NGPNonBinary
 
     // BRK #imm16
     NGP_BRK = 0x03,
+    NGP_SVC = 0x04,
+    NGP_EVC = 0x05,
+    NGP_SMC = 0x06,
     
-    NGP_ERET = 0x04,
-    NGP_WFI = 0x05,
+    NGP_ERET = 0x07,
+    NGP_WFI = 0x08,
 
-    NGP_MSR = 0x06,
-    NGP_MRS = 0x07,
+    NGP_MSR = 0x09,
+    NGP_MRS = 0x0A,
 
-    NGP_SYSSET = 0x08,
-    NGP_SYSCLR = 0x09,
-    NGP_HALT = 0x0A,
+    NGP_HALT = 0x0B,
 
     NGP_NOP = 0x3FF,
 };

@@ -6,59 +6,85 @@
 /******************************************************/
 #include "IO/DMA/DMA.h"
 
-#include "IO/IORegisters.h"
+#include "Memory/Bus.h"
+
 
 namespace IO
 {
 
+struct DMAChannelState
+{
+    u32 status;
+};
+
+static inline DMAChannelState channels[DMA_CHANNELS_MAX] = {};
+
 void dma_channel_write(u8 channel, u8 reg, u32 value)
 {
-    get_io_registers().dma.channels[channel].raw_regs[reg] = value;
-}
-
-void dma_set_enable(u32 value)
-{
-    if (value & DMA_RAM_MASK)
+    switch (reg)
     {
-        get_io_registers().dma.channels[DMA_RAM].status = DMA_STATUS_ENABLE;
+    case 0: // DMA_CTR
+        if (value & DMA_START)
+        {
+
+        }
+        break;
+    case 1: // DMA_SRC
+        break;
+    case 2: // DMA_DST
+        break;
+    case 3: // DMA_CNT
+        break;
     }
 
-    get_io_registers().dma.enable_mask = value;
+    get_dma_registers().channels[channel].raw_regs[reg & 0x3] = value;
+}
+
+void dma_set_enable(u8 channel, u32 value)
+{
+    channels[channel].status = DMA_STATUS_ENABLE;
+    
+    get_dma_registers().enable_mask = value;
 }
 
 void dma_set_irq(u32 value)
 {
-    get_io_registers().dma.irq_mask = value;
+    get_dma_registers().irq_mask = value;
 }
 
 void dma_set_priority(u32 value)
 {
-    get_io_registers().dma.priority_mask = value;
+    get_dma_registers().priority_mask = value;
 }
 
 void dma_wait_on(u32 value)
 {
-    get_io_registers().dma.wait_on_mask = value;
+    get_dma_registers().wait_on_mask = value;
+}
+
+DMARegisters& get_dma_registers()
+{
+    return *(DMARegisters*)(Bus::MAPPED_BUS_ADDRESS_START + DMA_BASE);
 }
 
 void dma_handle_write_word(CPUCore& core, VirtualAddress address, Word value)
 {
-    if (address >= DMA_CHANNELS_START && address < 0x100)
+    if (address >= DMA_CHANNELS_START && address < DMA_CHANNELS_END)
     {
-        dma_channel_write((address & 0xFFF) >> 4, (address & 0xFFF) >> 2, value);
+        dma_channel_write((address & 0xF0) >> 4, (address & 0xF) >> 2, value);
         return;
     }
 
     switch (address)
     {
     case DMA_ENABLE_MASK:
-        dma_set_enable(value);
+        dma_set_enable((address & 0xF0) >> 4, value);
         break;
     case DMA_IRQ_MASK:
         dma_set_irq(value);
         break;
     case DMA_PRIORITY_MASK:
-        dma_set_enable(value);
+        dma_set_priority(value);
         break;
     case DMA_WAIT_ON_MASK:
         dma_wait_on(value);

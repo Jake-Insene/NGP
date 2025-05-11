@@ -14,22 +14,26 @@ namespace IO
 {
 
 // The MMIO is segmented, each segment has a size of 4096 bytes.
-static constexpr u32 IO_BASE = 0x1000'0000;
+static constexpr VirtualAddress IO_BASE = 0x1000'0000;
 
 enum IOSegments
 {
     DMA_SEGMENT = 0x0,
     IRQ_SEGMENT = 0x1,
     PAD_SEGMENT = 0x2,
+    EMD_SEGMENT = 0x3,
+    DEBUG_SEGMENT = 0x4,
 
-    GPU_SEGMENT = 0x10,
+    GU_SEGMENT = 0x10,
 };
 
-static constexpr u32 DMA_BASE = IO_BASE | 0x0000;
-static constexpr u32 IRQ_BASE = IO_BASE | 0x1000;
-static constexpr u32 PAD_BASE = IO_BASE | 0x2000;
-static constexpr u32 GPU_BASE = IO_BASE | 0x10000;
+static constexpr VirtualAddress DMA_BASE =      IO_BASE | 0x0000'0000;
+static constexpr VirtualAddress IRQ_BASE =      IO_BASE | 0x0000'1000;
+static constexpr VirtualAddress PAD_BASE =      IO_BASE | 0x0000'2000;
+static constexpr VirtualAddress EMD_BASE =      IO_BASE | 0x0000'3000;
+static constexpr VirtualAddress DEBUG_BASE =    IO_BASE | 0x0000'4000;
 
+static constexpr VirtualAddress GU_BASE = IO_BASE | 0x0001'0000;
 
 void initialize();
 void shutdown();

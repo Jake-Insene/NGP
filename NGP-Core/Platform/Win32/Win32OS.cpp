@@ -17,6 +17,8 @@ DWORD get_protection(OS::PageAccess access)
 {
     switch(access)
     {
+    case OS::PAGE_NONE:
+        return 0;
     case OS::PAGE_READ_ONLY:
         return PAGE_READONLY;
     case OS::PAGE_READ_WRITE:

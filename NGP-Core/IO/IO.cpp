@@ -6,7 +6,9 @@
 /******************************************************/
 #include "IO/IO.h"
 
+#include "IO/Debug/Debug.h"
 #include "IO/DMA/DMA.h"
+#include "IO/GU/GU.h"
 #include "IO/IRQ/IRQ.h"
 #include "IO/Pad/Pad.h"
 #include "Memory/Bus.h"
@@ -70,7 +72,7 @@ void write_io_half(CPUCore& core, VirtualAddress address, u16 value)
 
 void write_io_word(CPUCore& core, VirtualAddress address, Word value)
 {
-    u32 io_segment = (address & 0xFFFF'F000) >> 12;
+    u32 io_segment = (address & 0x0FFF'F000) >> 12;
 
     switch (io_segment)
     {
@@ -82,6 +84,12 @@ void write_io_word(CPUCore& core, VirtualAddress address, Word value)
         break;
     case PAD_SEGMENT:
         pad_handle_write_word(core, address, value);
+        break;
+    case DEBUG_SEGMENT:
+        debug_handle_write_word(core, address, value);
+        break;
+    case GU_SEGMENT:
+        gu_handle_write_word(core, address, value);
         break;
     }
 }

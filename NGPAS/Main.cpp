@@ -89,7 +89,7 @@ int main(int argc, char** argv)
 
     if (output_file.empty())
     {
-        output_file = { input_file };
+        output_file = input_file;
         output_file = output_file.substr(0, output_file.find_last_of('.'));
     }
 

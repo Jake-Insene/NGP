@@ -31,9 +31,9 @@ const Vertex vertices[] =
 
 static constexpr usize VRamAddress = 0x2'0000'0000;
 
-GPUDriver D3D12GU::get_driver()
+GU::GUDriver D3D12GU::get_driver()
 {
-    return GPUDriver{
+    return GU::GUDriver{
         .initialize = D3D12GU::initialize,
         .shutdown = D3D12GU::shutdown,
 
@@ -132,7 +132,7 @@ void D3D12GU::initialize()
 
         DX_ERROR(
             tmp_sc->QueryInterface(IID_PPV_ARGS(&swap_chain)),
-            "Can't query IDXGISwapChain"
+            "Couldn't query IDXGISwapChain"
         );
 
         tmp_sc->Release();
@@ -156,7 +156,7 @@ void D3D12GU::initialize()
     descriptor_heap_desc =
     {
         .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        .NumDescriptors = 1,
+        .NumDescriptors = MaxFramebufferCount,
         .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
         .NodeMask = 0
     };
@@ -167,6 +167,12 @@ void D3D12GU::initialize()
     );
 
     // Synchronization && RTV && Command Lists
+    device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(&cmd_compute_allocator));
+    device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COMPUTE, cmd_compute_allocator, nullptr, IID_PPV_ARGS(&cmd_compute));
+    cmd_compute->Close();
+    device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&compute_fence));
+    compute_fence_event = CreateEventA(nullptr, 0, 0, nullptr);
+
     for (u32 i = 0; i < DefaultBufferCount; i++)
     {
         Framebuffer& frame = framebuffers[i];
@@ -174,13 +180,6 @@ void D3D12GU::initialize()
 
         D3D12_CPU_DESCRIPTOR_HANDLE heap_begin = rtv_heap->GetCPUDescriptorHandleForHeapStart();
         frame.handle.ptr = heap_begin.ptr + (device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV) * i);
-
-        DX_ERROR(
-            device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frame.fence)),
-            "Couldn't create the main fence"
-        );
-        frame.fence_value = 0;
-        frame.fence_event = CreateEventA(nullptr, FALSE, FALSE, nullptr);
 
         D3D12_RENDER_TARGET_VIEW_DESC rtv_desc =
         {
@@ -194,6 +193,13 @@ void D3D12GU::initialize()
         };
 
         device->CreateRenderTargetView(frame.buffer, &rtv_desc, frame.handle);
+
+        DX_ERROR(
+            device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frame.fence)),
+            "Couldn't create the main fence"
+        );
+        frame.fence_value = 0;
+        frame.fence_event = CreateEventA(nullptr, FALSE, FALSE, nullptr);
 
         DX_ERROR(
             device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&frame.cmd_graphics_allocator)),
@@ -215,7 +221,7 @@ void D3D12GU::initialize()
         HRESULT result = S_OK;
 
         DX_ERROR(
-            result = D3DCompileFromFile(L"Assets/blit.vs.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", 0, 0, &vs_code, &error_blob),
+            result = D3DCompileFromFile(L"Assets/blit.vs.d3d12.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", 0, 0, &vs_code, &error_blob),
             "Couldn't create the blit vertex shader"
         );
         if (FAILED(result))
@@ -225,7 +231,7 @@ void D3D12GU::initialize()
         }
 
         DX_ERROR(
-            result = D3DCompileFromFile(L"Assets/blit.ps.hlsl", nullptr, nullptr, "PSMain", "ps_5_1", 0, 0, &ps_code, &error_blob),
+            result = D3DCompileFromFile(L"Assets/blit.ps.d3d12.hlsl", nullptr, nullptr, "PSMain", "ps_5_1", 0, 0, &ps_code, &error_blob),
             "Couldn't create the blit pixel shader"
         );
         if (FAILED(result))
@@ -370,25 +376,26 @@ void D3D12GU::initialize()
         memcpy(data, vertices, sizeof(vertices));
         vb_upload->Unmap(0, nullptr);
 
+        // Upload vertex buffer
+        send_compute([](ID3D12Resource* vb_upload)
+            {
+                D3D12_RESOURCE_BARRIER b1 = dx::transition_barrier(
+                    vb, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST
+                );
+                cmd_compute->ResourceBarrier(1, &b1);
 
-        Framebuffer& frame = framebuffers[current_frame];
+                b1 = dx::transition_barrier(
+                    vb_upload, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE
+                );
+                cmd_compute->ResourceBarrier(1, &b1);
 
-        // Uploading buffer
-        frame.cmd_graphics_allocator->Reset();
-        ID3D12GraphicsCommandList4* cmd_graphics = frame.cmd_graphics;
-        cmd_graphics->Reset(frame.cmd_graphics_allocator, nullptr);
-        
-        dx::transition(cmd_graphics, vb, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-        dx::transition(cmd_graphics, vb_upload, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmd_graphics->CopyResource(vb, vb_upload);
-        dx::transition(cmd_graphics, vb, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+                cmd_compute->CopyResource(vb, vb_upload);
 
-        cmd_graphics->Close();
-        queue_graphics->ExecuteCommandLists(1, (ID3D12CommandList**)&cmd_graphics);
-
-        // Signal fence
-        queue_graphics->Signal(frame.fence, ++frame.fence_value);
-        queue_graphics->Wait(frame.fence, frame.fence_value);
+                b1 = dx::transition_barrier(
+                    vb, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
+                );
+                cmd_compute->ResourceBarrier(1, &b1);
+            }, vb_upload);
 
         dx::release(vb_upload);
     }
@@ -417,8 +424,11 @@ void D3D12GU::shutdown()
         CloseHandle(framebuffers[i].fence_event);
     }
 
-    dx::release(queue_graphics);
+    dx::release(compute_fence);
+    dx::release(cmd_compute);
+    dx::release(cmd_compute_allocator);
     dx::release(queue_compute);
+    dx::release(queue_graphics);
 
 #if NDEBUG == 0
     ID3D12DebugDevice* debug_device = nullptr;
@@ -430,7 +440,7 @@ void D3D12GU::shutdown()
     dx::release(device);
 }
 
-void D3D12GU::present()
+void D3D12GU::present(bool vsync)
 {
     Framebuffer& frame = framebuffers[current_frame];
     if (frame.fence_value != frame.fence->GetCompletedValue())
@@ -456,8 +466,12 @@ void D3D12GU::present()
     D3D12_RECT rect = {0, 0, Window::DefaultWindowWidth, Window::DefaultWindowHeight };
     cmd_graphics->RSSetScissorRects(1, &rect);
 
-    dx::transition(cmd_graphics, frame.buffer, 0, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-    //cmd_graphics->ClearRenderTargetView(frame.handle, clear_color, 0, nullptr);
+    D3D12_RESOURCE_BARRIER b1 = dx::transition_barrier(
+        frame.buffer, 0, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET
+    );
+    cmd_graphics->ResourceBarrier(1, &b1);
+
+    cmd_graphics->ClearRenderTargetView(frame.handle, clear_color, 0, nullptr);
 
     cmd_graphics->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     cmd_graphics->SetPipelineState(blit_pipeline);
@@ -474,14 +488,17 @@ void D3D12GU::present()
 
     cmd_graphics->DrawInstanced(6, 1, 0, 0);
 
-    dx::transition(cmd_graphics, frame.buffer, 0, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+    b1 = dx::transition_barrier(
+        frame.buffer, 0, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
+    );
+    cmd_graphics->ResourceBarrier(1, &b1);
 
     cmd_graphics->Close();
 
     ID3D12CommandList* cmd_list[] = { cmd_graphics };
-    queue_graphics->ExecuteCommandLists(1, (ID3D12CommandList**)&cmd_graphics);
+    queue_graphics->ExecuteCommandLists(1, cmd_list);
 
-    swap_chain->Present(1, 0);
+    swap_chain->Present(vsync, 0);
     current_frame = (current_frame + 1) % DefaultBufferCount;
 
     // Signal fence
@@ -499,6 +516,7 @@ VirtualAddress D3D12GU::create_framebuffer()
         .Width = GU::MaxDeviceScreenWidth,
         .Height = GU::MaxDeviceScreenHeight,
         .DepthOrArraySize = 1,
+        .MipLevels = 1,
         .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
         .SampleDesc = {.Count = 1},
     };
@@ -532,6 +550,11 @@ VirtualAddress D3D12GU::create_framebuffer()
 
 void D3D12GU::update_framebuffer(void* pixels)
 {
+    void* data;
+    upload_framebuffer->Map(0, nullptr, &data);
+    memcpy(data, pixels, GU::MaxDeviceScreenWidth * GU::MaxDeviceScreenHeight * 4);
+    upload_framebuffer->Unmap(0, nullptr);
+
     Framebuffer& frame = framebuffers[current_frame];
     if (frame.fence_value != frame.fence->GetCompletedValue())
     {
@@ -543,13 +566,16 @@ void D3D12GU::update_framebuffer(void* pixels)
     frame.cmd_graphics_allocator->Reset();
     cmd_graphics->Reset(frame.cmd_graphics_allocator, nullptr);
 
-    void* data;
-    upload_framebuffer->Map(0, nullptr, &data);
-    memcpy(data, pixels, GU::MaxDeviceScreenWidth * GU::MaxDeviceScreenHeight* 4);
-    upload_framebuffer->Unmap(0, nullptr);
+    D3D12_RESOURCE_BARRIER t3 = dx::transition_barrier(
+        upload_framebuffer, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE
+    );
 
-    dx::transition(cmd_graphics, upload_framebuffer, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-    dx::transition(cmd_graphics, framebuffer, 0, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+    D3D12_RESOURCE_BARRIER t4 = dx::transition_barrier(
+        framebuffer, 0, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST
+    );
+
+    D3D12_RESOURCE_BARRIER translations[] = { t3, t4};
+    cmd_graphics->ResourceBarrier(2, translations);
 
     D3D12_TEXTURE_COPY_LOCATION dest =
     {
@@ -584,8 +610,16 @@ void D3D12GU::update_framebuffer(void* pixels)
     };
 
     cmd_graphics->CopyTextureRegion(&dest, 0, 0, 0, &src, &box);
-    dx::transition(cmd_graphics, upload_framebuffer, 0, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COMMON);
-    dx::transition(cmd_graphics, framebuffer, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+    D3D12_RESOURCE_BARRIER translation1 = dx::transition_barrier(
+        upload_framebuffer, 0, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COMMON
+    );
+    cmd_graphics->ResourceBarrier(1, &translation1);
+
+    D3D12_RESOURCE_BARRIER translation2 = dx::transition_barrier(
+        framebuffer, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+    );
+    cmd_graphics->ResourceBarrier(1, &translation2);
 
     cmd_graphics->Close();
 

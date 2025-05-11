@@ -284,8 +284,10 @@ SymbolInfo symbols[] =
     {.symbol = "br", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_BR },
     {.symbol = "eret", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_ERET },
     {.symbol = "brk", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BRK },
+    {.symbol = "svc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SVC },
+    {.symbol = "evc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_EVC },
+    {.symbol = "smc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SMC },
     {.symbol = "halt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_HALT },
-    {.symbol = "sit", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SIT },
 };
 
 #define MAKE_TOKEN(TYPE) { \

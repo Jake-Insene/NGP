@@ -29,6 +29,19 @@ static constexpr u32 BIOS_SIZE = MB(4U);
 static constexpr u32 MAX_ALLOWED_RAM = 0x1'0000'0000 - 0x2000'0000;
 static constexpr u32 MAX_ALLOWED_RAM_MB = MAX_ALLOWED_RAM / 1'024 / 1'024;
 
+static constexpr u64 MAPPED_BUS_ADDRESS_START = 0x1'0000'0000;
+
+enum CheckAddressResult
+{
+    ValidVirtualAddress = 0,
+    InvalidVirtualAddress,
+};
+
+enum CheckAddressFlags
+{
+    WriteableAddress = 0x1,
+};
+
 void initialize();
 void shutdown();
 
@@ -47,13 +60,44 @@ void invalid_write(CPUCore& core, VirtualAddress addr);
 
 bool load_bios(const char* path);
 
-PhysicalAddress get_physical_addr(CPUCore& core, VirtualAddress pc);
+CheckAddressResult check_virtual_address(VirtualAddress va, CheckAddressFlags flags);
 
-QWord read_qword(CPUCore& core, VirtualAddress addr);
-DWord read_dword(CPUCore& core, VirtualAddress addr);
-u32 read_word(CPUCore& core, VirtualAddress addr);
-u16 read_half(CPUCore& core, VirtualAddress addr);
-u8 read_byte(CPUCore& core, VirtualAddress addr);
+
+FORCE_INLINE PhysicalAddress get_physical_addr(CPUCore& core, VirtualAddress pc)
+{
+    return u64(pc) + MAPPED_BUS_ADDRESS_START;
+}
+
+template<typename T>
+FORCE_INLINE T read_at(CPUCore& core, VirtualAddress addr)
+{
+    return *(T*)(MAPPED_BUS_ADDRESS_START + addr);
+}
+
+FORCE_INLINE QWord read_qword(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<QWord>(core, addr);
+}
+
+FORCE_INLINE DWord read_dword(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<DWord>(core, addr);
+}
+
+FORCE_INLINE u32 read_word(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<u32>(core, addr);
+}
+
+FORCE_INLINE u16 read_half(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<u16>(core, addr);
+}
+
+FORCE_INLINE u8 read_byte(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<u8>(core, addr);
+}
 
 void write_qword(CPUCore& core, VirtualAddress addr, QWord qword);
 void write_dword(CPUCore& core, VirtualAddress addr, DWord dword);

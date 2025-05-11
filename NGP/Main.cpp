@@ -4,8 +4,8 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include <Memory/Bus.h>
-#include <Emulator.h>
+#include "Memory/Bus.h"
+#include "Emulator.h"
 
 #include <cstdio>
 #include <string>
@@ -56,7 +56,7 @@ void handle_arguments(int argc, char** argv)
             {
                 if (index == argc)
                 {
-                    printf("error: -m require a number\n");
+                    printf("error: -ram require a number\n");
                     exit(1);
                 }
                 Bus::set_ram_size(std::atoi(argv[index++]));

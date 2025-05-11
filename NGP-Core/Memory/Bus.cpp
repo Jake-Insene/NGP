@@ -1,3 +1,4 @@
+#include "Bus.h"
 /******************************************************/
 /*              This file is part of NGP              */
 /******************************************************/
@@ -22,19 +23,18 @@ usize ram_size = MB(256);
 // Default to 32 MB
 usize vram_size = MB(32);
 
-static constexpr u64 MAPPED_BUS_ADDRESS_START = 0x1'0000'0000;
-
 void initialize()
 {
     bios = (u8*)OS::allocate_virtual_memory((void*)MAPPED_BUS_ADDRESS_START, BIOS_SIZE, OS::PAGE_READ_WRITE);
 
-    ram = (u8*)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + RAM_START), ram_size, OS::PAGE_READ_WRITE);
-
     io = (u8*)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + IO_START), RAM_START - IO_START, OS::PAGE_READ_WRITE);
 
+    ram = (u8*)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + RAM_START), ram_size, OS::PAGE_READ_WRITE);
+
 #if !NDEBUG
-    printf("DEBUG: BIOS mapped at 0x%p\n", bios);
-    printf("DEBUG: RAM mapped at 0x%p\n", ram);
+    printf("DEBUG: BIOS mapped at: 0x%p\n", bios);
+    printf("DEBUG: IO mapped at:   0x%p\n", io);
+    printf("DEBUG: RAM mapped at:  0x%p\n", ram);
 #endif // !NDEBUG
 }
 
@@ -117,47 +117,29 @@ bool load_bios(const char* path)
     return true;
 }
 
-PhysicalAddress get_physical_addr(CPUCore& core, VirtualAddress addr)
+CheckAddressResult check_virtual_address(VirtualAddress va, CheckAddressFlags flags)
 {
-    return u64(addr + MAPPED_BUS_ADDRESS_START);
-}
+    if (va > BIOS_END && va < IO_START)
+    {
+        return InvalidVirtualAddress;
+    }
+    else if (flags & WriteableAddress && va >= IO_START && va < RAM_START)
+    {
+        return InvalidVirtualAddress;
+    }
+    else if (va >= RAM_START && va < RAM_START + ram_size)
+    {
+        return ValidVirtualAddress;
+    }
 
-template<typename T>
-inline T read_at(CPUCore& core, VirtualAddress addr)
-{
-    return *(T*)(MAPPED_BUS_ADDRESS_START + addr);
-}
-
-QWord read_qword(CPUCore& core, VirtualAddress addr)
-{
-    return read_at<QWord>(core, addr);
-}
-
-DWord read_dword(CPUCore& core, VirtualAddress addr)
-{
-    return read_at<DWord>(core, addr);
-}
-
-u32 read_word(CPUCore& core, VirtualAddress addr)
-{
-    return read_at<u32>(core, addr);
-}
-
-u16 read_half(CPUCore& core, VirtualAddress addr)
-{
-    return read_at<u16>(core, addr);
-}
-
-u8 read_byte(CPUCore& core, VirtualAddress addr)
-{
-    return read_at<u8>(core, addr);
+    return InvalidVirtualAddress;
 }
 
 
 template<typename T>
 inline void write_at(CPUCore& core, VirtualAddress addr, T value)
 {
-    if ((addr & 0xF000'0000) == 1)
+    if ((addr >> 28) == 1)
     {
         return IO::write_io<T>(core, addr, value);
     }

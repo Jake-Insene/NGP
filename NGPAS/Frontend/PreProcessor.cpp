@@ -75,15 +75,29 @@ void PreProcessor::process_directive()
 
         Lexer last_lexer = lexer;
         Token last_current = current;
-        Token last_next = current;
+        Token last_next = next;
 
         std::string file_path{};
         file_path.resize(last.str.size());
         encode_string((u8*)file_path.data(), last.str);
 
         std::string source_folder = last.source_file;
-        u64 pos = source_folder.find_last_of('/');
-        pos = pos == std::string::npos ? source_folder.find_last_of('\\') : pos;
+#if defined(_WIN32)
+        u64 pos1 = source_folder.find_last_of('\\');
+        u64 pos2 = source_folder.find_last_of('/');
+        u64 pos = std::string::npos;
+        if (pos1 != pos2)
+        {
+            if (pos1 > pos2 && pos1 != std::string::npos)
+                pos = pos1;
+            else
+                pos = pos2;
+        }
+
+#else
+        u64 pos = pos == std::string::npos ? source_folder.find_last_of('\\') : pos;
+        pos = source_folder.find_last_of('/');
+#endif
         if(pos != std::string::npos)
         {
             source_folder = source_folder.substr(0, pos);
@@ -98,6 +112,17 @@ void PreProcessor::process_directive()
                 "the file '%s' was not founded", file_path.c_str()
             );
             return;
+        }
+
+        for (auto& source : sources)
+        {
+            if (source.file_path == file_path)
+            {
+                lexer = last_lexer;
+                current = last_current;
+                next = last_next;
+                return;
+            }
         }
 
         auto& new_source = sources.emplace_back();

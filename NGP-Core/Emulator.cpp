@@ -35,7 +35,17 @@ void thread_core_callback(void* arg)
         {
             if (thread.core.psr.HALT)
             {
-                break;
+#if DEBUGGING
+                printf(
+                    "Core: %d, MIPS: %llu, CPS: %llu, Elapsed: %f\n",
+                    core_index, thread.core.inst_counter / 1'000'000,
+                    thread.core.cycles_in_second, thread.elapsed
+                );
+                thread.core.inst_counter = 0;
+                thread.core.cycles_in_second = 0;
+                thread.core.cycle_counter = 0;
+#endif
+                return;
             }
 
             if (thread.core.cycles_in_second >= thread.core.clock_speed)
@@ -47,13 +57,12 @@ void thread_core_callback(void* arg)
             {
 #if DEBUGGING
                 printf(
-                    "Core: %d\n"
-                    "\tMIPS: %llu\n"
-                    "\tCPS: %llu\n"
-                    "\tElapsed: %f\n",
+                    "Core: %d, MIPS: %llu, CPS: %llu, Elapsed: %f\n",
                     core_index, thread.core.inst_counter / 1'000'000,
                     thread.core.cycles_in_second, thread.elapsed
                 );
+      
+                thread.core.inst_counter = 0;
 #endif
                 if (thread.core.cycles_in_second > thread.core.clock_speed)
                 {
@@ -63,7 +72,6 @@ void thread_core_callback(void* arg)
                 }
 
                 thread.elapsed = 0.0;
-                thread.core.inst_counter = 0;
                 thread.last_cycle_counter = thread.core.cycle_counter;
                 thread.core.cycles_in_second = 0;
 
@@ -75,6 +83,8 @@ void thread_core_callback(void* arg)
 
             switch (thread.signal)
             {
+            case Emulator::NONE:
+                break;
             case Emulator::RUN:
             {
                 f64 start = Time::get_time();
@@ -126,7 +136,7 @@ void Emulator::initialize()
     Window::initialize(Window::DefaultWindowWidth, Window::DefaultWindowHeight);
 
 #ifdef _WIN32
-    GU::initialize(GU::VGPU);
+    GU::initialize(GU::VGU);
 #endif
 }
 
@@ -134,6 +144,8 @@ void Emulator::shutdown()
 {
     end_cores();
     print_cores();
+
+    delete[] cores;
 
     GU::shutdown();
     Window::shutdown();
@@ -159,20 +171,19 @@ void Emulator::start_cores()
         cores[core].core.initialize();
         cores[core].threadid = Thread::create(thread_core_callback, *reinterpret_cast<void**>(&core));
 
-        // All core are disable by default
+        // All cores are disable by default, except for core 0
         cores[core].core.psr.HALT = true;
+        cores[core].core.psr.CURRENT_EL = CPUCore::MaxExceptionLevel;
         cores[core].core.clock_speed = clock_cycles;
 
         cores[core].core.pc = Bus::BIOS_START;
-        cores[core].core.current_el = CPUCore::MaxExceptionLevel;
 
         cores[core].core.handle_pc_change();
-
-        Thread::resume(cores[core].threadid);
     }
 
     // Core 0 is always active at the beginning
     cores[0].core.psr.HALT = false;
+    Thread::resume(cores[0].threadid);
 }
 
 void Emulator::end_cores()
@@ -233,7 +244,7 @@ void Emulator::loop()
 
         f64 start = Time::get_time();
         Window::update();
-        GU::present();
+        GU::present(true);
         dt = Time::get_time() - start;
         elapsed += dt;
 
@@ -252,9 +263,5 @@ void Emulator::run()
 
 void Emulator::handle_readwrite_interrupt(VirtualAddress address, bool read)
 {
-    if (local_core->core.pending_register_read_write1 != 0)
-    {
-        local_core->core.pending_register_read_write1 = 0;
-    }
 }
 

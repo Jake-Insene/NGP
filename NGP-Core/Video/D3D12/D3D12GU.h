@@ -10,7 +10,8 @@
 
 struct D3D12GU
 {
-    static constexpr u32 DefaultBufferCount = 3;
+    static constexpr u32 DefaultBufferCount = 4;
+    static constexpr u32 MaxFramebufferCount = 4;
     static constexpr DXGI_FORMAT DefaultFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
     struct Framebuffer
@@ -24,6 +25,12 @@ struct D3D12GU
         ID3D12CommandAllocator* cmd_graphics_allocator;
         ID3D12GraphicsCommandList4* cmd_graphics;
     };
+
+    static inline ID3D12Fence* compute_fence = nullptr;
+    static inline u64 compute_fence_value = 0;
+    static inline HANDLE compute_fence_event = nullptr;
+    static inline ID3D12CommandAllocator* cmd_compute_allocator = nullptr;
+    static inline ID3D12GraphicsCommandList4* cmd_compute = nullptr;
 
     static inline Framebuffer framebuffers[DefaultBufferCount] = {};
 
@@ -47,15 +54,34 @@ struct D3D12GU
 
     static inline FLOAT clear_color[4] =
     {
-        0.f, 0.f, 0.f, 1.f
+        1.f, 0.f, 0.f, 1.f
     };
 
-    static GPUDriver get_driver();
+    static GU::GUDriver get_driver();
 
     static void initialize();
     static void shutdown();
 
-    static void present();
+    static void present(bool vsync);
+
     static VirtualAddress create_framebuffer();
     static void update_framebuffer(void* pixels);
+
+    template<typename Fn, typename... TArgs>
+    static void send_compute(Fn fn, TArgs&&... args)
+    {
+        cmd_compute_allocator->Reset();
+        cmd_compute->Reset(cmd_compute_allocator, nullptr);
+
+        fn(args...);
+
+        cmd_compute->Close();
+        queue_compute->ExecuteCommandLists(1, (ID3D12CommandList**)&cmd_compute);
+
+        // Signal fence
+        queue_compute->Signal(compute_fence, ++compute_fence_value);
+        queue_compute->Wait(compute_fence, compute_fence_value);
+        compute_fence->SetEventOnCompletion(compute_fence_value, compute_fence_event);
+        WaitForSingleObject(compute_fence_event, INFINITE);
+    }
 };

@@ -6,7 +6,8 @@
 /******************************************************/
 #include "IO/Pad/Pad.h"
 
-#include "IO/IORegisters.h"
+#include "Memory/Bus.h"
+
 
 namespace IO
 {
@@ -25,9 +26,9 @@ struct PadInfo
     u32 sync_buffer;
 } pads[MaxPadPort];
 
-static MainPad& get_main_pad()
+MainPad& get_main_pad()
 {
-    return get_io_registers().pad.main_pad;
+    return *(MainPad*)(Bus::MAPPED_BUS_ADDRESS_START + PAD_BASE);
 }
 
 void pad_reset()

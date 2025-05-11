@@ -6,21 +6,25 @@
 /******************************************************/
 #include "IO/IRQ/IRQ.h"
 
-#include "IO/IORegisters.h"
+#include "Memory/Bus.h"
 
 namespace IO
 {
-
+IRQRegisters& get_irq_registers()
+{
+	return *(IRQRegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IRQ_BASE);
+}
 
 void irq_handle_write_word(CPUCore& core, VirtualAddress address, Word value)
 {
 	switch (address)
 	{
 	case IRQ_STATUS:
-		get_io_registers().irq.irq_status = value;
+		get_irq_registers().irq_status = value;
 		break;
 	case IRQ_ENABLE_MASK:
-		get_io_registers().irq.enable_mask = value;
+		get_irq_registers().enable_mask = value;
+		break;
 	}
 }
 

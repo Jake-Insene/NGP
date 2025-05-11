@@ -117,8 +117,8 @@ Token Assembler::parse_symbol(Token, Token)
     context.undefined_label = true;
     context.unknown_label = true;
     return Token{
-        nullptr,
-        0,
+        current->source_file,
+        current->line,
         TOKEN_ERROR,
     };
 }

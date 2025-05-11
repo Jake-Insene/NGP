@@ -6,11 +6,11 @@
         {
             "type": "shell",
             "label": "NGP Build",
-            "command": "C:\\mingw64\\bin\\cmake.exe",
+            "command": "cmake.exe",
             "args": [
                 "--build",
                 "build",
-                "-j",
+                "-j"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -26,7 +26,7 @@
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "command": "cmake -B ${workspaceFolder}/build -DCMAKE_BUILD_TYPE=Debug",
+            "command": "cmake -B ${workspaceFolder}/build -DCMAKE_BUILD_TYPE=Debug -G Ninja",
             "problemMatcher": []
         },
         {
@@ -35,7 +35,7 @@
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "command": "cmake -B ${workspaceFolder}/build -DCMAKE_BUILD_TYPE=Release",
+            "command": "cmake -B ${workspaceFolder}/build -DCMAKE_BUILD_TYPE=Release -G Ninja",
             "problemMatcher": []
         },
         {
@@ -44,8 +44,15 @@
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "command": "cmake -B ${workspaceFolder}/build -DCMAKE_BUILD_TYPE=RelWithDebInfo",
+            "command": "cmake -B ${workspaceFolder}/build -DCMAKE_BUILD_TYPE=RelWithDebInfo -G Ninja",
             "problemMatcher": []
+        },
+        {
+            "type": "cmake",
+            "label": "CMake: clean",
+            "command": "clean",
+            "problemMatcher": [],
+            "detail": "CMake template clean task"
         }
     ]
 }

@@ -311,9 +311,10 @@ enum TokenInstruction : u8
 
     TI_ERET,
     TI_BRK,
+    TI_SVC,
+    TI_EVC,
+    TI_SMC,
     TI_HALT,
-    TI_SIT,
-
 };
 
 struct Token

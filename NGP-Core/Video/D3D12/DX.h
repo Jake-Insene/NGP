@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Platform/Header.h"
 #include <stdio.h>
 
@@ -27,7 +26,7 @@ namespace dx
 {
 
     template<typename T>
-    void release(T*& resource)
+    inline void release(T*& resource)
     {
         if (resource)
         {
@@ -36,7 +35,8 @@ namespace dx
         }
     }
 
-    void transition(ID3D12GraphicsCommandList* cmd_list, ID3D12Resource* resource, UINT subresource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
+    inline D3D12_RESOURCE_BARRIER transition_barrier(ID3D12Resource* resource, UINT subresource,
+        D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
     {
         D3D12_RESOURCE_BARRIER barrier =
         {
@@ -51,11 +51,11 @@ namespace dx
             }
         };
 
-        cmd_list->ResourceBarrier(1, &barrier);
+        return barrier;
     }
 
 
-    D3D12_RESOURCE_DESC buffer_desc(usize len)
+    inline D3D12_RESOURCE_DESC buffer_desc(usize len)
     {
         return D3D12_RESOURCE_DESC
         {
@@ -70,7 +70,7 @@ namespace dx
         };
     }
 
-    D3D12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE type)
+    inline D3D12_HEAP_PROPERTIES heap_properties(D3D12_HEAP_TYPE type)
     {
         return D3D12_HEAP_PROPERTIES
         {

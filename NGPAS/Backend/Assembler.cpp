@@ -6,6 +6,7 @@
 /******************************************************/
 #include "Backend/Assembler.h"
 #include "ErrorManager.h"
+
 #include <fstream>
 
 bool Assembler::assemble_file(const char* file_path, const char* output_path)
@@ -371,7 +372,7 @@ u8* Assembler::reserve(u32 count)
 
     u8& address = new_byte();
     for (u32 i = 1; i < count; i++) {
-        new_byte();
+        (void)new_byte();
     }
 
     return &address;

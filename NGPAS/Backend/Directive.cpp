@@ -61,7 +61,8 @@ void Assembler::assemble_directive() {
             MAKE_ERROR(string, break, "a string was expected");
         }
 
-        u32 size = align_up(u32(string.str.size()), 4);
+        u32 len = get_real_string_len(string.str);
+        u32 size = align_up(len, 4);
         u8* mem = reserve(size);
         encode_string(mem, string.str);
 

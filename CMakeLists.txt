@@ -28,12 +28,14 @@ target_link_libraries("ngpas" "ngp-core")
 file(GLOB NGP_CORE_SOURCES
     "NGP-Core/CPU/CPUCore.cpp"
     "NGP-Core/IO/IO.cpp"
+    "NGP-Core/IO/Debug/Debug.cpp"
     "NGP-Core/IO/DMA/DMA.cpp"
+    "NGP-Core/IO/GU/GU.cpp"
     "NGP-Core/IO/IRQ/IRQ.cpp"
     "NGP-Core/IO/Pad/Pad.cpp"
     "NGP-Core/Memory/Bus.cpp"
     "NGP-Core/Video/GU.cpp"
-    "NGP-Core/Video/VGPU/VGPU.cpp"
+    "NGP-Core/Video/VGU/VGU.cpp"
     "NGP-Core/Emulator.cpp"
 )
 
@@ -44,10 +46,11 @@ if(WIN32)
         "NGP-Core/Platform/Win32/Win32Thread.cpp"
         "NGP-Core/Platform/Win32/Win32Time.cpp"
         "NGP-Core/Video/Win32/Win32Window.cpp"
+        "NGP-Core/Video/D3D11/D3D11GU.cpp"
         "NGP-Core/Video/D3D12/D3D12GU.cpp"
     )
 
-    set(NGP_CORE_PLATFORM_LIBRARIES "d3d12" "dxgi" "d3dcompiler")
+    set(NGP_CORE_PLATFORM_LIBRARIES "d3d12" "d3d11" "dxgi" "d3dcompiler")
 else()
     file(GLOB NGP_CORE_PLATFORM_SOURCE
         "NGP-Core/Platform/Linux/LinuxOS.cpp"
@@ -68,10 +71,5 @@ add_executable("ngp" ${NGP_SOURCES})
 
 target_link_libraries("ngp" "ngp-core")
 add_custom_command(TARGET "ngp"
-    POST_BUILD COMMAND .\\ngpas ..\\..\\BIOS\\BIOS.asm
+    POST_BUILD COMMAND .\\ngpas ${CMAKE_CURRENT_SOURCE_DIR}\\BIOS\\BIOS.asm
 )
-
-add_custom_command(TARGET "ngp"
-    POST_BUILD COMMAND COPY /Y ..\\..\\BIOS\\BIOS.BIN BIOS.BIN
-)
-

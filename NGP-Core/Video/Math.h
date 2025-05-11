@@ -6,10 +6,16 @@
 /******************************************************/
 #pragma once
 #include "Core/Header.h"
+#include <cmath>
 
 struct Vector2
 {
     f32 x, y;
+};
+
+struct Vector3
+{
+    f32 x, y, z;
 };
 
 struct Color

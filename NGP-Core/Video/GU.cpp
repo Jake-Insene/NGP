@@ -6,9 +6,11 @@
 /******************************************************/
 #include "Video/GU.h"
 
+#include "Video/OpenGL/GLGU.h"
 #include "Video/VGU/VGU.h"
 
 #ifdef _WIN32
+#include <Video/D3D11/D3D11GU.h>
 #include <Video/D3D12/D3D12GU.h>
 #endif // _WIN32
 
@@ -17,12 +19,15 @@ void GU::initialize(GU::DriverApi api)
 	switch (api)
 	{
 #ifdef _WIN32
-	case DriverApi::D3D12:
+	case GU::D3D12:
 		main_driver = D3D12GU::get_driver();
 		break;
 #endif // _WIN32
-	case DriverApi::VGU:
+	case GU::VGU:
 		main_driver = VGPU::get_driver();
+		break;
+	case GU::OPENGL:
+		main_driver = GLGU::get_driver();
 		break;
 	default:
 		break;

@@ -6,7 +6,7 @@
         {
             "type": "shell",
             "label": "NGP Build",
-            "command": "cmake.exe",
+            "command": "cmake",
             "args": [
                 "--build",
                 "build",

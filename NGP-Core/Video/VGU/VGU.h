@@ -13,15 +13,15 @@ struct VGPU
 {
     struct GPUState
     {
-        Word* vram = nullptr;
-        bool present_requested = false;
+        Word* vram;
+        bool present_requested;
 
-        Word* display_address = nullptr;
+        Word* display_address;
         
-        GU::GUDriver internal_driver = {};
+        GU::GUDriver internal_driver;
     };
 
-    static inline GPUState state = {};
+    static inline GPUState state;
 
     static GU::GUDriver get_driver();
 

@@ -9,6 +9,7 @@
 #include "Memory/Bus.h"
 #include "Platform/OS.h"
 #include "Video/Window.h"
+#include "Video/OpenGL/GLGU.h"
 
 #if defined(_WIN32)
 #include "Video/D3D11/D3D11GU.h"
@@ -24,12 +25,20 @@ GU::GUDriver get_internal_driver(GU::DriverApi api)
     {
     case GU::NONE:
         return {};
-#if defined(_WIN32)
     case GU::D3D11:
+#if defined(_WIN32)
         return D3D11GU::get_driver();
-    case GU::D3D12:
-        return D3D12GU::get_driver();
+#else
+        return {};
 #endif
+    case GU::D3D12:
+#if defined(_WIN32)
+        return D3D12GU::get_driver();
+#else
+        return {};
+#endif
+    case GU::OPENGL:
+        return GLGU::get_driver();
     case GU::VGU:
         return {};
     }
@@ -65,8 +74,10 @@ void VGPU::initialize()
     // VRAM
     state.vram = (Word*)OS::allocate_virtual_memory((void*)VRamAddress, Bus::get_vram_size(), OS::PAGE_READ_WRITE);
 
+    state.present_requested = false;
+
     // Internal driver
-    state.internal_driver = get_internal_driver(GU::D3D12);
+    state.internal_driver = get_internal_driver(GU::OPENGL);
     state.internal_driver.initialize();
 
     VirtualAddress addr = state.internal_driver.create_framebuffer();

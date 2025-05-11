@@ -31,6 +31,17 @@ main:
 	MOV R1, 12
 	BL PRINT
 
+	MOV R0, 0
+	MOVT R0, 0x2000
+	MOV R1, 0
+	MOVT R1, 0x8000
+
+.loop:
+	ST ZR, [R0]
+	ADD R0, R0, 4
+	CMP R0, R1
+	BNE .loop
+
 	HALT
 
 CONFIG:

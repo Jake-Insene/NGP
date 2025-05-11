@@ -97,6 +97,7 @@ struct GU
         NONE = 0,
         D3D12,
         D3D11,
+        OPENGL,
         VGU,
     };
 

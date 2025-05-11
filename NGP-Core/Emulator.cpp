@@ -15,6 +15,7 @@
 #include "Video/Window.h"
 #include <cstdlib>
 #include <cstdio>
+#include <new>
 
 thread_local Emulator::ThreadCore* local_core = nullptr;
 
@@ -29,7 +30,9 @@ void thread_core_callback(void* arg)
     thread.elapsed += Time::get_time() - start;
 
     continue_execution:
+#if defined(_WIN32)
     __try
+#endif
     {
         while (true)
         {
@@ -102,7 +105,9 @@ void thread_core_callback(void* arg)
             }
         }
     }
+#if defined(_WIN32)
     __except (OS::exception_handler(_exception_info()))
+#endif
     {
         if (Emulator::allow_continue)
         {
@@ -126,7 +131,7 @@ void Emulator::initialize()
     Bus::initialize();
     if (!Bus::load_bios(bios_file))
     {
-        printf("error: invalid bios file '%s'", bios_file);
+        printf("error: invalid bios file '%s'\n", bios_file);
         std::exit(-1);
     }
 
@@ -135,9 +140,7 @@ void Emulator::initialize()
 
     Window::initialize(Window::DefaultWindowWidth, Window::DefaultWindowHeight);
 
-#ifdef _WIN32
     GU::initialize(GU::VGU);
-#endif
 }
 
 void Emulator::shutdown()
@@ -169,21 +172,18 @@ void Emulator::start_cores()
     for (u32 core = 0; core < number_of_cores; core++)
     {
         cores[core].core.initialize();
-        cores[core].threadid = Thread::create(thread_core_callback, *reinterpret_cast<void**>(&core));
 
         // All cores are disable by default, except for core 0
-        cores[core].core.psr.HALT = true;
+        cores[core].core.psr.HALT = core == 0 ? false : true;
         cores[core].core.psr.CURRENT_EL = CPUCore::MaxExceptionLevel;
         cores[core].core.clock_speed = clock_cycles;
 
         cores[core].core.pc = Bus::BIOS_START;
 
         cores[core].core.handle_pc_change();
-    }
 
-    // Core 0 is always active at the beginning
-    cores[0].core.psr.HALT = false;
-    Thread::resume(cores[0].threadid);
+        cores[core].threadid = Thread::create(thread_core_callback, *reinterpret_cast<void**>(&core));
+    }
 }
 
 void Emulator::end_cores()

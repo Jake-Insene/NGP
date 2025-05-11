@@ -63,38 +63,38 @@ bool load_bios(const char* path);
 CheckAddressResult check_virtual_address(VirtualAddress va, CheckAddressFlags flags);
 
 
-FORCE_INLINE PhysicalAddress get_physical_addr(CPUCore& core, VirtualAddress pc)
+FORCE_INLINE static PhysicalAddress get_physical_addr(CPUCore& core, VirtualAddress pc)
 {
     return u64(pc) + MAPPED_BUS_ADDRESS_START;
 }
 
 template<typename T>
-FORCE_INLINE T read_at(CPUCore& core, VirtualAddress addr)
+FORCE_INLINE static T read_at(CPUCore& core, VirtualAddress addr)
 {
     return *(T*)(MAPPED_BUS_ADDRESS_START + addr);
 }
 
-FORCE_INLINE QWord read_qword(CPUCore& core, VirtualAddress addr)
+FORCE_INLINE static QWord read_qword(CPUCore& core, VirtualAddress addr)
 {
     return read_at<QWord>(core, addr);
 }
 
-FORCE_INLINE DWord read_dword(CPUCore& core, VirtualAddress addr)
+FORCE_INLINE static DWord read_dword(CPUCore& core, VirtualAddress addr)
 {
     return read_at<DWord>(core, addr);
 }
 
-FORCE_INLINE u32 read_word(CPUCore& core, VirtualAddress addr)
+FORCE_INLINE static u32 read_word(CPUCore& core, VirtualAddress addr)
 {
     return read_at<u32>(core, addr);
 }
 
-FORCE_INLINE u16 read_half(CPUCore& core, VirtualAddress addr)
+FORCE_INLINE static u16 read_half(CPUCore& core, VirtualAddress addr)
 {
     return read_at<u16>(core, addr);
 }
 
-FORCE_INLINE u8 read_byte(CPUCore& core, VirtualAddress addr)
+FORCE_INLINE static u8 read_byte(CPUCore& core, VirtualAddress addr)
 {
     return read_at<u8>(core, addr);
 }

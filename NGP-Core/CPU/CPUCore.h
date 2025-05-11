@@ -42,6 +42,8 @@ struct alignas(64) CPUCore
         SecureMachineControllerException,
 
         Breakpoint,
+        InvalidRead,
+        InvalidWrite,
     };
 
     union ProgramStateRegister

@@ -95,8 +95,7 @@ void PreProcessor::process_directive()
         }
 
 #else
-        u64 pos = pos == std::string::npos ? source_folder.find_last_of('\\') : pos;
-        pos = source_folder.find_last_of('/');
+        u64 pos = source_folder.find_last_of('/');
 #endif
         if(pos != std::string::npos)
         {

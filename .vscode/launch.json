@@ -6,21 +6,20 @@
     "configurations": [
         {
             "preLaunchTask": "NGP Build",
-            "name": "[Windows] Launch",
-            "type": "cppvsdbg",
+            "name": "NGP Launch",
+            "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/ngp.exe",
-            "args": ["-bios", "BIOS/BIOS.bin"],
+            "program": "${workspaceFolder}/build/ngp",
+            "args": ["-ram", "1024", "-bios", "BIOS/BIOS.BIN"],
             "cwd": "${workspaceFolder}",
-            "console": "externalTerminal"
         },
         {
             "preLaunchTask": "NGP Build",
-            "name": "[Windows] GBD Launch",
-            "type": "cppvsdbg",
+            "name": "Build BIOS",
+            "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/ngp.exe",
-            "args": ["-bios", "BIOS/BIOS.bin"],
+            "program": "${workspaceFolder}/build/ngpas",
+            "args": ["BIOS/BIOS.asm"],
             "cwd": "${workspaceFolder}",
         },
     ]

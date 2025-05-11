@@ -36,6 +36,7 @@ file(GLOB NGP_CORE_SOURCES
     "NGP-Core/Memory/Bus.cpp"
     "NGP-Core/Video/GU.cpp"
     "NGP-Core/Video/VGU/VGU.cpp"
+    "NGP-Core/Video/OpenGL/GLGU.cpp"
     "NGP-Core/Emulator.cpp"
 )
 
@@ -56,6 +57,7 @@ else()
         "NGP-Core/Platform/Linux/LinuxOS.cpp"
         "NGP-Core/Platform/Linux/LinuxThread.cpp"
         "NGP-Core/Platform/Linux/LinuxTime.cpp"
+        "NGP-Core/Video/Linux/LinuxWindow.cpp"
     )
     set(NGP_CORE_PLATFORM_LIBRARIES "")
 endif()
@@ -71,5 +73,5 @@ add_executable("ngp" ${NGP_SOURCES})
 
 target_link_libraries("ngp" "ngp-core")
 add_custom_command(TARGET "ngp"
-    POST_BUILD COMMAND .\\ngpas ${CMAKE_CURRENT_SOURCE_DIR}\\BIOS\\BIOS.asm
+    POST_BUILD COMMAND ${CMAKE_BINARY_DIR}/ngpas ${CMAKE_CURRENT_SOURCE_DIR}/BIOS/BIOS.asm
 )

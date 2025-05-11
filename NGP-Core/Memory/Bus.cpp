@@ -50,7 +50,7 @@ void set_ram_size(u32 new_size)
     {
         printf("error: invalid ram size %d MB, the maximum allowed is %d MB\n", new_size, MAX_ALLOWED_RAM_MB);
     }
-    ram_size = new_size;
+    ram_size = MB(new_size);
 }
 
 u32 get_ram_size()
@@ -86,13 +86,13 @@ u8* io_start_address()
 void invalid_read(CPUCore& core, VirtualAddress addr)
 {
     // TODO: Generate a exception
-    __debugbreak();
+    core.make_exception(CPUCore::InvalidRead, 0, 0);
 }
 
 void invalid_write(CPUCore& core, VirtualAddress addr)
 {
     // TODO: Generate a exception
-    __debugbreak();
+    core.make_exception(CPUCore::InvalidWrite, 0, 0);
 }
 
 bool load_bios(const char* path)

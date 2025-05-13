@@ -850,6 +850,10 @@ void CPUCore::make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 
         }
     }
     break;
+    case Breakpoint:
+    case InvalidRead:
+    case InvalidWrite:
+    break;
     }
 }
 

@@ -598,7 +598,7 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
 
             // check if we need to subtract or add
             bool sub = indice.i < 0 ? 1 : 0;
-            u16 offset = (u16)abs(indice.i);
+            i16 offset = (i16)std::abs(indice.i);
             if (fp_type == 1)
             {
                 inst = fmemoryi(NGP_LD_S_IMMEDIATE, dest, base, offset / alignment, sub);

@@ -167,12 +167,12 @@ u8 read_byte(CPUCore& core, VirtualAddress addr)
     return read_at<u8>(core, addr);
 }
 
-u16 read_ihalf(CPUCore& core, VirtualAddress addr)
+i16 read_ihalf(CPUCore& core, VirtualAddress addr)
 {
     return read_at<i16>(core, addr);
 }
 
-u8 read_ibyte(CPUCore& core, VirtualAddress addr)
+i8 read_ibyte(CPUCore& core, VirtualAddress addr)
 {
     return read_at<i8>(core, addr);
 }

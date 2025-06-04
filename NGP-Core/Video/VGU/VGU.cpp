@@ -100,6 +100,8 @@ void VGPU::present(bool vsync)
 
     state.internal_driver.update_framebuffer(state.fb, state.display_address);
     state.internal_driver.present(vsync);
+
+    state.present_requested = false;
 }
 
 void VGPU::request_present()

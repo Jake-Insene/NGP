@@ -73,8 +73,8 @@ DWord read_dword(CPUCore& core, VirtualAddress addr);
 u32 read_word(CPUCore& core, VirtualAddress addr);
 u16 read_half(CPUCore& core, VirtualAddress addr);
 u8 read_byte(CPUCore& core, VirtualAddress addr);
-u16 read_ihalf(CPUCore& core, VirtualAddress addr);
-u8 read_ibyte(CPUCore& core, VirtualAddress addr);
+i16 read_ihalf(CPUCore& core, VirtualAddress addr);
+i8 read_ibyte(CPUCore& core, VirtualAddress addr);
 
 void write_qword(CPUCore& core, VirtualAddress addr, QWord qword);
 void write_dword(CPUCore& core, VirtualAddress addr, DWord dword);

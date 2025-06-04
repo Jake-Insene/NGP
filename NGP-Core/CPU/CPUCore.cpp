@@ -41,11 +41,14 @@
 
 #define HANDLE_BRANCH(cond, core, disp) if(cond) { core.pc += disp; core.handle_pc_change(); }
 
-#define HANDLE_READ(core, func, dest, type, address) \
-    core.list[dest] = (dest != CPUCore::ZeroRegister) * Bus::func(core, address)
+#define HANDLE_READ(core, dest, func, address) \
+    core.list[dest] = (dest != CPUCore::ZeroRegister) * func(core, address)
 
-#define HANDLE_SIMD_READ(core, func, dest, index, type, address) \
-    core.simd[dest].index = Bus::func(core, address)
+#define HANDLE_READ_SIGNED(core, dest, func, address) \
+    core.ilist[dest] = (dest != CPUCore::ZeroRegister) * func(core, address)
+
+#define HANDLE_SIMD_READ(core, dest, index, func, address) \
+    core.simd[dest].index = func(core, address)
 
 #define HANDLE_WRITE(core, src, type, func, address) \
     func(core, address, static_cast<type>(core.list[src]));
@@ -164,59 +167,19 @@ MAKE_SIMPLE_ARITH_LOGIC(adcs, add_with_carry_setting_flags(core, core.list[src1]
 MAKE_SIMPLE_ARITH_LOGIC(sbcs, add_with_carry_setting_flags(core, core.list[src1], ~core.list[src2], core.psr.CARRY));
 
 // Memory
-static FORCE_INLINE void memory_read_byte(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    HANDLE_READ(core, read_byte, dest, u8, address);
-}
-
-static FORCE_INLINE void memory_read_half(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    HANDLE_READ(core, read_half, dest, u16, address);
-}
-
-static FORCE_INLINE void memory_read_word(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    HANDLE_READ(core, read_word, dest, Word, address);
-}
-
-static FORCE_INLINE void memory_read_ihalf(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    HANDLE_READ(core, read_ihalf, dest, i16, address);
-}
-
-static FORCE_INLINE void memory_read_ibyte(CPUCore& core, u32 dest, VirtualAddress address)
-{
-    HANDLE_READ(core, read_ibyte, dest, i8, address);
-}
-
 static FORCE_INLINE void memory_read_single(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, read_word, dest, w, Word, address);
+    HANDLE_SIMD_READ(core, dest, w, Bus::read_word, address);
 }
 
 static FORCE_INLINE void memory_read_double(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, read_dword, dest, dw, DWord, address);
+    HANDLE_SIMD_READ(core, dest, dw, Bus::read_dword, address);
 }
 
 static FORCE_INLINE void memory_read_qword(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, read_qword, dest, qw, QWord, address);
-}
-
-static FORCE_INLINE void memory_write_byte(CPUCore& core, u32 src, VirtualAddress address)
-{
-    HANDLE_WRITE(core, src, u8, Bus::write_byte, address);
-}
-
-static FORCE_INLINE void memory_write_half(CPUCore& core, u32 src, VirtualAddress address)
-{
-    HANDLE_WRITE(core, src, u16, Bus::write_half, address);
-}
-
-static FORCE_INLINE void memory_write_word(CPUCore& core, u32 src, VirtualAddress address)
-{
-    HANDLE_WRITE(core, src, Word, Bus::write_word, address);
+    HANDLE_SIMD_READ(core, dest, qw, Bus::read_qword, address);
 }
 
 static FORCE_INLINE void memory_write_single(CPUCore& core, u32 src, VirtualAddress address)
@@ -236,26 +199,26 @@ static FORCE_INLINE void memory_write_qword(CPUCore& core, u32 src, VirtualAddre
 
 static FORCE_INLINE void memory_pair_read_word(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
 {
-    HANDLE_READ(core, read_word, dest1, Word, address);
-    HANDLE_READ(core, read_word, dest2, Word, address + 4);
+    HANDLE_READ(core, dest1, Bus::read_word, address);
+    HANDLE_READ(core, dest2, Bus::read_word, address + 4);
 }
 
 static FORCE_INLINE void memory_pair_read_single(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, read_word, dest1, w, Word, address);
-    HANDLE_SIMD_READ(core, read_word, dest2, w, Word, address + 4);
+    HANDLE_SIMD_READ(core, dest1, w, Bus::read_word, address);
+    HANDLE_SIMD_READ(core, dest2, w, Bus::read_word, address + 4);
 }
 
 static FORCE_INLINE void memory_pair_read_double(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, read_dword, dest1, dw, DWord, address);
-    HANDLE_SIMD_READ(core, read_dword, dest2, dw, DWord, address + 8);
+    HANDLE_SIMD_READ(core, dest1, dw, Bus::read_dword, address);
+    HANDLE_SIMD_READ(core, dest2, dw, Bus::read_dword, address + 8);
 }
 
 static FORCE_INLINE void memory_pair_read_qword(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, read_qword, dest1, qw, QWord, address);
-    HANDLE_SIMD_READ(core, read_qword, dest2, qw, QWord, address + 16);
+    HANDLE_SIMD_READ(core, dest1, qw, Bus::read_qword, address);
+    HANDLE_SIMD_READ(core, dest2, qw, Bus::read_qword, address + 16);
 }
 
 static FORCE_INLINE void memory_pair_write_word(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
@@ -536,31 +499,80 @@ static FORCE_INLINE void b(CPUCore& core, u32 inst)
 {
     u8 memopc = (inst >> 6) & 0x7;
 
-    u8 dest = (inst >> 9) & 0x1F;
+    u8 dest_src = (inst >> 9) & 0x1F;
     u8 base = (inst >> 14) & 0x1F;
     i16 imm = (inst >> 20);
     imm = inst & 0x8'0000 ? -imm : imm;
 
-#define CASE(op, name) case op: name(core, dest, core.list[base] + imm); break
+#define CASE_R(op, func) case op: \
+    HANDLE_READ(core, dest_src, func, core.list[base] + imm); break
+#define CASE_R_SIGNED(op, func) case op: \
+    HANDLE_READ_SIGNED(core, dest_src, func, core.list[base] + imm); break
+#define CASE_W(op, type, func) case op: \
+    HANDLE_WRITE(core, dest_src, type, func, core.list[base] + imm); break
+
     switch (memopc)
     {
-        CASE(NGP_LD_IMMEDIATE, memory_read_word);
-        CASE(NGP_LDSH_IMMEDIATE, memory_read_ihalf);
-        CASE(NGP_LDH_IMMEDIATE, memory_read_half);
-        CASE(NGP_LDSB_IMMEDIATE, memory_read_ibyte);
-        CASE(NGP_LDB_IMMEDIATE, memory_read_byte);
-        CASE(NGP_ST_IMMEDIATE, memory_write_word);
-        CASE(NGP_STH_IMMEDIATE, memory_write_half);
-        CASE(NGP_STB_IMMEDIATE, memory_write_byte);
+        CASE_R(NGP_LD_IMMEDIATE, Bus::read_word);
+        CASE_R_SIGNED(NGP_LDSH_IMMEDIATE, Bus::read_ihalf);
+        CASE_R(NGP_LDH_IMMEDIATE, Bus::read_half);
+        CASE_R_SIGNED(NGP_LDSB_IMMEDIATE, Bus::read_ibyte);
+        CASE_R(NGP_LDB_IMMEDIATE, Bus::read_byte);
+        CASE_W(NGP_ST_IMMEDIATE, Word, Bus::write_word);
+        CASE_W(NGP_STH_IMMEDIATE, u16, Bus::write_half);
+        CASE_W(NGP_STB_IMMEDIATE, u8, Bus::write_byte);
     default:
         break;
     }
-#undef CASE
+#undef CASE_R
+#undef CASE_R_SIGNED
+#undef CASE_W
 }
 
 static FORCE_INLINE void load_store_fp_immediate(CPUCore& core, u32 inst) {}
 
-static FORCE_INLINE void load_store_register(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void load_store_register(CPUCore& core, u32 inst)
+{
+    u16 opc = (inst >> 6) & 0x7FF;
+	u8 dest_src = (inst >> 17) & 0x1F;
+    u8 base = (inst >> 22) & 0x1F;
+	u8 index = (inst >> 27) & 0x1F;
+
+#define CASE_R(op, func) case op: \
+    HANDLE_READ(core, dest_src, func, core.list[base] + core.list[index]); break
+#define CASE_R_SIGNED(op, func) case op: \
+    HANDLE_READ_SIGNED(core, dest_src, func, core.list[base] + core.list[index]); break
+#define CASE_SIMD_R(op, field, func) case op: \
+    HANDLE_SIMD_READ(core, dest_src, ##field, func, core.list[base] + core.list[index]); break
+
+#define CASE_W(op, type, func) case op: \
+    HANDLE_WRITE(core, dest_src, ##type, func, core.list[base] + core.list[index]); break
+#define CASE_SIMD_W(op, field, func) case op: \
+    HANDLE_SIMD_WRITE(core, dest_src, ##field, func, core.list[base] + core.list[index]); break
+
+    switch (opc)
+    {
+        CASE_R(NGP_LD, Bus::read_word);
+        CASE_R_SIGNED(NGP_LDSH, Bus::read_ihalf);
+        CASE_R(NGP_LDH, Bus::read_half);
+        CASE_R_SIGNED(NGP_LDSB, Bus::read_ibyte);
+        CASE_R(NGP_LDB, Bus::read_byte);
+        CASE_W(NGP_ST, Word, Bus::write_word);
+        CASE_W(NGP_STH, u16, Bus::write_word);
+        CASE_W(NGP_STB, u8, Bus::write_word);
+        CASE_SIMD_R(NGP_LD_S, w, Bus::read_word);
+        CASE_SIMD_R(NGP_LD_D, dw, Bus::read_dword);
+        CASE_SIMD_R(NGP_LD_Q, qw, Bus::read_qword);
+        CASE_SIMD_W(NGP_ST_S, w, Bus::write_word);
+        CASE_SIMD_W(NGP_ST_D, dw, Bus::write_dword);
+        CASE_SIMD_W(NGP_ST_Q, qw, Bus::write_qword);
+    }
+#undef CASE_R
+#undef CASE_R_SIGNED
+#undef CASE_SIMD_R
+#undef CASE_W
+#undef CASE_SIMD_W
+}
 
 static FORCE_INLINE void load_store_pair(CPUCore& core, u32 inst) {}
 

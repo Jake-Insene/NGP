@@ -263,7 +263,7 @@ void Assembler::assemble_instruction()
     case TI_ABS:
         assemble_one_operand(inst, [](u8 dest, u8 src)
             {
-                return additional(NGP_ABS, dest, src, 0, 0);
+                return extendedalu(NGP_ABS, dest, src, 0, 0);
             }
         );
         break;
@@ -294,35 +294,35 @@ void Assembler::assemble_instruction()
     case TI_MADD:
         assemble_three_operands(inst, [](u8 dest, u8 src1, u8 src2, u8 src3)
             {
-                return additional(NGP_MADD, dest, src1, src2, src3);
+                return extendedalu(NGP_MADD, dest, src1, src2, src3);
             }
         );
         break;
     case TI_MSUB:
         assemble_three_operands(inst, [](u8 dest, u8 src1, u8 src2, u8 src3)
             {
-                return additional(NGP_MSUB, dest, src1, src2, src3);
+                return extendedalu(NGP_MSUB, dest, src1, src2, src3);
             }
         );
         break;
     case TI_MUL:
         assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2)
             {
-                return additional(NGP_MADD, dest, src1, src2, ZeroRegister);
+                return extendedalu(NGP_MADD, dest, src1, src2, ZeroRegister);
             }
         );
         break;
     case TI_DIV:
         assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2)
             {
-                return additional(NGP_DIV, dest, src1, src2, 0);
+                return extendedalu(NGP_DIV, dest, src1, src2, 0);
             }
         );
         break;
     case TI_UDIV:
         assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2)
             {
-                return additional(NGP_UDIV, dest, src1, src2, 0);
+                return extendedalu(NGP_UDIV, dest, src1, src2, 0);
             }
         );
         break;
@@ -636,7 +636,7 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             }
             else
             {
-                inst = additional(index_opc, dest, base, reg_index, 0);
+                inst = memoryr(index_opc, dest, base, reg_index);
             }
             EXPECTED_KEY_RIGHT(return);
         }
@@ -679,7 +679,7 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
 
         if (is_additional_opc)
         {// SHL/SHR/AST/ROR
-            inst = additional(opc, dest, src1, get_register(second_operand), 0);
+            inst = extendedalu(opc, dest, src1, get_register(second_operand), 0);
         }
         else
         {
@@ -695,7 +695,7 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
 
         if (is_additional_opc)
         { // SHL/SHR/ASR/ROR
-            inst = additional(opc, dest, src1, (u8)last->ushort[0], 0);
+            inst = extendedalu(opc, dest, src1, (u8)last->ushort[0], 0);
         }
         else
         {
@@ -840,7 +840,7 @@ void Assembler::assemble_shift(u32& inst, u8 opcode)
     if (third_operand.is(TOKEN_REGISTER))
     {
         INVALIDATE_FP(third_operand, return);
-        inst = additional(opcode, dest, src1, get_register(third_operand), 0);
+        inst = extendedalu(opcode, dest, src1, get_register(third_operand), 0);
     }
     else if (third_operand.is(TOKEN_IMMEDIATE))
     {

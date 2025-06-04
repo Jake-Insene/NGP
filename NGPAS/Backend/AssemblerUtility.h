@@ -59,7 +59,7 @@
     );
 }
 
-[[nodiscard]] static constexpr u32 additional(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3)
+[[nodiscard]] static constexpr u32 extendedalu(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3)
 {
     return u32(
         NGP_EXTENDEDALU
@@ -120,6 +120,18 @@
         | (dest_src << 11) | (base << 16)
         | (add_sub << 19)
         | (offset << 20)
+    );
+}
+
+// Load Store Register Only
+[[nodiscard]] static constexpr u32 memoryr(u16 opcode, u8 dest_src, u8 base, u8 index)
+{
+    return u32(
+        NGP_LOAD_STORE_REGISTER
+        | (opcode << 6)
+        | (dest_src << 17)
+        | (base << 22)
+        | (index << 27)
     );
 }
 

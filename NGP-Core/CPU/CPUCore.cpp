@@ -17,42 +17,35 @@
 
 #define MAKE_SIMPLE_ARITH_LOGIC(name, op) \
     static FORCE_INLINE  void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
-        if(dest != ZeroRegister)\
-        { core.list[dest] = op; }\
+        core.list[dest] = (dest != ZeroRegister) * (op);\
     }
 
 #define MAKE_SIMPLE_OP(name, op) \
     static FORCE_INLINE  void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
-        if(dest != ZeroRegister)\
-        { core.list[dest] = op; }\
+        core.list[dest] = (dest != ZeroRegister) * (op);\
     }
 
 #define MAKE_SETTING_FLAGS(name, op) \
     static FORCE_INLINE  void name(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3) {\
-        const u32 result = op;\
-        if(dest != ZeroRegister)\
-        { core.list[dest] = result; }\
+        core.list[dest] = (dest != ZeroRegister) * (op);\
     }
 
 #define MAKE_IMMEDIATE_OP(name, op) \
     static FORCE_INLINE  void name(CPUCore& core, u32 inst)\
     {\
         u8 dest = (inst >> 6) & 0x1F;\
-        if (dest != ZeroRegister)\
-        {\
-            u8 src = (inst >> 11) & 0x1F;\
-            u16 imm = inst >> 16;\
-            core.list[dest] = op;\
-        }\
+        u8 src = (inst >> 11) & 0x1F;\
+        u16 imm = inst >> 16;\
+        core.list[dest] = (dest != ZeroRegister) * op;\
     }
 
 #define HANDLE_BRANCH(cond, core, disp) if(cond) { core.pc += disp; core.handle_pc_change(); }
 
-#define HANDLE_READ(core, dest, type, address) \
-    core.list[dest] = dest == CPUCore::ZeroRegister ? 0 : Bus::read_at<type>(core, address)
+#define HANDLE_READ(core, func, dest, type, address) \
+    core.list[dest] = (dest != CPUCore::ZeroRegister) * Bus::func(core, address)
 
-#define HANDLE_SIMD_READ(core, dest, index, type, address) \
-    core.simd[dest].index = dest == CPUCore::ZeroRegister ? type{0} : Bus::read_at<type>(core, address)
+#define HANDLE_SIMD_READ(core, func, dest, index, type, address) \
+    core.simd[dest].index = Bus::func(core, address)
 
 #define HANDLE_WRITE(core, src, type, func, address) \
     func(core, address, static_cast<type>(core.list[src]));
@@ -85,7 +78,7 @@ static FORCE_INLINE void set_flags(CPUCore& core, u32 src1, u32 src2, u64 res, b
     core.psr.OVERFLOW = ((~((u64)src1 ^ (u64)src2) & ((u64)src1 ^ res)) & 0x8000'0000) != 0;
 }
 
-// Comparision
+// Comparison
 static FORCE_INLINE u32 add_with_carry_setting_flags(CPUCore& core, u32 src1, u32 src2, u32 carry)
 {
     const u64 lhs = src1;
@@ -173,42 +166,42 @@ MAKE_SIMPLE_ARITH_LOGIC(sbcs, add_with_carry_setting_flags(core, core.list[src1]
 // Memory
 static FORCE_INLINE void memory_read_byte(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_READ(core, dest, u8, address);
+    HANDLE_READ(core, read_byte, dest, u8, address);
 }
 
 static FORCE_INLINE void memory_read_half(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_READ(core, dest, u16, address);
+    HANDLE_READ(core, read_half, dest, u16, address);
 }
 
 static FORCE_INLINE void memory_read_word(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_READ(core, dest, Word, address);
+    HANDLE_READ(core, read_word, dest, Word, address);
 }
 
 static FORCE_INLINE void memory_read_ihalf(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_READ(core, dest, i16, address);
+    HANDLE_READ(core, read_ihalf, dest, i16, address);
 }
 
 static FORCE_INLINE void memory_read_ibyte(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_READ(core, dest, i8, address);
+    HANDLE_READ(core, read_ibyte, dest, i8, address);
 }
 
 static FORCE_INLINE void memory_read_single(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, dest, w, Word, address);
+    HANDLE_SIMD_READ(core, read_word, dest, w, Word, address);
 }
 
 static FORCE_INLINE void memory_read_double(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, dest, dw, DWord, address);
+    HANDLE_SIMD_READ(core, read_dword, dest, dw, DWord, address);
 }
 
 static FORCE_INLINE void memory_read_qword(CPUCore& core, u32 dest, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, dest, qw, QWord, address);
+    HANDLE_SIMD_READ(core, read_qword, dest, qw, QWord, address);
 }
 
 static FORCE_INLINE void memory_write_byte(CPUCore& core, u32 src, VirtualAddress address)
@@ -243,26 +236,26 @@ static FORCE_INLINE void memory_write_qword(CPUCore& core, u32 src, VirtualAddre
 
 static FORCE_INLINE void memory_pair_read_word(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
 {
-    HANDLE_READ(core, dest1, Word, address);
-    HANDLE_READ(core, dest2, Word, address + 4);
+    HANDLE_READ(core, read_word, dest1, Word, address);
+    HANDLE_READ(core, read_word, dest2, Word, address + 4);
 }
 
 static FORCE_INLINE void memory_pair_read_single(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, dest1, w, Word, address);
-    HANDLE_SIMD_READ(core, dest2, w, Word, address + 4);
+    HANDLE_SIMD_READ(core, read_word, dest1, w, Word, address);
+    HANDLE_SIMD_READ(core, read_word, dest2, w, Word, address + 4);
 }
 
 static FORCE_INLINE void memory_pair_read_double(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, dest1, dw, DWord, address);
-    HANDLE_SIMD_READ(core, dest2, dw, DWord, address + 8);
+    HANDLE_SIMD_READ(core, read_dword, dest1, dw, DWord, address);
+    HANDLE_SIMD_READ(core, read_dword, dest2, dw, DWord, address + 8);
 }
 
 static FORCE_INLINE void memory_pair_read_qword(CPUCore& core, u32 dest1, u32 dest2, VirtualAddress address)
 {
-    HANDLE_SIMD_READ(core, dest1, qw, QWord, address);
-    HANDLE_SIMD_READ(core, dest2, qw, QWord, address + 16);
+    HANDLE_SIMD_READ(core, read_qword, dest1, qw, QWord, address);
+    HANDLE_SIMD_READ(core, read_qword, dest2, qw, QWord, address + 16);
 }
 
 static FORCE_INLINE void memory_pair_write_word(CPUCore& core, u32 src1, u32 src2, VirtualAddress address)
@@ -292,14 +285,14 @@ static FORCE_INLINE void memory_pair_write_qword(CPUCore& core, u32 src1, u32 sr
 // ExtendedAlu
 static FORCE_INLINE void madd(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    core.list[dest] =
-        dest == ZeroRegister ? 0 : core.list[src3] + (core.list[src1] * core.list[src2]);
+    core.list[dest] = (dest != ZeroRegister) * 
+        (core.list[src3] + (core.list[src1] * core.list[src2]));
 }
 
 static FORCE_INLINE void msub(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    core.list[dest] =
-        dest == ZeroRegister ? 0 : core.list[src3] - (core.list[src1] * core.list[src2]);
+    core.list[dest] = (dest != ZeroRegister) *
+        (core.list[src3] - (core.list[src1] * core.list[src2]));
 }
 
 static FORCE_INLINE void udiv(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
@@ -307,10 +300,10 @@ static FORCE_INLINE void udiv(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
     if (core.list[src2] == 0)
     {
         core.make_exception(CPUCore::DivideByZeroException, 0, 0);
+        return;
     }
 
-    core.list[dest] =
-        dest == ZeroRegister ? 0 : core.list[src1] / core.list[src2];
+    core.list[dest] = (dest != ZeroRegister) * (core.list[src1] / core.list[src2]);
 }
 
 static FORCE_INLINE void div(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
@@ -318,38 +311,36 @@ static FORCE_INLINE void div(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
     if (core.list[src2] == 0)
     {
         core.make_exception(CPUCore::DivideByZeroException, 0, 0);
+        return;
     }
 
-    core.ilist[dest] =
-        dest == ZeroRegister ? 0 : core.ilist[src1] / core.ilist[src2];
+    core.ilist[dest] = (dest != ZeroRegister) * (core.ilist[src1] / core.ilist[src2]);
 }
 
 static FORCE_INLINE void shl(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    core.ilist[dest] = dest == ZeroRegister ? 0 : (core.ilist[src1] << src2);
+    core.ilist[dest] = (dest != ZeroRegister) * (core.ilist[src1] << src2);
 }
 
 static FORCE_INLINE void shr(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    core.ilist[dest] = dest == ZeroRegister ? 0 : (core.ilist[src1] >> src2);
+    core.ilist[dest] = (dest != ZeroRegister) * (core.ilist[src1] >> src2);
 }
 
 static FORCE_INLINE void asr(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    core.ilist[dest] = dest == ZeroRegister ? 0 : (core.ilist[src1] >> src2);
+    core.ilist[dest] = (dest != ZeroRegister) * (core.ilist[src1] >> src2);
 }
 
 static FORCE_INLINE void ror(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    core.list[dest] = dest == ZeroRegister ? 0 : std::rotr(core.list[src1], (i32)src2);
+    core.list[dest] = (dest != ZeroRegister) * (std::rotr(core.list[src1], (i32)src2));
 }
 
 static FORCE_INLINE void abs(CPUCore& core, u8 dest, u8 src1, u8 src2, u8 src3)
 {
-    core.ilist[dest] = 
-        dest == ZeroRegister ? 0 
-        : core.ilist[src1] >= 0 ? core.ilist[src1] 
-        : -core.ilist[src1];
+    core.ilist[dest] = (dest != ZeroRegister) *
+        (core.ilist[src1] >= 0 ? core.ilist[src1] : -core.ilist[src1]);
 }
 
 // Non Binary
@@ -632,7 +623,7 @@ static FORCE_INLINE void ld_pc(CPUCore& core, u32 inst)
     u8 dest = (inst >> 6) & 0x1F;
     const u32 disp_inst = inst >> 11;
     const u32 disp = inst & 0x8000'0000 ? (0xFFE0'0000 | disp_inst) << 2 : disp_inst << 2;
-    core.list[dest] = dest == ZeroRegister ? 0 : Bus::read_word(core, core.pc + disp);
+    core.list[dest] = (dest != ZeroRegister) * Bus::read_word(core, core.pc + disp);
 }
 
 static FORCE_INLINE void ld_s_pc(CPUCore& core, u32 inst) {}
@@ -644,7 +635,7 @@ static FORCE_INLINE void adr_pc(CPUCore& core, u32 inst)
     u8 dest = (inst >> 6) & 0x1F;
     const u32 disp_inst = inst >> 11;
     const u32 disp = inst & 0x8000'0000 ? (0xFFE0'0000 | disp_inst) << 2 : disp_inst << 2;
-    core.list[dest] = dest == ZeroRegister ? 0 : core.pc + disp;
+    core.list[dest] = (dest != ZeroRegister) * (core.pc + disp);
 }
 
 static FORCE_INLINE void immediate(CPUCore& core, u32 inst)
@@ -695,16 +686,28 @@ static FORCE_INLINE void ands_immediate(CPUCore& core, u32 inst)
 MAKE_IMMEDIATE_OP(or_immediate, core.list[src] | imm);
 MAKE_IMMEDIATE_OP(eor_immediate, core.list[src] ^ imm);
 
- static FORCE_INLINE void tbz(CPUCore& core, u32 inst) {}
- static FORCE_INLINE void tbnz(CPUCore& core, u32 inst) {}
- static FORCE_INLINE void cbz(CPUCore& core, u32 inst) {}
- static FORCE_INLINE void cbnz(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void tbz(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void tbnz(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void cbz(CPUCore& core, u32 inst) {}
+static FORCE_INLINE void cbnz(CPUCore& core, u32 inst) {}
+
 
 void CPUCore::initialize()
 {
+    mem_pc = (Word*)Bus::get_physical_addr(0);
 }
 
 void CPUCore::shutdown() {}
+
+void CPUCore::handle_pc_change()
+{
+}
+
+Word CPUCore::fetch_inst()
+{
+    return mem_pc[(pc >> 2)];
+}
+
 
 void CPUCore::dispatch(u64 num_cycles)
 {
@@ -717,46 +720,9 @@ void CPUCore::dispatch(u64 num_cycles)
         u32 inst = fetch_inst();
 
         pc += 4;
-        offset += 1;
 
         u8 opcode = inst & 0x3F;
 
-#if 0
-        typedef void (*func_ptr)(CPUCore&, u32);
-        static func_ptr dispatch_table[] =
-        {
-            &bl,
-            &b,
-            &bcond,
-            &logical_add_sub,
-            &fp_op,
-            &load_store_immediate,
-            &load_store_fp_immediate,
-            &load_store_register,
-            &load_store_pair,
-            &additional,
-            &non_binary,
-            &ld_pc,
-            &ld_s_pc,
-            &ld_d_pc,
-            &ld_q_pc,
-            &adr_pc,
-            &immediate,
-            &add_immediate,
-            &adds_immediate,
-            &sub_immediate,
-            &subs_immediate,
-            &and_immediate,
-            &ands_immediate,
-            &or_immediate,
-            &eor_immediate,
-            &tbz,
-            &tbnz,
-            &cbz,
-            &cbnz,
-        };
-        dispatch_table[opcode](*this, inst);
-#else
 #define CASE(op, name) case op: name(*this, inst); break
         switch (opcode)
         {
@@ -793,7 +759,6 @@ void CPUCore::dispatch(u64 num_cycles)
             break;
         }
 #undef CASE
-#endif
 
 #if PROFILE == 1
         inst_counter++;
@@ -802,7 +767,7 @@ void CPUCore::dispatch(u64 num_cycles)
     cycles_in_second -= num_cycles;
 }
 
-void CPUCore::print_pegisters()
+void CPUCore::print_registers()
 {
     printf(
         "R0  = %08X R1  = %08X R2  = %08X R3  = %08X R4  = %08X\n"

@@ -6,7 +6,9 @@
 /******************************************************/
 #pragma once
 #include "CPU/CPUCore.h"
-#include "Platform/Thread.h"
+
+#include <thread>
+
 
 #define DEBUGGING 1
 
@@ -17,14 +19,14 @@ struct Emulator
     enum Signal
     {
         NONE = 0,
-        RUN = 1,
-        END = 2,
+        RUN,
+        END,
     };
 
     struct ThreadCore
     {
         CPUCore core;
-        ThreadID threadid;
+        std::thread thread;
 
         Signal signal;
 

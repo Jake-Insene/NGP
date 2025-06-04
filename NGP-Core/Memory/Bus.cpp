@@ -137,6 +137,47 @@ CheckAddressResult check_virtual_address(VirtualAddress va, CheckAddressFlags fl
 
 
 template<typename T>
+FORCE_INLINE static T read_at(CPUCore& core, VirtualAddress addr)
+{
+    return *(T*)(MAPPED_BUS_ADDRESS_START + addr);
+}
+
+QWord read_qword(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<QWord>(core, addr);
+}
+
+DWord read_dword(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<DWord>(core, addr);
+}
+
+u32 read_word(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<u32>(core, addr);
+}
+
+u16 read_half(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<u16>(core, addr);
+}
+
+u8 read_byte(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<u8>(core, addr);
+}
+
+u16 read_ihalf(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<i16>(core, addr);
+}
+
+u8 read_ibyte(CPUCore& core, VirtualAddress addr)
+{
+    return read_at<i8>(core, addr);
+}
+
+template<typename T>
 inline void write_at(CPUCore& core, VirtualAddress addr, T value)
 {
     if ((addr >> 28) == 1)

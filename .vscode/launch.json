@@ -7,20 +7,11 @@
         {
             "preLaunchTask": "NGP Build",
             "name": "NGP Launch",
-            "type": "cppdbg",
+            "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/ngp",
             "args": ["-ram", "1024", "-bios", "BIOS/BIOS.BIN"],
             "cwd": "${workspaceFolder}",
-        },
-        {
-            "preLaunchTask": "NGP Build",
-            "name": "Build BIOS",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/ngpas",
-            "args": ["BIOS/BIOS.asm"],
-            "cwd": "${workspaceFolder}",
-        },
+        }
     ]
 }

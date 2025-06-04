@@ -12,90 +12,111 @@ struct CPUCore;
 namespace IO
 {
 
+// DMA Channel Mask
+// [0] Transfer
+// [1] Queue
 static constexpr VirtualAddress GU_IRQ_MASK =   GU_BASE | 0x0000;
-static constexpr VirtualAddress GU_STATUS =     GU_BASE | 0x0004;
+static constexpr VirtualAddress GU_IRQ_STATUS = GU_BASE | 0x0004;
+
+// GU Control
+// [0] Restart
 static constexpr VirtualAddress GU_CTR =        GU_BASE | 0x0008;
 static constexpr VirtualAddress GU_ID =         GU_BASE | 0x000C;
 
-// Display Target
-static constexpr VirtualAddress GU_DISPLAYADR = GU_BASE | 0x0010;
-// [0 - 11]     Width
-// [12 - 23]    Height
-// [24 - 31]    Display Format
-static constexpr VirtualAddress GU_DISPLAYFMT = GU_BASE | 0x0014;
-
 // Transfer Protocol
-static constexpr VirtualAddress GU_TRANSFER_INADDR =    GU_BASE | 0x0100;
-static constexpr VirtualAddress GU_TRANSFER_INFMT =     GU_BASE | 0x0104;
-static constexpr VirtualAddress GU_TRANSFER_OUTADDR =   GU_BASE | 0x0108;
-static constexpr VirtualAddress GU_TRANSFER_OUTFMT =    GU_BASE | 0x010C;
+static constexpr VirtualAddress GU_TRANSFER_INADDR =    GU_BASE | 0x0010;
+static constexpr VirtualAddress GU_TRANSFER_INFMT =     GU_BASE | 0x0014;
+static constexpr VirtualAddress GU_TRANSFER_OUTADDR =   GU_BASE | 0x0018;
+static constexpr VirtualAddress GU_TRANSFER_OUTFMT =    GU_BASE | 0x001C;
 
-static constexpr VirtualAddress GU_TRANSFER_COUNT =     GU_BASE | 0x0110;
-// [0 - 1] -> GUTransferCommand
+// [0 - 7] -> GUTransferCommand
 // [31] -> Start execution
-static constexpr VirtualAddress GU_TRANSFER_CTR =       GU_BASE | 0x0114;
-static constexpr VirtualAddress GU_TRANSFER_IRQ_MASK =  GU_BASE | 0x0118;
-static constexpr VirtualAddress GU_TRANSFER_ID =        GU_BASE | 0x011C;
+static constexpr VirtualAddress GU_TRANSFER_CTR =       GU_BASE | 0x0020;
+static constexpr VirtualAddress GU_TRANSFER_IRQ_MASK =  GU_BASE | 0x0024;
+static constexpr VirtualAddress GU_TRANSFER_ID =        GU_BASE | 0x0028;
 
 // Command Queue
 // [0 - 2] Command List Type (Graphics, MISC)
 // [3 - 4] Execution Priority (Low, Normal, High)
-static constexpr VirtualAddress GU_QUEUE_CMD =  GU_BASE | 0x0120;
-static constexpr VirtualAddress GU_QUEUE_ADDR = GU_BASE | 0x0124;
+static constexpr VirtualAddress GU_QUEUE_CMD =      GU_BASE | 0x0030;
+static constexpr VirtualAddress GU_QUEUE_ADDR =     GU_BASE | 0x0034;
 // [31] -> Start execution
-static constexpr VirtualAddress GU_QUEUE_CTR =      GU_BASE | 0x0128;
-static constexpr VirtualAddress GU_QUEUE_IRQ_MASK = GU_BASE | 0x012C;
+static constexpr VirtualAddress GU_QUEUE_CTR =      GU_BASE | 0x0038;
+static constexpr VirtualAddress GU_QUEUE_STATE =    GU_BASE | 0x003C;
 
-static constexpr VirtualAddress GU_QUEUE_STATE =    GU_BASE | 0x0130;
+enum GUIRQMask
+{
+    GU_IRQ_MASK_TRANSFER = 0x1,
+    GU_IRQ_MASK_QUEUE = 0x2,
+};
 
 enum GUControlBit
 {
-    GU_ENABLE_FLAG = 0x1,
+    GU_RESTART_FLAG = 0x1,
 };
 
-enum GUQueueCommandFlags
+enum GUID
 {
-    GU_QUEUE_EXECUTE_GRAPHICS = 0x0,
-    GU_QUEUE_EXECUTE_MISC = 0x1,
+    GU1 = 0,
+};
 
-    GU_QUEUE_PRIORITY_LOW = 0x8,
-    GU_QUEUE_PRIORITY_NORMAL = 0x10,
-    GU_QUEUE_PRIORITY_HIGH = 0x20,
+enum GUTransferControlBit
+{
+    GU_TRANSFER_START = 0x8000'0000,
 };
 
 enum GUTransferCommand
 {
-    GU_TRANSFER_DISPLAY = 0x1,
-    GU_TRANSFER_TEXTURE_COPY = 0x2,
+    GU_TRANSFER_TEXTURE_COPY = 0x0,
+};
+
+enum TransferID
+{
+    TRANSFER1 = 0,
+};
+
+enum GUQueueControlBit
+{
+    GU_QUEUE_START = 0x8000'0000,
+};
+
+enum GUQueueCommand
+{
+    GU_QUEUE_CMD_RUN = 0x0,
+};
+
+enum GUQueuePriority
+{
+    GU_QUEUE_PRIORITY_LOW = 0x1,
+    GU_QUEUE_PRIORITY_NORMAL = 0x2,
+    GU_QUEUE_PRIORITY_HIGH = 0x4,
 };
 
 struct GURegisters
 {
+    // 0x00
     Word irq_mask;
-    Word status;
+    Word irq_status;
     Word ctr;
     Word id;
 
-    VirtualAddress display_address;
-    Word display_format;
-
-    Word padding2[(GU_TRANSFER_INADDR - GU_DISPLAYFMT) / 4 - 1];
-    // 0x0100
+    // 0x10
     VirtualAddress transfer_in_address;
     VirtualAddress transfer_in_fmt;
 
     VirtualAddress transfer_out_address;
     VirtualAddress transfer_out_fmt;
 
-    Word transfer_count;
+    // 0x0020
     Word transfer_ctr;
     Word transfer_irq_mask;
     Word transfer_id;
+    Word padding[1];
 
+    // 0x0030
     Word queue_cmd;
     Word queue_addr;
     Word queue_ctr;
-    Word queue_irq_mask;
     Word queue_state;
 };
 

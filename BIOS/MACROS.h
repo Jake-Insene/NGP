@@ -1,0 +1,6 @@
+
+
+MACRO IMM32 R, IMM {
+	MOV R, (IMM & 0xFFFF)
+	MOVT R, (IMM >> 16)
+}

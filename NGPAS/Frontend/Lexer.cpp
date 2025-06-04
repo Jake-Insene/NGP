@@ -8,15 +8,6 @@
 #include "ErrorManager.h"
 #include <string>
 
-void Lexer::set(const char* source_file, u8* ctn, u32 s)
-{
-    content = ctn;
-    size = s;
-    file_path = source_file;
-    index = 0;
-    line = 1;
-    current = content[index];
-}
 
 struct SymbolInfo
 {
@@ -35,13 +26,15 @@ SymbolInfo symbols[] =
     {.symbol = "as", .size = 2, .type = TOKEN_DIRECTIVE, .subtype = TD_AS },
     {.symbol = "org", .size = 3, .type = TOKEN_DIRECTIVE, .subtype = TD_ORG },
     {.symbol = "include", .size = 7, .type = TOKEN_DIRECTIVE, .subtype = TD_INCLUDE },
+    {.symbol = "macro", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_MACRO },
     {.symbol = ".string", .size = 7, .type = TOKEN_DIRECTIVE, .subtype = TD_STRING },
     {.symbol = ".byte", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_BYTE },
     {.symbol = ".half", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_HALF },
     {.symbol = ".word", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_WORD },
     {.symbol = ".dword", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_DWORD },
     {.symbol = ".zero", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_ZERO },
-    {.symbol = ".space", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_SPACE },
+    {.symbol = ".space", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_SPACE },
+    {.symbol = ".align", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_ALIGN },
 
     // general purporse registers
     {.symbol = "r0", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R0},
@@ -297,6 +290,12 @@ SymbolInfo symbols[] =
     advance();\
 }
 
+#define MAKE_TOKEN_NO_ADVANCE(TYPE) { \
+    tk.source_file = file_path;\
+    tk.line = line;\
+    tk.type = TYPE;\
+}
+
 #define MAKE_TOKEN_TWO(TYPE) { \
     tk.source_file = file_path;\
     tk.line = line;\
@@ -305,9 +304,20 @@ SymbolInfo symbols[] =
     advance();\
 }
 
+void Lexer::set(const std::string& source_file, u8* ctn, u32 s)
+{
+    content = ctn;
+    size = s;
+    file_path = source_file;
+    index = 0;
+    line = 1;
+    current = content[index];
+}
+
 Token Lexer::get_next()
 {
     Token tk = {};
+    tk.type = TOKEN_ERROR;
 
     skip_white_space();
 
@@ -321,7 +331,8 @@ Token Lexer::get_next()
             advance();
         }
 
-        tk = get_next();
+        // Fix some bugs
+        MAKE_TOKEN_NO_ADVANCE(TOKEN_NEW_LINE);
     }
     break;
     case '#':
@@ -388,6 +399,12 @@ Token Lexer::get_next()
     case ')':
         MAKE_TOKEN(TOKEN_RIGHT_PARENT);
         break;
+    case '{':
+        MAKE_TOKEN(TOKEN_LEFT_BRACE);
+        break;
+    case '}':
+        MAKE_TOKEN(TOKEN_RIGHT_BRACE);
+        break;
     case '[':
         MAKE_TOKEN(TOKEN_LEFT_KEY);
         break;
@@ -441,7 +458,7 @@ Token Lexer::get_next()
         }
         else
         {
-            ErrorManager::error(file_path, line, "invalid token '%c'", current);
+            ErrorManager::error(file_path.c_str(), line, "invalid token '%c'", current);
         }
         break;
     }
@@ -521,8 +538,7 @@ Token Lexer::get_symbol_or_label()
             tk.type = sym.type;
             tk.subtype = sym.subtype;
         next:
-            {
-            }
+            {}
         }
     }
 
@@ -553,7 +569,7 @@ Token Lexer::get_immediate()
 
             if (!is_hex(current))
             {
-                ErrorManager::error(file_path, line, "invalid constant", current);
+                ErrorManager::error(file_path.c_str(), line, "invalid constant", current);
                 return tk;
             }
         }
@@ -565,7 +581,7 @@ Token Lexer::get_immediate()
 
             if (!is_bin(current))
             {
-                ErrorManager::error(file_path, line, "invalid constant", current);
+                ErrorManager::error(file_path.c_str(), line, "invalid constant", current);
                 return tk;
             }
         }
@@ -581,7 +597,7 @@ Token Lexer::get_immediate()
 
     if (i >= 32)
     {
-        ErrorManager::error(file_path, line, "constant number too long", current);
+        ErrorManager::error(file_path.c_str(), line, "constant number too long", current);
     }
 
     bool is_single = false;
@@ -600,7 +616,7 @@ Token Lexer::get_immediate()
 
         if (i >= 32)
         {
-            ErrorManager::error(file_path, line, "constant number too long", current);
+            ErrorManager::error(file_path.c_str(), line, "constant number too long", current);
         }
 
         if (is_single)
@@ -665,7 +681,7 @@ Token Lexer::get_string()
     {
         if (current == '\'' || current == '"')
         {
-            ErrorManager::error(file_path, line, "inconsist string");
+            ErrorManager::error(file_path.c_str(), line, "inconsist string");
             return tk;
         }
         advance();
@@ -674,7 +690,7 @@ Token Lexer::get_string()
 
     if (current == '\0')
     {
-        ErrorManager::error(file_path, line, "bad string");
+        ErrorManager::error(file_path.c_str(), line, "bad string");
     }
     else
     {

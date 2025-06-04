@@ -41,7 +41,7 @@
 #define BCOND(type_inst, ti)\
     {\
     u32 index = token_index - 3;\
-    auto target = parse_expresion(ParsePrecedence::Start);\
+    auto target = parse_expression(ParsePrecedence::Start);\
     if (context.undefined_label == false)\
     {\
         inst = bcond(type_inst, i32(target.u - program_index) / 4);\
@@ -59,7 +59,7 @@
 #define RELATIVE(type_inst, ti) \
     {\
     u32 index = token_index - 3;\
-    auto target = parse_expresion(ParsePrecedence::Start);\
+    auto target = parse_expression(ParsePrecedence::Start);\
     if (context.undefined_label == false)\
     {\
         inst = type_inst(i32(target.u - program_index) / 4);\
@@ -105,7 +105,7 @@ void Assembler::assemble_instruction()
         INVALIDATE_FP((*last), break);
         EXPECTED_COMMA(break);
 
-        Token symbol = parse_expresion(ParsePrecedence::Start);
+        Token symbol = parse_expression(ParsePrecedence::Start);
         if (context.undefined_label == false)
         {
             inst = pcrel(NGP_ADR_PC, dest, i32(symbol.u - program_index) / 4);
@@ -332,7 +332,7 @@ void Assembler::assemble_instruction()
         INVALIDATE_FP((*last), break);
         EXPECTED_COMMA(break);
 
-        Token operand = parse_expresion(ParsePrecedence::Start);
+        Token operand = parse_expression(ParsePrecedence::Start);
         if (operand.is(TOKEN_REGISTER))
         {
             INVALIDATE_FP(operand, break);
@@ -362,7 +362,7 @@ void Assembler::assemble_instruction()
         INVALIDATE_FP((*last), break);
         EXPECTED_COMMA(break);
 
-        Token operand = parse_expresion(ParsePrecedence::Start);
+        Token operand = parse_expression(ParsePrecedence::Start);
         if (operand.is(TOKEN_IMMEDIATE))
         {
             if (operand.u > 0xFFFF)
@@ -387,7 +387,7 @@ void Assembler::assemble_instruction()
         INVALIDATE_FP((*last), break);
         EXPECTED_COMMA(break);
 
-        Token operand = parse_expresion(ParsePrecedence::Start);
+        Token operand = parse_expression(ParsePrecedence::Start);
         if (operand.is(TOKEN_IMMEDIATE))
         {
             if (operand.u > 0xFFFF)
@@ -517,8 +517,8 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
 
     if (handle_symbol && !current->is(TOKEN_LEFT_KEY))
     {
-        Token symbol = parse_expresion(ParsePrecedence::Start);
-        if (context.undefined_label == false && !context.is_in_resolve)
+        Token symbol = parse_expression(ParsePrecedence::Start);
+        if (context.undefined_label == false)
         {
             if (fp_type == 1)
             {
@@ -565,7 +565,7 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
     {
         expected(TOKEN_COMMA, "',' was expected");
 
-        Token indice = parse_expresion(ParsePrecedence::Start);
+        Token indice = parse_expression(ParsePrecedence::Start);
         if (indice.is(TOKEN_IMMEDIATE))
         {
             if (indice.iword >= 0)
@@ -665,7 +665,7 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token second_operand = parse_expresion(ParsePrecedence::Start);
+    Token second_operand = parse_expression(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER))
     {
         INVALIDATE_FP(second_operand, return);
@@ -718,7 +718,7 @@ void Assembler::assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediat
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token second_source = parse_expresion(ParsePrecedence::Start);
+    Token second_source = parse_expression(ParsePrecedence::Start);
     if (second_source.is(TOKEN_REGISTER))
     {
         INVALIDATE_FP(second_source, return);
@@ -762,7 +762,7 @@ void Assembler::assemble_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8))
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token third_operand = parse_expresion(ParsePrecedence::Start);
+    Token third_operand = parse_expression(ParsePrecedence::Start);
     if (third_operand.is(TOKEN_REGISTER))
     {
         INVALIDATE_FP(third_operand, return);
@@ -788,7 +788,7 @@ void Assembler::assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8))
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token second_operand = parse_expresion(ParsePrecedence::Start);
+    Token second_operand = parse_expression(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER))
     {
         INVALIDATE_FP(second_operand, return);
@@ -810,7 +810,7 @@ void Assembler::assemble_one_operand(u32& inst, u32(*fn)(u8, u8))
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token operand = parse_expresion(ParsePrecedence::Start);
+    Token operand = parse_expression(ParsePrecedence::Start);
     if (operand.is(TOKEN_REGISTER))
     {
         INVALIDATE_FP(operand, return);
@@ -836,7 +836,7 @@ void Assembler::assemble_shift(u32& inst, u8 opcode)
     INVALIDATE_FP((*last), return);
     EXPECTED_COMMA(return);
 
-    Token third_operand = parse_expresion(ParsePrecedence::Start);
+    Token third_operand = parse_expression(ParsePrecedence::Start);
     if (third_operand.is(TOKEN_REGISTER))
     {
         INVALIDATE_FP(third_operand, return);
@@ -890,7 +890,7 @@ void Assembler::check_for_amount(u8& adder, u8& amount)
             break;
         default:
             ErrorManager::error(
-                current->source_file, current->line,
+                current->source_file.c_str(), current->line,
                 "invalid shift type, try shl/shr/asr/ror"
             );
             return;
@@ -904,7 +904,7 @@ void Assembler::check_for_amount(u8& adder, u8& amount)
         if (last->u > ZeroRegister)
         {
             ErrorManager::error(
-                current->source_file, current->line,
+                current->source_file.c_str(), current->line,
                 "shift amount too long, must to be #0-31"
             );
             return;

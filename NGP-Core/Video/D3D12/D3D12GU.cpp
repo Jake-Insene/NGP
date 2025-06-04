@@ -45,7 +45,7 @@ GU::GUDriver D3D12GU::get_driver()
 
 void D3D12GU::initialize()
 {
-    current_frame = 0;
+    state.current_frame = 0;
 
     // Debug
     {
@@ -59,13 +59,13 @@ void D3D12GU::initialize()
 #endif
 
         DX_ERROR(
-            D3D12CreateDevice(0, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device)),
+            D3D12CreateDevice(0, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&state.device)),
             "Couldn't initialize the D3D12 driver"
         );
 
 #if NDEBUG == 0
         ID3D12InfoQueue* info_queue = nullptr;
-        device->QueryInterface(IID_PPV_ARGS(&info_queue));
+        state.device->QueryInterface(IID_PPV_ARGS(&info_queue));
         info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
         info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
         info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
@@ -84,13 +84,13 @@ void D3D12GU::initialize()
             .NodeMask = 0,
         };
         DX_ERROR(
-            device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queue_graphics)),
+            state.device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&state.queue_graphics)),
             "Couldn't create the graphics queue"
         );
 
         queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
         DX_ERROR(
-            device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queue_compute)),
+            state.device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&state.queue_compute)),
             "Couldn't create the compute queue"
         );
     }
@@ -105,7 +105,7 @@ void D3D12GU::initialize()
 #endif
 
         DX_ERROR(
-            CreateDXGIFactory2(flags, IID_PPV_ARGS(&dxgi_factory)),
+            CreateDXGIFactory2(flags, IID_PPV_ARGS(&state.dxgi_factory)),
             "Couldn't create the DXGI factory"
         );
 
@@ -126,12 +126,14 @@ void D3D12GU::initialize()
         HWND handle = (HWND)Window::handle;
 
         DX_ERROR(
-            dxgi_factory->CreateSwapChainForHwnd(queue_graphics, handle, &swap_chain_desc, nullptr, nullptr, &tmp_sc),
+            state.dxgi_factory->CreateSwapChainForHwnd(
+                state.queue_graphics, handle, &swap_chain_desc, nullptr, nullptr, &tmp_sc
+            ),
             "Couldn't create the display swap chain"
         );
 
         DX_ERROR(
-            tmp_sc->QueryInterface(IID_PPV_ARGS(&swap_chain)),
+            tmp_sc->QueryInterface(IID_PPV_ARGS(&state.swap_chain)),
             "Couldn't query IDXGISwapChain"
         );
 
@@ -147,9 +149,9 @@ void D3D12GU::initialize()
         .NodeMask = 0
     };
 
-    device->CreateDescriptorHeap(
+    state.device->CreateDescriptorHeap(
         &descriptor_heap_desc,
-        IID_PPV_ARGS(&rtv_heap)
+        IID_PPV_ARGS(&state.rtv_heap)
     );
 
     // SRV Heap
@@ -161,53 +163,46 @@ void D3D12GU::initialize()
         .NodeMask = 0
     };
 
-    device->CreateDescriptorHeap(
+    state.device->CreateDescriptorHeap(
         &descriptor_heap_desc,
-        IID_PPV_ARGS(&srv_heap)
+        IID_PPV_ARGS(&state.srv_heap)
     );
 
     // Synchronization && RTV && Command Lists
-    device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(&cmd_compute_allocator));
-    device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COMPUTE, cmd_compute_allocator, nullptr, IID_PPV_ARGS(&cmd_compute));
-    cmd_compute->Close();
-    device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&compute_fence));
-    compute_fence_event = CreateEventA(nullptr, 0, 0, nullptr);
+    state.device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(&state.cmd_compute_allocator));
+    state.device->CreateCommandList(
+        0, D3D12_COMMAND_LIST_TYPE_COMPUTE, state.cmd_compute_allocator, 
+        nullptr, IID_PPV_ARGS(&state.cmd_compute)
+    );
+    state.cmd_compute->Close();
+    state.device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&state.compute_fence));
+    state.compute_fence_event = CreateEventA(nullptr, 0, 0, nullptr);
 
     for (u32 i = 0; i < DefaultBufferCount; i++)
     {
-        Framebuffer& frame = framebuffers[i];
-        swap_chain->GetBuffer(i, IID_PPV_ARGS(&frame.buffer));
+        Framebuffer& frame = state.framebuffers[i];
+        state.swap_chain->GetBuffer(i, IID_PPV_ARGS(&frame.buffer));
 
-        D3D12_CPU_DESCRIPTOR_HANDLE heap_begin = rtv_heap->GetCPUDescriptorHandleForHeapStart();
-        frame.handle.ptr = heap_begin.ptr + (device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV) * i);
+        D3D12_CPU_DESCRIPTOR_HANDLE heap_begin = state.rtv_heap->GetCPUDescriptorHandleForHeapStart();
+        frame.handle.ptr = heap_begin.ptr
+            + (state.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV) * i);
 
-        D3D12_RENDER_TARGET_VIEW_DESC rtv_desc =
-        {
-            .Format = DefaultFormat,
-            .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
-            .Texture2D =
-            {
-                .MipSlice = 0,
-                .PlaneSlice = 0,
-            }
-        };
-
-        device->CreateRenderTargetView(frame.buffer, &rtv_desc, frame.handle);
+        state.device->CreateRenderTargetView(frame.buffer, nullptr, frame.handle);
 
         DX_ERROR(
-            device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frame.fence)),
+            state.device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frame.fence)),
             "Couldn't create the main fence"
         );
         frame.fence_value = 0;
         frame.fence_event = CreateEventA(nullptr, FALSE, FALSE, nullptr);
 
         DX_ERROR(
-            device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&frame.cmd_graphics_allocator)),
+            state.device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&frame.cmd_graphics_allocator)),
             "Couldn't create the graphics command allocator"
         );
 
         DX_ERROR(
-            device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, frame.cmd_graphics_allocator, nullptr, IID_PPV_ARGS(&frame.cmd_graphics)),
+            state.device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, frame.cmd_graphics_allocator, nullptr, IID_PPV_ARGS(&frame.cmd_graphics)),
             "Couldn't create the graphics command list of frame: %d", i
         );
         frame.cmd_graphics->Close();
@@ -280,7 +275,10 @@ void D3D12GU::initialize()
         }
 
         DX_ERROR(
-            device->CreateRootSignature(0, root_blob->GetBufferPointer(), root_blob->GetBufferSize(), IID_PPV_ARGS(&root_signature)),
+            state.device->CreateRootSignature(
+                0, root_blob->GetBufferPointer(), root_blob->GetBufferSize(), 
+                IID_PPV_ARGS(&state.root_signature)
+            ),
             "Couldn't create the root signature"
         );
 
@@ -297,7 +295,7 @@ void D3D12GU::initialize()
         };
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC pipeline_desc = {};
-        pipeline_desc.pRootSignature = root_signature;
+        pipeline_desc.pRootSignature = state.root_signature;
         pipeline_desc.VS = D3D12_SHADER_BYTECODE
         {
             .pShaderBytecode = vs_code->GetBufferPointer(),
@@ -349,7 +347,7 @@ void D3D12GU::initialize()
         pipeline_desc.SampleDesc.Count = 1;
         pipeline_desc.InputLayout = input_layout;
 
-        device->CreateGraphicsPipelineState(&pipeline_desc, IID_PPV_ARGS(&blit_pipeline));
+        state.device->CreateGraphicsPipelineState(&pipeline_desc, IID_PPV_ARGS(&state.blit_pipeline));
         dx::release(vs_code);
         dx::release(ps_code);
     }
@@ -359,14 +357,14 @@ void D3D12GU::initialize()
         D3D12_RESOURCE_DESC vb_desc = dx::buffer_desc(sizeof(vertices));
 
         D3D12_HEAP_PROPERTIES heap_properties = dx::heap_properties(D3D12_HEAP_TYPE_DEFAULT);
-        device->CreateCommittedResource(
+        state.device->CreateCommittedResource(
             &heap_properties, D3D12_HEAP_FLAG_NONE, &vb_desc, 
-            D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&vb)
+            D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&state.vb)
         );
 
         ID3D12Resource* vb_upload = nullptr;
         heap_properties = dx::heap_properties(D3D12_HEAP_TYPE_UPLOAD);
-        device->CreateCommittedResource(
+        state.device->CreateCommittedResource(
             &heap_properties, D3D12_HEAP_FLAG_NONE, &vb_desc,
             D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&vb_upload)
         );
@@ -380,21 +378,21 @@ void D3D12GU::initialize()
         send_compute([](ID3D12Resource* vb_upload)
             {
                 D3D12_RESOURCE_BARRIER b1 = dx::transition_barrier(
-                    vb, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST
+                    state.vb, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST
                 );
-                cmd_compute->ResourceBarrier(1, &b1);
+                state.cmd_compute->ResourceBarrier(1, &b1);
 
                 b1 = dx::transition_barrier(
                     vb_upload, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE
                 );
-                cmd_compute->ResourceBarrier(1, &b1);
+                state.cmd_compute->ResourceBarrier(1, &b1);
 
-                cmd_compute->CopyResource(vb, vb_upload);
+                state.cmd_compute->CopyResource(state.vb, vb_upload);
 
                 b1 = dx::transition_barrier(
-                    vb, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
+                    state.vb, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
                 );
-                cmd_compute->ResourceBarrier(1, &b1);
+                state.cmd_compute->ResourceBarrier(1, &b1);
             }, vb_upload);
 
         dx::release(vb_upload);
@@ -403,46 +401,46 @@ void D3D12GU::initialize()
 
 void D3D12GU::shutdown()
 {
-    dx::release(blit_pipeline);
-    dx::release(root_signature);
-    dx::release(vb);
+    dx::release(state.blit_pipeline);
+    dx::release(state.root_signature);
+    dx::release(state.vb);
 
-    dx::release(framebuffer);
-    dx::release(upload_framebuffer);
+    dx::release(state.framebuffer);
+    dx::release(state.upload_framebuffer);
 
-    dx::release(swap_chain);
-    dx::release(dxgi_factory);
+    dx::release(state.swap_chain);
+    dx::release(state.dxgi_factory);
 
-    dx::release(rtv_heap);
+    dx::release(state.rtv_heap);
 
     for (u32 i = 0; i < DefaultBufferCount; i++)
     {
-        dx::release(framebuffers[i].buffer);
-        dx::release(framebuffers[i].fence);
-        dx::release(framebuffers[i].cmd_graphics_allocator);
-        dx::release(framebuffers[i].cmd_graphics);
-        CloseHandle(framebuffers[i].fence_event);
+        dx::release(state.framebuffers[i].buffer);
+        dx::release(state.framebuffers[i].fence);
+        dx::release(state.framebuffers[i].cmd_graphics_allocator);
+        dx::release(state.framebuffers[i].cmd_graphics);
+        CloseHandle(state.framebuffers[i].fence_event);
     }
 
-    dx::release(compute_fence);
-    dx::release(cmd_compute);
-    dx::release(cmd_compute_allocator);
-    dx::release(queue_compute);
-    dx::release(queue_graphics);
+    dx::release(state.compute_fence);
+    dx::release(state.cmd_compute);
+    dx::release(state.cmd_compute_allocator);
+    dx::release(state.queue_compute);
+    dx::release(state.queue_graphics);
 
 #if NDEBUG == 0
     ID3D12DebugDevice* debug_device = nullptr;
-    device->QueryInterface(IID_PPV_ARGS(&debug_device));
+    state.device->QueryInterface(IID_PPV_ARGS(&debug_device));
     debug_device->ReportLiveDeviceObjects(D3D12_RLDO_NONE);
     debug_device->Release();
 #endif
 
-    dx::release(device);
+    dx::release(state.device);
 }
 
 void D3D12GU::present(bool vsync)
 {
-    Framebuffer& frame = framebuffers[current_frame];
+    Framebuffer& frame = state.framebuffers[state.current_frame];
     if (frame.fence_value != frame.fence->GetCompletedValue())
     {
         frame.fence->SetEventOnCompletion(frame.fence_value, frame.fence_event);
@@ -471,16 +469,16 @@ void D3D12GU::present(bool vsync)
     );
     cmd_graphics->ResourceBarrier(1, &b1);
 
-    cmd_graphics->ClearRenderTargetView(frame.handle, clear_color, 0, nullptr);
+    cmd_graphics->ClearRenderTargetView(frame.handle, state.clear_color, 0, nullptr);
 
     cmd_graphics->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    cmd_graphics->SetPipelineState(blit_pipeline);
-    cmd_graphics->SetGraphicsRootSignature(root_signature);
-    cmd_graphics->SetDescriptorHeaps(1, &srv_heap);
-    cmd_graphics->SetGraphicsRootDescriptorTable(0, framebuffer_srv);
+    cmd_graphics->SetPipelineState(state.blit_pipeline);
+    cmd_graphics->SetGraphicsRootSignature(state.root_signature);
+    cmd_graphics->SetDescriptorHeaps(1, &state.srv_heap);
+    cmd_graphics->SetGraphicsRootDescriptorTable(0, state.framebuffer_srv);
     D3D12_VERTEX_BUFFER_VIEW vb_view =
     {
-        .BufferLocation = vb->GetGPUVirtualAddress(),
+        .BufferLocation = state.vb->GetGPUVirtualAddress(),
         .SizeInBytes = sizeof(vertices),
         .StrideInBytes = sizeof(Vertex)
     };
@@ -496,34 +494,37 @@ void D3D12GU::present(bool vsync)
     cmd_graphics->Close();
 
     ID3D12CommandList* cmd_list[] = { cmd_graphics };
-    queue_graphics->ExecuteCommandLists(1, cmd_list);
+    state.queue_graphics->ExecuteCommandLists(1, cmd_list);
 
-    swap_chain->Present(vsync, 0);
-    current_frame = (current_frame + 1) % DefaultBufferCount;
+    state.swap_chain->Present(vsync, 0);
+    state.current_frame = (state.current_frame + 1) % DefaultBufferCount;
 
     // Signal fence
-    queue_graphics->Signal(frame.fence, ++frame.fence_value);
+    state.queue_graphics->Signal(frame.fence, ++frame.fence_value);
 }
 
-VirtualAddress D3D12GU::create_framebuffer()
+VirtualAddress D3D12GU::create_framebuffer(i32 width, i32 height)
 {
+    state.framebuffer_width = width;
+    state.framebuffer_height = height;
+
     D3D12_HEAP_PROPERTIES heap_properties = dx::heap_properties(D3D12_HEAP_TYPE_DEFAULT);
 
     D3D12_RESOURCE_DESC resource_desc =
     {
         .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
         .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-        .Width = GU::MaxDeviceScreenWidth,
-        .Height = GU::MaxDeviceScreenHeight,
+        .Width = (UINT)state.framebuffer_width,
+        .Height = (UINT)state.framebuffer_height,
         .DepthOrArraySize = 1,
         .MipLevels = 1,
         .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
         .SampleDesc = {.Count = 1},
     };
 
-    (void)device->CreateCommittedResource(
+    (void)state.device->CreateCommittedResource(
         &heap_properties, D3D12_HEAP_FLAG_NONE, &resource_desc,
-        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(&framebuffer)
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(&state.framebuffer)
     );
 
     D3D12_SHADER_RESOURCE_VIEW_DESC view_desc =
@@ -534,28 +535,28 @@ VirtualAddress D3D12GU::create_framebuffer()
         .Texture2D = {.MipLevels = 1}
     };
 
-    device->CreateShaderResourceView(framebuffer, &view_desc, srv_heap->GetCPUDescriptorHandleForHeapStart());
-    framebuffer_srv = srv_heap->GetGPUDescriptorHandleForHeapStart();
+    state.device->CreateShaderResourceView(state.framebuffer, &view_desc, state.srv_heap->GetCPUDescriptorHandleForHeapStart());
+    state.framebuffer_srv = state.srv_heap->GetGPUDescriptorHandleForHeapStart();
 
     heap_properties = dx::heap_properties(D3D12_HEAP_TYPE_UPLOAD);
-    resource_desc = dx::buffer_desc(GU::MaxDeviceScreenWidth * GU::MaxDeviceScreenHeight * 4);
+    resource_desc = dx::buffer_desc(state.framebuffer_width * state.framebuffer_height * 4);
 
-    (void)device->CreateCommittedResource(
+    (void)state.device->CreateCommittedResource(
         &heap_properties, D3D12_HEAP_FLAG_NONE, &resource_desc,
-        D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&upload_framebuffer)
+        D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&state.upload_framebuffer)
     );
 
-    return VirtualAddress();
+    return (VirtualAddress)0;
 }
 
-void D3D12GU::update_framebuffer(void* pixels)
+void D3D12GU::update_framebuffer(VirtualAddress fb, void* va)
 {
     void* data;
-    upload_framebuffer->Map(0, nullptr, &data);
-    memcpy(data, pixels, GU::MaxDeviceScreenWidth * GU::MaxDeviceScreenHeight * 4);
-    upload_framebuffer->Unmap(0, nullptr);
+    state.upload_framebuffer->Map(0, nullptr, &data);
+    memcpy(data, va, state.framebuffer_width * state.framebuffer_height * 4);
+    state.upload_framebuffer->Unmap(0, nullptr);
 
-    Framebuffer& frame = framebuffers[current_frame];
+    Framebuffer& frame = state.framebuffers[state.current_frame];
     if (frame.fence_value != frame.fence->GetCompletedValue())
     {
         frame.fence->SetEventOnCompletion(frame.fence_value, frame.fence_event);
@@ -567,11 +568,11 @@ void D3D12GU::update_framebuffer(void* pixels)
     cmd_graphics->Reset(frame.cmd_graphics_allocator, nullptr);
 
     D3D12_RESOURCE_BARRIER t3 = dx::transition_barrier(
-        upload_framebuffer, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE
+        state.upload_framebuffer, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE
     );
 
     D3D12_RESOURCE_BARRIER t4 = dx::transition_barrier(
-        framebuffer, 0, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST
+        state.framebuffer, 0, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST
     );
 
     D3D12_RESOURCE_BARRIER translations[] = { t3, t4};
@@ -579,24 +580,24 @@ void D3D12GU::update_framebuffer(void* pixels)
 
     D3D12_TEXTURE_COPY_LOCATION dest =
     {
-        .pResource = framebuffer,
+        .pResource = state.framebuffer,
         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
         .SubresourceIndex = 0,
     };
 
     D3D12_TEXTURE_COPY_LOCATION src =
     {
-        .pResource = upload_framebuffer,
+        .pResource = state.upload_framebuffer,
         .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
     };
 
     src.PlacedFootprint.Footprint =
     {
         .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-        .Width = GU::MaxDeviceScreenWidth,
-        .Height = GU::MaxDeviceScreenHeight,
+        .Width = (UINT)state.framebuffer_width,
+        .Height = (UINT)state.framebuffer_height,
         .Depth = 1,
-        .RowPitch = GU::MaxDeviceScreenWidth*4
+        .RowPitch = (UINT)state.framebuffer_width*4
     };
 
     D3D12_BOX box =
@@ -604,30 +605,30 @@ void D3D12GU::update_framebuffer(void* pixels)
         .left = 0,
         .top = 0,
         .front = 0,
-        .right = GU::MaxDeviceScreenWidth,
-        .bottom = GU::MaxDeviceScreenHeight,
+        .right = (UINT)state.framebuffer_width,
+        .bottom = (UINT)state.framebuffer_height,
         .back = 1,
     };
 
     cmd_graphics->CopyTextureRegion(&dest, 0, 0, 0, &src, &box);
 
     D3D12_RESOURCE_BARRIER translation1 = dx::transition_barrier(
-        upload_framebuffer, 0, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COMMON
+        state.upload_framebuffer, 0, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COMMON
     );
     cmd_graphics->ResourceBarrier(1, &translation1);
 
     D3D12_RESOURCE_BARRIER translation2 = dx::transition_barrier(
-        framebuffer, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+        state.framebuffer, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
     );
     cmd_graphics->ResourceBarrier(1, &translation2);
 
     cmd_graphics->Close();
 
     ID3D12CommandList* cmd_list[] = { cmd_graphics };
-    queue_graphics->ExecuteCommandLists(1, cmd_list);
+    state.queue_graphics->ExecuteCommandLists(1, cmd_list);
 
     // Signal fence
-    HRESULT result = queue_graphics->Signal(frame.fence, ++frame.fence_value);
-    queue_graphics->Wait(frame.fence, frame.fence_value);
+    HRESULT result = state.queue_graphics->Signal(frame.fence, ++frame.fence_value);
+    state.queue_graphics->Wait(frame.fence, frame.fence_value);
 }
 

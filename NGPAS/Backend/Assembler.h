@@ -10,7 +10,7 @@
 #include "FileFormat/ISA.h"
 
 #define MAKE_ERROR(TOKEN, BREAKER, ...) \
-    ErrorManager::error(TOKEN.source_file, TOKEN.line, __VA_ARGS__);\
+    ErrorManager::error(TOKEN.source_file.c_str(), TOKEN.line, __VA_ARGS__);\
     BREAKER;
 
 enum class ParsePrecedence {
@@ -85,7 +85,7 @@ struct Assembler {
     void resolve_instructions();
 
     void advance();
-    void syncronize();
+    void synchronize();
     bool expected(TokenType tk, const char* format, ...);
     void goto_next_line();
     void advance_to_next_line();
@@ -122,7 +122,7 @@ struct Assembler {
     Token parse_mul(Token lsh, Token rhs);
     Token parse_div(Token lsh, Token rhs);
 
-    Token parse_expresion(ParsePrecedence precedence);
+    Token parse_expression(ParsePrecedence precedence);
 
     // expresions
 

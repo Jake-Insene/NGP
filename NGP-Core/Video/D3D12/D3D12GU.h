@@ -26,36 +26,43 @@ struct D3D12GU
         ID3D12GraphicsCommandList4* cmd_graphics;
     };
 
-    static inline ID3D12Fence* compute_fence = nullptr;
-    static inline u64 compute_fence_value = 0;
-    static inline HANDLE compute_fence_event = nullptr;
-    static inline ID3D12CommandAllocator* cmd_compute_allocator = nullptr;
-    static inline ID3D12GraphicsCommandList4* cmd_compute = nullptr;
-
-    static inline Framebuffer framebuffers[DefaultBufferCount] = {};
-
-    static inline IDXGIFactory4* dxgi_factory = nullptr;
-    static inline IDXGISwapChain4* swap_chain = nullptr;
-
-    static inline ID3D12Device10* device = nullptr;
-    static inline ID3D12CommandQueue* queue_graphics = nullptr;
-    static inline ID3D12CommandQueue* queue_compute = nullptr;
-    static inline ID3D12DescriptorHeap* rtv_heap = nullptr;
-    static inline ID3D12DescriptorHeap* srv_heap = nullptr;
-    static inline ID3D12PipelineState* blit_pipeline = nullptr;
-    static inline ID3D12RootSignature* root_signature = nullptr;
-
-    static inline ID3D12Resource* vb = nullptr;
-    static inline ID3D12Resource* upload_framebuffer = nullptr;
-    static inline ID3D12Resource* framebuffer = nullptr;
-    static inline D3D12_GPU_DESCRIPTOR_HANDLE framebuffer_srv = {};
-
-    static inline u32 current_frame = 0;
-
-    static inline FLOAT clear_color[4] =
+    struct GPUState
     {
-        1.f, 0.f, 0.f, 1.f
+        ID3D12Fence* compute_fence;
+        u64 compute_fence_value;
+        HANDLE compute_fence_event;
+        ID3D12CommandAllocator* cmd_compute_allocator;
+        ID3D12GraphicsCommandList4* cmd_compute;
+
+        Framebuffer framebuffers[DefaultBufferCount];
+
+        IDXGIFactory4* dxgi_factory;
+        IDXGISwapChain4* swap_chain;
+
+        ID3D12Device10* device;
+        ID3D12CommandQueue* queue_graphics;
+        ID3D12CommandQueue* queue_compute;
+        ID3D12DescriptorHeap* rtv_heap;
+        ID3D12DescriptorHeap* srv_heap;
+        ID3D12PipelineState* blit_pipeline;
+        ID3D12RootSignature* root_signature;
+
+        // Upload buffers
+        ID3D12Resource* vb;
+        ID3D12Resource* upload_framebuffer;
+
+        // Virtual Framebuffer
+        ID3D12Resource* framebuffer;
+        D3D12_GPU_DESCRIPTOR_HANDLE framebuffer_srv;
+        i32 framebuffer_width;
+        i32 framebuffer_height;
+
+        u32 current_frame;
+
+        FLOAT clear_color[4];
     };
+
+    static inline GPUState state;
 
     static GU::GUDriver get_driver();
 
@@ -64,24 +71,24 @@ struct D3D12GU
 
     static void present(bool vsync);
 
-    static VirtualAddress create_framebuffer();
-    static void update_framebuffer(void* pixels);
+    static VirtualAddress create_framebuffer(i32 width, i32 height);
+    static void update_framebuffer(VirtualAddress fb, void* va);
 
     template<typename Fn, typename... TArgs>
     static void send_compute(Fn fn, TArgs&&... args)
     {
-        cmd_compute_allocator->Reset();
-        cmd_compute->Reset(cmd_compute_allocator, nullptr);
+        state.cmd_compute_allocator->Reset();
+        state.cmd_compute->Reset(state.cmd_compute_allocator, nullptr);
 
         fn(args...);
 
-        cmd_compute->Close();
-        queue_compute->ExecuteCommandLists(1, (ID3D12CommandList**)&cmd_compute);
+        state.cmd_compute->Close();
+        state.queue_compute->ExecuteCommandLists(1, (ID3D12CommandList**)&state.cmd_compute);
 
         // Signal fence
-        queue_compute->Signal(compute_fence, ++compute_fence_value);
-        queue_compute->Wait(compute_fence, compute_fence_value);
-        compute_fence->SetEventOnCompletion(compute_fence_value, compute_fence_event);
-        WaitForSingleObject(compute_fence_event, INFINITE);
+        state.queue_compute->Signal(state.compute_fence, ++state.compute_fence_value);
+        state.queue_compute->Wait(state.compute_fence, state.compute_fence_value);
+        state.compute_fence->SetEventOnCompletion(state.compute_fence_value, state.compute_fence_event);
+        WaitForSingleObject(state.compute_fence_event, INFINITE);
     }
 };

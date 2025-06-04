@@ -15,39 +15,41 @@ namespace IO
 static constexpr VirtualAddress DMA_CHANNELS_START =    DMA_BASE | 0x000;
 static constexpr VirtualAddress DMA_CHANNELS_END =      DMA_BASE | 0x0FF;
 
-static constexpr VirtualAddress DMA_ENABLE_MASK =   DMA_BASE | 0x100;
-static constexpr VirtualAddress DMA_IRQ_MASK =      DMA_BASE | 0x104;
-static constexpr VirtualAddress DMA_PRIORITY_MASK = DMA_BASE | 0x108;
-static constexpr VirtualAddress DMA_WAIT_ON_MASK =  DMA_BASE | 0x10C;
+// DMA Channel Mask
+// [0] RAM
+// [1] EMD
+// [2] SPU
+static constexpr VirtualAddress DMA_IRQ_MASK =      DMA_BASE | 0x100;
+static constexpr VirtualAddress DMA_IRQ_STATUS =    DMA_BASE | 0x104;
+static constexpr VirtualAddress DMA_WAIT_ON_MASK =  DMA_BASE | 0x108;
 
 
 enum DMAChannel
 {
     DMA_RAM = 0,
-    DMA_GU = 1,
-    DMA_EMD = 2,
-    DMA_SPU = 3,
+    DMA_EMD = 1,
+    DMA_SPU = 2,
 
     DMA_CHANNELS_MAX = 16,
 };
 
-enum DMAEnableMaskBit
+enum DMAIRQMask
 {
-    DMA_RAM_MASK = 0x1,
-    DMA_GU_MASK = 0x2,
-    DMA_EMD_MASK = 0x4,
-    DMA_SPU_MASK = 0x8,
+    DMA_IRQ_MASK_RAM = 0x1,
+    DMA_IRQ_MASK_EMD = 0x2,
+    DMA_IRQ_MASK_SPU = 0x4,
 };
 
 enum DMAControlChannelBit
 {
     DMA_START = 0x1,
     DMA_BUSY = 0x1,
-};
+    
+    DMA_PRIORITY_LOW = 0x2,
+    DMA_PRIORITY_NORMAL = 0x4,
+    DMA_PRIORITY_HIGH = 0x6,
 
-enum DMAStatusFlags
-{
-    DMA_STATUS_ENABLE = 0x1,
+    DMA_IRQ = 0x8000'0000,
 };
 
 struct DMAChannelRegisters
@@ -71,9 +73,8 @@ struct DMARegisters
 {
     DMAChannelInfo channels[16];
 
-    Word enable_mask;
     Word irq_mask;
-    Word priority_mask;
+    Word irq_status;
     Word wait_on_mask;
 };
 

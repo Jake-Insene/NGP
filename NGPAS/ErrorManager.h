@@ -26,7 +26,7 @@ struct ErrorManager
         error_count++;
 
         is_panic_mode = true;
-        must_syncronize = true;
+        must_synchronize = true;
     }
 
     static inline void global_error(const char* file_path, const char* format, ...)
@@ -45,7 +45,7 @@ struct ErrorManager
         error_count++;
 
         is_panic_mode = true;
-        must_syncronize = true;
+        must_synchronize = true;
     }
 
     static inline void warn(const char* file_path, u32 line, const char* format, ...)
@@ -67,5 +67,5 @@ struct ErrorManager
     static inline u32 error_count = 0;
     static inline u32 warning_count = 0;
     static inline bool is_panic_mode = false;
-    static inline bool must_syncronize = false;
+    static inline bool must_synchronize = false;
 };

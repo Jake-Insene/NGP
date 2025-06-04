@@ -14,7 +14,6 @@ namespace IO {
 static constexpr VirtualAddress PAD_MAIN_BUTTONS = PAD_BASE | 0x000;
 static constexpr VirtualAddress PAD_MAIN_STICKS = PAD_BASE | 0x004;
 static constexpr VirtualAddress PAD_MAIN_STATUS = PAD_BASE | 0x008;
-static constexpr VirtualAddress PAD_MAIN_SYNC_BUFFER = PAD_BASE | 0x00C;
 
 static constexpr u32 MaxPadPort = 4;
 
@@ -63,7 +62,6 @@ struct MainPad
     } stick;
 
     Word status;
-    Word sync_buffer;
 };
 
 MainPad& get_main_pad();
@@ -71,8 +69,6 @@ MainPad& get_main_pad();
 void pad_reset();
 
 void pad_update(u32 port, PadButton button, bool down);
-
-Word pad_handle_read_word(CPUCore& core, VirtualAddress address);
 
 void pad_handle_write_word(CPUCore& core, VirtualAddress address, Word value);
 

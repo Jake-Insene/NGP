@@ -1,11 +1,13 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.21)
 project("NGP")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:>")
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:>")
+endif()
 
 include_directories("NGP-Core")
 
@@ -28,7 +30,7 @@ target_link_libraries("ngpas" "ngp-core")
 file(GLOB NGP_CORE_SOURCES
     "NGP-Core/CPU/CPUCore.cpp"
     "NGP-Core/IO/IO.cpp"
-    "NGP-Core/IO/Debug/Debug.cpp"
+    "NGP-Core/IO/Display/Display.cpp"
     "NGP-Core/IO/DMA/DMA.cpp"
     "NGP-Core/IO/GU/GU.cpp"
     "NGP-Core/IO/IRQ/IRQ.cpp"
@@ -44,7 +46,6 @@ file(GLOB NGP_CORE_SOURCES
 if(WIN32)
     file(GLOB NGP_CORE_PLATFORM_SOURCE
         "NGP-Core/Platform/Win32/Win32OS.cpp"
-        "NGP-Core/Platform/Win32/Win32Thread.cpp"
         "NGP-Core/Platform/Win32/Win32Time.cpp"
         "NGP-Core/Video/Win32/Win32Window.cpp"
         "NGP-Core/Video/D3D11/D3D11GU.cpp"
@@ -55,8 +56,6 @@ if(WIN32)
 else()
     file(GLOB NGP_CORE_PLATFORM_SOURCE
         "NGP-Core/Platform/Linux/LinuxOS.cpp"
-        "NGP-Core/Platform/Linux/LinuxThread.cpp"
-        "NGP-Core/Platform/Linux/LinuxTime.cpp"
         "NGP-Core/Video/Linux/LinuxWindow.cpp"
     )
     set(NGP_CORE_PLATFORM_LIBRARIES "")
@@ -72,6 +71,15 @@ file(GLOB NGP_SOURCES
 add_executable("ngp" ${NGP_SOURCES})
 
 target_link_libraries("ngp" "ngp-core")
-add_custom_command(TARGET "ngp"
-    POST_BUILD COMMAND ${CMAKE_BINARY_DIR}/ngpas ${CMAKE_CURRENT_SOURCE_DIR}/BIOS/BIOS.asm
+
+add_custom_command(
+    OUTPUT BIOS/BIOS.BIN
+    COMMAND ngpas ${CMAKE_SOURCE_DIR}/BIOS/BIOS.asm
+    DEPENDS ngpas BIOS/BIOS.asm
+    COMMENT "Building BIOS..."
+    VERBATIM
 )
+
+add_custom_target(BIOS ALL DEPENDS BIOS/BIOS.BIN)
+
+add_dependencies(BIOS "ngpas")

@@ -11,17 +11,14 @@
 
 struct SourceFile
 {
-    SourceFile()
-    {}
+    SourceFile() {}
 
     SourceFile(SourceFile&&) = default;
     SourceFile& operator=(SourceFile&&) = default;
 
-    ~SourceFile()
-    {}
+    ~SourceFile() {}
 
     std::string file_path;
-
     u8* source_code = nullptr;
     u32 source_len = 0;
     u32 index = 0;
@@ -29,17 +26,23 @@ struct SourceFile
 
 using SourceFileList = std::vector<SourceFile>;
 
+struct MacroDefinition
+{
+    std::vector<std::string> args_name;
+
+    TokenList tokens;
+};
+
 struct PreProcessor
 {
-    PreProcessor()
-    {}
-    ~PreProcessor()
-    {}
+    PreProcessor() {}
+    ~PreProcessor() {}
 
     void process(const char* file_path);
 
     void process_source();
     void process_directive();
+    void expand_macro(const MacroDefinition& macro);
 
     void advance();
     bool expected(TokenType type, const char* format, ...);
@@ -52,4 +55,5 @@ struct PreProcessor
 
     SourceFileList sources;
     TokenList tokens;
+    std::unordered_map<std::string, MacroDefinition> macros;
 };

@@ -18,11 +18,12 @@ struct GLGU
 
     static void present(bool vsync);
 
-    static void display_set(VirtualAddress vva, i32 width, i32 height, GU::GUDisplayFormat display_format);
+    static void display_set_config(i32 width, i32 height, IO::DisplayFormat display_format);
+    static void display_set_address(VirtualAddress vva);
 
     static Bus::CheckAddressResult check_vram_address(VirtualAddress vva);
 
-    static VirtualAddress create_framebuffer();
-    static void update_framebuffer(void* fbaddr);
+    static VirtualAddress create_framebuffer(i32, i32);
+    static void update_framebuffer(VirtualAddress, void* fbaddr);
 
 };

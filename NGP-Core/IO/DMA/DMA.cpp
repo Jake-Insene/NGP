@@ -8,16 +8,13 @@
 
 #include "Memory/Bus.h"
 
-
 namespace IO
 {
 
-struct DMAChannelState
+enum DMAStatusFlags
 {
-    u32 status;
+    DMA_STATUS_ENABLE = 0x1,
 };
-
-static inline DMAChannelState channels[DMA_CHANNELS_MAX] = {};
 
 void dma_channel_write(u8 channel, u8 reg, u32 value)
 {
@@ -40,21 +37,14 @@ void dma_channel_write(u8 channel, u8 reg, u32 value)
     get_dma_registers().channels[channel].raw_regs[reg & 0x3] = value;
 }
 
-void dma_set_enable(u8 channel, u32 value)
-{
-    channels[channel].status = DMA_STATUS_ENABLE;
-    
-    get_dma_registers().enable_mask = value;
-}
-
-void dma_set_irq(u32 value)
+void dma_set_irq_mask(u8 channel, u32 value)
 {
     get_dma_registers().irq_mask = value;
 }
 
-void dma_set_priority(u32 value)
+void dma_set_irq_status(u32 value)
 {
-    get_dma_registers().priority_mask = value;
+    get_dma_registers().irq_status = value;
 }
 
 void dma_wait_on(u32 value)
@@ -77,14 +67,11 @@ void dma_handle_write_word(CPUCore& core, VirtualAddress address, Word value)
 
     switch (address)
     {
-    case DMA_ENABLE_MASK:
-        dma_set_enable((address & 0xF0) >> 4, value);
-        break;
     case DMA_IRQ_MASK:
-        dma_set_irq(value);
+        dma_set_irq_mask((address & 0xF0) >> 4, value);
         break;
-    case DMA_PRIORITY_MASK:
-        dma_set_priority(value);
+    case DMA_IRQ_STATUS:
+        dma_set_irq_status(value);
         break;
     case DMA_WAIT_ON_MASK:
         dma_wait_on(value);

@@ -18,20 +18,20 @@ static constexpr VirtualAddress IO_BASE = 0x1000'0000;
 
 enum IOSegments
 {
-    DMA_SEGMENT = 0x0,
-    IRQ_SEGMENT = 0x1,
+    IRQ_SEGMENT = 0x0,
+    DMA_SEGMENT = 0x1,
     PAD_SEGMENT = 0x2,
     EMD_SEGMENT = 0x3,
-    DEBUG_SEGMENT = 0x4,
+    DISPLAY_SEGMENT = 0x4,
 
     GU_SEGMENT = 0x10,
 };
 
-static constexpr VirtualAddress DMA_BASE =      IO_BASE | 0x0000'0000;
-static constexpr VirtualAddress IRQ_BASE =      IO_BASE | 0x0000'1000;
+static constexpr VirtualAddress IRQ_BASE =      IO_BASE | 0x0000'0000;
+static constexpr VirtualAddress DMA_BASE =      IO_BASE | 0x0000'1000;
 static constexpr VirtualAddress PAD_BASE =      IO_BASE | 0x0000'2000;
 static constexpr VirtualAddress EMD_BASE =      IO_BASE | 0x0000'3000;
-static constexpr VirtualAddress DEBUG_BASE =    IO_BASE | 0x0000'4000;
+static constexpr VirtualAddress DISPLAY_BASE =  IO_BASE | 0x0000'4000;
 
 static constexpr VirtualAddress GU_BASE = IO_BASE | 0x0001'0000;
 

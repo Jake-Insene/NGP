@@ -6,6 +6,7 @@
 /******************************************************/
 #pragma once
 #include "Core/Header.h"
+#include <string>
 #include <string_view>
 
 enum TokenType : u8 {
@@ -24,6 +25,8 @@ enum TokenType : u8 {
 
     TOKEN_LEFT_PARENT,
     TOKEN_RIGHT_PARENT,
+    TOKEN_LEFT_BRACE,
+    TOKEN_RIGHT_BRACE,
     TOKEN_EQUAL,
     TOKEN_EQUALEQUAL,
     TOKEN_NOTEQUAL,
@@ -196,6 +199,7 @@ enum TokenDirective : u8
     TD_AS,
     TD_ORG,
     TD_INCLUDE,
+    TD_MACRO,
     TD_STRING,
     TD_BYTE,
     TD_HALF,
@@ -203,6 +207,7 @@ enum TokenDirective : u8
     TD_DWORD,
     TD_ZERO,
     TD_SPACE,
+    TD_ALIGN,
 };
 
 enum TokenInstruction : u8
@@ -319,10 +324,10 @@ enum TokenInstruction : u8
 
 struct Token
 {
-    const char* source_file = nullptr;
-    u32 line = 0;
-    TokenType type = TOKEN_END_OF_FILE;
-    u8 subtype = 0;
+    std::string source_file;
+    u32 line;
+    TokenType type;
+    u8 subtype;
 
     std::string_view str;
 

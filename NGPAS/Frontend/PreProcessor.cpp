@@ -7,6 +7,7 @@
 #include "Frontend/PreProcessor.h"
 #include "Backend/AssemblerUtility.h"
 #include "ErrorManager.h"
+#include "Token.h"
 #include <fstream>  
 
 void PreProcessor::process(const char* file_path)
@@ -53,6 +54,17 @@ void PreProcessor::process_source()
             process_directive();
             break;
         default:
+            if (current.is(TOKEN_SYMBOL))
+            {
+                std::string s = std::string(current.str);
+                auto it = macros.find(s);
+                if (it != macros.end())
+                {
+                    advance();
+                    expand_macro(it->second);
+                }
+            }
+
             tokens.emplace_back(current);
             advance();
             break;
@@ -70,7 +82,7 @@ void PreProcessor::process_directive()
     {
         if (!expected(TOKEN_STRING, "a file path was expected"))
         {
-            return;
+            break;
         }
 
         Lexer last_lexer = lexer;
@@ -107,7 +119,7 @@ void PreProcessor::process_directive()
         if (!input.is_open())
         {
             ErrorManager::error(
-                last.source_file, last.line,
+                last.source_file.c_str(), last.line,
                 "the file '%s' was not founded", file_path.c_str()
             );
             return;
@@ -138,7 +150,7 @@ void PreProcessor::process_directive()
         input.close();
 
         lexer.set(
-            new_source.file_path.c_str(),
+            new_source.file_path,
             new_source.source_code,
             new_source.source_len
         );
@@ -153,9 +165,128 @@ void PreProcessor::process_directive()
         next = last_next;
     }
     break;
+    case TD_MACRO:
+    {
+        if(!expected(TOKEN_SYMBOL, "an macro name was expected"))
+        {
+            return;
+        }
+
+        if(macros.find(std::string(last.str)) != macros.end())
+        {
+            ErrorManager::error(last.source_file.c_str(), last.line, "the macro '%.*s' was already defined", last.str.length(), last.str.data());
+            break;
+        }
+
+        MacroDefinition& macro = macros.emplace(
+            std::string(last.str),
+            MacroDefinition()
+        ).first->second;
+
+        while(!current.is(TOKEN_LEFT_BRACE) && !current.is(TOKEN_END_OF_FILE))
+        {
+            if (current.is(TOKEN_SYMBOL))
+            {
+                macro.args_name.emplace_back(current.str);
+                advance();
+
+                if (!current.is(TOKEN_LEFT_BRACE) && !expected(TOKEN_COMMA, "a ',' or '{' was expected after a symbol"))
+                {
+                    break;
+                }
+            }
+            else
+                break;
+        }
+
+        if (!expected(TOKEN_LEFT_BRACE, "'{' was expected after macro declaration"))
+        {
+            break;
+        }
+
+        while (!current.is(TOKEN_RIGHT_BRACE) && !current.is(TOKEN_END_OF_FILE))
+        {
+            macro.tokens.emplace_back(current);
+            advance();
+        }
+
+        if (!expected(TOKEN_RIGHT_BRACE, "'{' was expected after macro declaration"))
+        {
+            break;
+        }
+    }
+    break;
     default:
         tokens.emplace_back(last);
         break;
+    }
+}
+
+void PreProcessor::expand_macro(const MacroDefinition& macro)
+{
+    const std::string& source_file = last.source_file;
+    const u32 line = last.line;
+
+    // Get arguments
+    const usize argument_count = macro.args_name.size();
+    usize arg_index = 0;
+
+    std::unordered_map<std::string, Token> argument_values = {};
+
+    while (!current.is(TOKEN_NEW_LINE) && !current.is(TOKEN_END_OF_FILE))
+    {
+        if (arg_index >= argument_count)
+        {
+            ErrorManager::error(current.source_file.c_str(), current.line, "too much macro arguments");
+            return;
+        }
+
+        const std::string& arg_name = macro.args_name[arg_index];
+
+        argument_values.emplace(arg_name, current);
+        arg_index++;
+        advance();
+
+        if (current.is(TOKEN_NEW_LINE) || !expected(TOKEN_COMMA, "a ',' or 'new line' was expected after symbol"))
+        {
+            break;
+        }
+    }
+
+    if (arg_index < argument_count)
+    {
+        ErrorManager::error(current.source_file.c_str(), current.line, "too few macro arguments");
+        return;
+    }
+
+    Token new_line =
+    {
+        .source_file = current.source_file,
+        .line = current.line,
+        .type = TOKEN_NEW_LINE,
+    };
+
+    for (auto& tk : macro.tokens)
+    {
+        if (tk.is(TOKEN_SYMBOL))
+        {
+            std::string s = std::string(tk.str);
+            auto it = argument_values.find(s);
+            if (it != argument_values.end())
+            {
+                Token new_token = it->second;
+                new_token.source_file = source_file;
+                new_token.line = line;
+                tokens.emplace_back(new_token);
+            }
+        }
+        else
+        {
+            Token new_token = tk;
+            new_token.source_file = source_file;
+            new_token.line = line;
+            tokens.emplace_back(new_token);
+        }
     }
 }
 
@@ -173,7 +304,7 @@ bool PreProcessor::expected(TokenType type, const char* format, ...)
     {
         va_list args;
         va_start(args, format);
-        ErrorManager::errorV(last.source_file, last.line, format, args);
+        ErrorManager::errorV(last.source_file.c_str(), last.line, format, args);
         va_end(args);
         return false;
     }

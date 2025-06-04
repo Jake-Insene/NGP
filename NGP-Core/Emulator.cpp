@@ -8,14 +8,15 @@
 
 #include "IO/IO.h"
 #include "Memory/Bus.h"
+#include "Platform/Header.h"
 #include "Platform/OS.h"
 #include "Platform/Time.h"
-#include "Platform/Header.h"
 #include "Video/GU.h"
 #include "Video/Window.h"
+
 #include <cstdlib>
 #include <cstdio>
-#include <new>
+#include <chrono>
 
 thread_local Emulator::ThreadCore* local_core = nullptr;
 
@@ -25,9 +26,6 @@ void thread_core_callback(void* arg)
 
     Emulator::ThreadCore& thread = Emulator::cores[core_index];
     local_core = &thread;
-
-    f64 start = Time::get_time();
-    thread.elapsed += Time::get_time() - start;
 
     continue_execution:
 #if defined(_WIN32)
@@ -45,15 +43,11 @@ void thread_core_callback(void* arg)
                     thread.core.cycles_in_second, thread.elapsed
                 );
                 thread.core.inst_counter = 0;
+                thread.elapsed = 0.0;
+                thread.last_cycle_counter = 0;
                 thread.core.cycles_in_second = 0;
-                thread.core.cycle_counter = 0;
 #endif
                 return;
-            }
-
-            if (thread.core.cycles_in_second >= thread.core.clock_speed)
-            {
-                thread.signal = Emulator::NONE;
             }
 
             if (thread.elapsed >= 1.0 || thread.core.cycles_in_second >= thread.core.clock_speed)
@@ -90,18 +84,18 @@ void thread_core_callback(void* arg)
                 break;
             case Emulator::RUN:
             {
-                f64 start = Time::get_time();
+                auto start = Time::get_time();
                 u64 cycles_per_step = thread.core.clock_speed / 60;
+                
                 thread.core.dispatch(cycles_per_step);
 
-                thread.elapsed += Time::get_time() - start;
+                auto dt = Time::get_time() - start;
+                thread.elapsed += dt;
                 thread.core.cycle_counter += thread.core.cycles_in_second;
             }
             break;
             case Emulator::END:
-            {
-                return;
-            }
+            return;
             }
         }
     }
@@ -139,8 +133,9 @@ void Emulator::initialize()
     IO::initialize();
 
     Window::initialize(Window::DefaultWindowWidth, Window::DefaultWindowHeight);
-
     GU::initialize(GU::VGU);
+
+    auto thread_count = std::thread::hardware_concurrency();
 }
 
 void Emulator::shutdown()
@@ -154,7 +149,6 @@ void Emulator::shutdown()
     Window::shutdown();
     IO::shutdown();
     Bus::shutdown();
-    Time::shutdown();
     OS::shutdown();
 }
 
@@ -182,7 +176,7 @@ void Emulator::start_cores()
 
         cores[core].core.handle_pc_change();
 
-        cores[core].threadid = Thread::create(thread_core_callback, *reinterpret_cast<void**>(&core));
+        cores[core].thread = std::thread(thread_core_callback, *reinterpret_cast<void**>(&core));
     }
 }
 
@@ -190,7 +184,7 @@ void Emulator::end_cores()
 {
     for (u32 core = 0; core < number_of_cores; core++)
     {
-        Thread::terminate(cores[core].threadid);
+        cores[core].thread.join();
         cores[core].core.shutdown();
     }
 }
@@ -199,7 +193,7 @@ void Emulator::cores_restore_context()
 {
     for (u32 core = 0; core < number_of_cores; core++)
     {
-        Thread::terminate(cores[core].threadid);
+        cores[core].thread.join();
         cores[core].core.shutdown();
     }
 
@@ -211,7 +205,7 @@ void Emulator::print_cores()
     for (u32 core = 0; core < number_of_cores; core++)
     {
         printf("Core: %d\n", core);
-        cores[core].core.print_pegisters();
+        cores[core].core.print_registers();
     }
 }
 
@@ -219,18 +213,17 @@ void Emulator::signal_cores(Signal signal)
 {
     for (u32 core = 0; core < number_of_cores; core++)
     {
-        cores[core].signal = signal;
+        if(!cores[core].core.psr.HALT)
+        {
+            cores[core].signal = signal;
+        }
     }
 }
 
 void Emulator::loop()
 {
     // The main thread use the main core
-    ThreadCore& main_core = cores[0];
-
-    u32 cycle_counter = 0;
-    u32 fps = 0;
-
+    i32 fps = 0;
     f64 elapsed = 0.0;
     f64 dt = 0.0;
 
@@ -242,18 +235,25 @@ void Emulator::loop()
             pending_restart = false;
         }
 
-        f64 start = Time::get_time();
+        auto start = Time::get_time();
+
         Window::update();
         GU::present(true);
-        dt = Time::get_time() - start;
+        fps++;
+        auto dt = Time::get_time() - start;
         elapsed += dt;
 
         if (elapsed >= 1.0)
         {
+            printf("FPS: %d, Elapsed: %f\n", fps, elapsed);
+
+            fps = 0;
             elapsed = 0.0;
             signal_cores(RUN);
         }
     }
+
+    signal_cores(END);
 }
 
 void Emulator::run()
@@ -261,7 +261,7 @@ void Emulator::run()
     loop();
 }
 
-void Emulator::handle_readwrite_interrupt(VirtualAddress address, bool read)
+void Emulator::handle_readwrite_interrupt(VirtualAddress, bool)
 {
 }
 

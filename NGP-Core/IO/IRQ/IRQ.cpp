@@ -19,11 +19,11 @@ void irq_handle_write_word(CPUCore& core, VirtualAddress address, Word value)
 {
 	switch (address)
 	{
+	case IRQ_MASK:
+		get_irq_registers().irq_mask = value;
+		break;
 	case IRQ_STATUS:
 		get_irq_registers().irq_status = value;
-		break;
-	case IRQ_ENABLE_MASK:
-		get_irq_registers().enable_mask = value;
 		break;
 	}
 }

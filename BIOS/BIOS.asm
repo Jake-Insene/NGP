@@ -1,54 +1,37 @@
 FORMAT RAW AS 'BIN'
 ORG 0x00000000
 vector_address_table:
-B main
-.word 0
-.word 0
-.word 0
+B main ; Reset Address/Entry point
+.word 0 ; IRQ Handler
+.word 0 ; Exception Handler
+.word 0 ; Not Used
 
-INCLUDE "IO.h"
 INCLUDE "DEBUG.h"
+INCLUDE "DISPLAY.h"
+INCLUDE "GU.h"
+INCLUDE "MACROS.h"
 
-main:
+main:	
 	; Setting Up SP
 	ADR SP, SP_END
 
-	; Config Display Output
-	MOV R0, GU_DISPLAYADDR & 0xFFFF
-	MOVT R0, GU_DISPLAYADDR >> 16
-	ST ZR, [R0]
+	BL EnableDisplay
+
+	ADR R0, DisplayBuffer
 	LD R1, CONFIG
-	MOV R0, GU_DISPLAYFMT & 0xFFFF
-	MOVT R0, GU_DISPLAYFMT >> 16
-	ST R1, [R0]
+	BL CreateDisplay
 
-	MOV R0, DEBUG_CTR & 0xFFFF
-	MOVT R0, DEBUG_CTR >> 16
-	MOV R1, 0x1
-	ST R1, [R0]
-
-	ADR R0, STRING
-	MOV R1, 12
-	BL PRINT
-
-	MOV R0, 0
-	MOVT R0, 0x2000
-	MOV R1, 0
-	MOVT R1, 0x8000
-
-.loop:
-	ST ZR, [R0]
-	ADD R0, R0, 4
-	CMP R0, R1
-	BNE .loop
+	BL DisplayPresent
 
 	HALT
 
 CONFIG:
-.word 0x100 | (0x100 << 12) | (0 << 16)
-STRING:
-.string "HELLO WORLD\n"
+.word DISPLAY_FORMAT_CREATE 0x100, 0x100, DISPLAY_FORMAT_RGBA8
 
-SP_END:
-.zero 0x100 ; 256 bytes -> 64 words
+DisplayBuffer:
+	.word 0xFFFFFFFF
+	.zero 0x40000
+
+.align 0x10
 .zero 0x400000-$
+SP_END: ; Stack pointer at the end of the BIOS

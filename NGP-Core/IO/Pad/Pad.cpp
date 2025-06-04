@@ -22,8 +22,6 @@ struct PadInfo
 
     u32 status;
     u32 port;
-    // RAM address of sync buffer
-    u32 sync_buffer;
 } pads[MaxPadPort];
 
 MainPad& get_main_pad()
@@ -78,10 +76,6 @@ void pad_update(u32 port, PadButton button, bool down)
     }
 }
 
-Word pad_handle_read_word(CPUCore& core, VirtualAddress address)
-{
-    return Word();
-}
 
 void pad_handle_write_word(CPUCore& core, VirtualAddress address, Word value)
 {

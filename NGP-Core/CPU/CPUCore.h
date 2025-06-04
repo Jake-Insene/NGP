@@ -8,11 +8,10 @@
 #include "Core/Header.h"
 #include "Memory/Bus.h"
 
+
 #define PROFILE 1
 
 static constexpr u32 DEFUALT_CORE_CLOCK_SPEED = MHZ(100);
-
-static constexpr u32 BIOS_REQUESTED_LEVEL = 2;
 
 struct alignas(64) CPUCore
 {
@@ -36,14 +35,14 @@ struct alignas(64) CPUCore
 
     enum ExceptionCode
     {
-        DivideByZeroException = 0,
-        SupervisorException,
-        ExtendedSupervisorException,
-        SecureMachineControllerException,
+        DivideByZeroException = 0x0,
+        SupervisorException = 0x1,
+        ExtendedSupervisorException = 0x2,
+        SecureMachineControllerException = 0x3,
 
-        Breakpoint,
-        InvalidRead,
-        InvalidWrite,
+        Breakpoint = 0x4,
+        InvalidRead = 0x5,
+        InvalidWrite = 0x6,
     };
 
     union ProgramStateRegister
@@ -155,6 +154,7 @@ struct alignas(64) CPUCore
     VirtualAddress pc;
     Word* mem_pc;
 
+    // Object fields
     u64 clock_speed;
     u64 cycle_counter;
     u64 cycles_in_second;
@@ -165,20 +165,12 @@ struct alignas(64) CPUCore
     void initialize();
     void shutdown();
 
-    FORCE_INLINE void handle_pc_change()
-    {
-        mem_pc = (Word*)Bus::get_physical_addr(*this, pc);
-        offset = 0;
-    }
-
-    FORCE_INLINE Word fetch_inst()
-    {
-        return mem_pc[offset];
-    }
+    void handle_pc_change();
+    Word fetch_inst();
 
     void dispatch(u64 num_cycles);
 
-    void print_pegisters();
+    void print_registers();
 
     void make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 comment);
     void return_exception();

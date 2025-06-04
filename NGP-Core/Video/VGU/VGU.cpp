@@ -8,8 +8,8 @@
 
 #include "Memory/Bus.h"
 #include "Platform/OS.h"
-#include "Video/Window.h"
 #include "Video/OpenGL/GLGU.h"
+
 
 #if defined(_WIN32)
 #include "Video/D3D11/D3D11GU.h"
@@ -62,10 +62,15 @@ GU::GUDriver VGPU::get_driver()
         .shutdown = &VGPU::shutdown,
         
         .present = &VGPU::present,
+        .request_present = &VGPU::request_present,
 
-        .display_set = &VGPU::display_set,
+        .display_set_config = &VGPU::display_set_config,
+        .display_set_address = &VGPU::display_set_address,
 
         .check_vram_address = &VGPU::check_vram_address,
+
+        .create_framebuffer = nullptr,
+        .update_framebuffer = nullptr,
     };
 }
 
@@ -77,10 +82,8 @@ void VGPU::initialize()
     state.present_requested = false;
 
     // Internal driver
-    state.internal_driver = get_internal_driver(GU::OPENGL);
+    state.internal_driver = get_internal_driver(GU::D3D12);
     state.internal_driver.initialize();
-
-    VirtualAddress addr = state.internal_driver.create_framebuffer();
 }
 
 void VGPU::shutdown()
@@ -92,15 +95,30 @@ void VGPU::shutdown()
 
 void VGPU::present(bool vsync)
 {
-    if (state.present_requested)
-    {
-        state.internal_driver.present(vsync);
-    }
+    if (state.display_address == nullptr || state.width == 0 || state.height == 0 || !state.present_requested)
+        return;
+
+    state.internal_driver.update_framebuffer(state.fb, state.display_address);
+    state.internal_driver.present(vsync);
 }
 
-void VGPU::display_set(VirtualAddress vva, i32 width, i32 height, GU::GUDisplayFormat display_format)
+void VGPU::request_present()
 {
-    state.display_address = (Word*)((u8*)state.vram + vva);
+    state.present_requested = true;
+}
+
+void VGPU::display_set_config(i32 width, i32 height, IO::DisplayFormat display_format)
+{
+    state.fb = state.internal_driver.create_framebuffer(width, height);
+
+    state.width = width;
+    state.height = height;
+    state.display_format = display_format;
+}
+
+void VGPU::display_set_address(VirtualAddress vva)
+{
+    state.display_address = (Word*)Bus::get_physical_addr(vva);
 }
 
 Bus::CheckAddressResult VGPU::check_vram_address(VirtualAddress vva)
@@ -110,7 +128,10 @@ Bus::CheckAddressResult VGPU::check_vram_address(VirtualAddress vva)
 
 void VGPU::set_pixel(i32 x, i32 y, Color color)
 {
-    state.display_address[x + y * GU::MaxDeviceScreenWidth] = *(u32*)&color;
+    if (x < 0 || x >= state.width || y < 0 || y >= state.height)
+        return;
+
+    state.display_address[x + y * state.width] = *(Word*)&color;
 }
 
 void VGPU::draw_line(Vector2 start, Vector2 end, Color color)
@@ -173,7 +194,6 @@ void VGPU::draw_fill_triangle(Vector2 p1, Vector2 p2, Vector2 p3, Color color)
     f32 bbmaxy = std::max(std::max(p1.y, p2.y), p3.y);
     f32 total_area = signed_triangle_area(p1, p2, p3);
 
-    //#pragma omp parallel for
     for (f32 x = bbminx; x <= bbmaxx; x++)
     {
         for (f32 y = bbminy; y <= bbmaxy; y++)

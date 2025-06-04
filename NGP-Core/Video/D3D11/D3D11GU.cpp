@@ -43,6 +43,11 @@ GU::GUDriver D3D11GU::get_driver()
 
 void D3D11GU::initialize()
 {
+    state.clear_color[0] = 0.f;
+    state.clear_color[1] = 0.f;
+    state.clear_color[2] = 0.f;
+    state.clear_color[3] = 1.f;
+
     // Device
     {
         UINT flags =
@@ -55,7 +60,7 @@ void D3D11GU::initialize()
         D3D_FEATURE_LEVEL requested_feature_level = D3D_FEATURE_LEVEL_11_0;
         D3D11CreateDevice(
             nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flags, &requested_feature_level,
-            1, D3D11_SDK_VERSION, &device, &feature_level, &immediate_context
+            1, D3D11_SDK_VERSION, &state.device, &state.feature_level, &state.immediate_context
         );
     }
 
@@ -69,7 +74,7 @@ void D3D11GU::initialize()
 #endif
 
         DX_ERROR(
-            CreateDXGIFactory2(flags, IID_PPV_ARGS(&dxgi_factory)),
+            CreateDXGIFactory2(flags, IID_PPV_ARGS(&state.dxgi_factory)),
             "Couldn't create the DXGI factory"
         );
 
@@ -90,12 +95,12 @@ void D3D11GU::initialize()
         HWND handle = (HWND)Window::handle;
 
         DX_ERROR(
-            dxgi_factory->CreateSwapChainForHwnd(device, handle, &swap_chain_desc, nullptr, nullptr, &tmp_sc),
+            state.dxgi_factory->CreateSwapChainForHwnd(state.device, handle, &swap_chain_desc, nullptr, nullptr, &tmp_sc),
             "Couldn't create the display swap chain"
         );
 
         DX_ERROR(
-            tmp_sc->QueryInterface(IID_PPV_ARGS(&swap_chain)),
+            tmp_sc->QueryInterface(IID_PPV_ARGS(&state.swap_chain)),
             "Couldn't query IDXGISwapChain"
         );
 
@@ -104,8 +109,8 @@ void D3D11GU::initialize()
 
     // RTV
     {
-        swap_chain->GetBuffer(0, IID_PPV_ARGS(&rt_buffer));
-        device->CreateRenderTargetView(rt_buffer, nullptr, &rtv);
+        state.swap_chain->GetBuffer(0, IID_PPV_ARGS(&state.rt_buffer));
+        state.device->CreateRenderTargetView(state.rt_buffer, nullptr, &state.rtv);
     }
 
     // Vertex buffer
@@ -120,7 +125,7 @@ void D3D11GU::initialize()
             .pSysMem = vertices,
         };
 
-        device->CreateBuffer(&buffer_desc, &initial_data, &vb);
+        state.device->CreateBuffer(&buffer_desc, &initial_data, &state.vb);
     }
 
     // Pipeline
@@ -156,8 +161,8 @@ void D3D11GU::initialize()
             {"UV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0},
         };
 
-        device->CreateInputLayout(
-            input_elements, 2, vs_code->GetBufferPointer(), vs_code->GetBufferSize(), &input_layout
+        state.device->CreateInputLayout(
+            input_elements, 2, vs_code->GetBufferPointer(), vs_code->GetBufferSize(), &state.input_layout
         );
 
         D3D11_SAMPLER_DESC sampler_desc =
@@ -170,10 +175,10 @@ void D3D11GU::initialize()
             .MaxLOD = D3D11_FLOAT32_MAX,
         };
 
-        device->CreateSamplerState(&sampler_desc, &sampler);
+        state.device->CreateSamplerState(&sampler_desc, &state.sampler);
 
-        device->CreateVertexShader(vs_code->GetBufferPointer(), vs_code->GetBufferSize(), nullptr, &vs);
-        device->CreatePixelShader(ps_code->GetBufferPointer(), ps_code->GetBufferSize(), nullptr, &ps);
+        state.device->CreateVertexShader(vs_code->GetBufferPointer(), vs_code->GetBufferSize(), nullptr, &state.vs);
+        state.device->CreatePixelShader(ps_code->GetBufferPointer(), ps_code->GetBufferSize(), nullptr, &state.ps);
 
         dx::release(vs_code);
         dx::release(ps_code);
@@ -184,73 +189,75 @@ void D3D11GU::initialize()
 
 void D3D11GU::shutdown()
 {
-    dx::release(framebuffer_srv);
-    dx::release(framebuffer);
+    dx::release(state.framebuffer_srv);
+    dx::release(state.framebuffer);
 
-    dx::release(ps);
-    dx::release(vs);
-    dx::release(sampler);
-    dx::release(input_layout);
+    dx::release(state.ps);
+    dx::release(state.vs);
+    dx::release(state.sampler);
+    dx::release(state.input_layout);
     
-    dx::release(vb);
+    dx::release(state.vb);
     
-    dx::release(rtv);
-    dx::release(rt_buffer);
+    dx::release(state.rtv);
+    dx::release(state.rt_buffer);
 
-    dx::release(swap_chain);
-    dx::release(dxgi_factory);
+    dx::release(state.swap_chain);
+    dx::release(state.dxgi_factory);
 
-    dx::release(immediate_context);
-    dx::release(device);
+    dx::release(state.immediate_context);
+    dx::release(state.device);
 }
 
 void D3D11GU::present(bool vsync)
 {
-    immediate_context->OMSetRenderTargets(1, &rtv, nullptr);
+    state.immediate_context->OMSetRenderTargets(1, &state.rtv, nullptr);
 
     D3D11_VIEWPORT viewport =
     {
         .Width = Window::DefaultWindowWidth,
         .Height = Window::DefaultWindowHeight,
     };
-    immediate_context->RSSetViewports(1, &viewport);
-    FLOAT clear_color[] = {1.f, 1.f, 0.f, 1.f};
-    immediate_context->ClearRenderTargetView(rtv, clear_color);
+    state.immediate_context->RSSetViewports(1, &viewport);
+    state.immediate_context->ClearRenderTargetView(state.rtv, state.clear_color);
 
-    immediate_context->IASetInputLayout(input_layout);
+    state.immediate_context->IASetInputLayout(state.input_layout);
 
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
-    immediate_context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
-    immediate_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    immediate_context->PSSetShader(ps, nullptr, 0);
-    immediate_context->VSSetShader(vs, nullptr, 0);
+    state.immediate_context->IASetVertexBuffers(0, 1, &state.vb, &stride, &offset);
+    state.immediate_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    state.immediate_context->PSSetShader(state.ps, nullptr, 0);
+    state.immediate_context->VSSetShader(state.vs, nullptr, 0);
 
-    immediate_context->PSSetSamplers(0, 1, &sampler);
-    immediate_context->PSSetShaderResources(0, 1, &framebuffer_srv);
-    immediate_context->Draw(6, 0);
+    state.immediate_context->PSSetSamplers(0, 1, &state.sampler);
+    state.immediate_context->PSSetShaderResources(0, 1, &state.framebuffer_srv);
+    state.immediate_context->Draw(6, 0);
 
-    swap_chain->Present(vsync, 0);
+    state.swap_chain->Present(vsync, 0);
 }
 
-VirtualAddress D3D11GU::create_framebuffer()
+VirtualAddress D3D11GU::create_framebuffer(i32 width, i32 height)
 {
+    state.framebuffer_width = width;
+    state.framebuffer_height = height;
+
     CD3D11_TEXTURE2D_DESC framebuffer_desc
     {
-        DefaultFormat, GU::MaxDeviceScreenWidth, GU::MaxDeviceScreenHeight, 
+        DefaultFormat, (UINT)width, (UINT)width,
         1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE
     };
-    device->CreateTexture2D(&framebuffer_desc, nullptr, &framebuffer);
+    state.device->CreateTexture2D(&framebuffer_desc, nullptr, &state.framebuffer);
 
-    device->CreateShaderResourceView(framebuffer, nullptr, &framebuffer_srv);
+    state.device->CreateShaderResourceView(state.framebuffer, nullptr, &state.framebuffer_srv);
 
     return VirtualAddress();
 }
 
-void D3D11GU::update_framebuffer(void* pixels)
+void D3D11GU::update_framebuffer(VirtualAddress fb, void* va)
 {
     D3D11_MAPPED_SUBRESOURCE mapped = {};
-    immediate_context->Map(framebuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-    memcpy(mapped.pData, pixels, GU::MaxDeviceScreenWidth * GU::MaxDeviceScreenHeight * 4);
-    immediate_context->Unmap(framebuffer, 0);
+    state.immediate_context->Map(state.framebuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+    memcpy(mapped.pData, va, state.framebuffer_width * state.framebuffer_height * 4);
+    state.immediate_context->Unmap(state.framebuffer, 0);
 }

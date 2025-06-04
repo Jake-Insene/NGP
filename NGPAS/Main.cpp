@@ -5,9 +5,11 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #include "Core/Header.h"
-#include "Platform/Time.h"
 #include "Backend/Assembler.h"
+
 #include <cstring>
+#include <chrono>
+
 
 void print_help()
 {
@@ -74,7 +76,7 @@ int main(int argc, char** argv)
                 }
                 else if (arg[0] == 'v')
                 {
-                    printf("NGP assebmler version: %s\n", NGP_VERSION);
+                    printf("NGP assembler version: %s\n", NGP_VERSION);
                     return 0;
                 }
             }
@@ -85,7 +87,6 @@ int main(int argc, char** argv)
         }
     }
 
-    Time::initialize();
 
     if (output_file.empty())
     {
@@ -93,12 +94,11 @@ int main(int argc, char** argv)
         output_file = output_file.substr(0, output_file.find_last_of('.'));
     }
 
-    auto start = Time::get_time();
+    auto start = std::chrono::high_resolution_clock::now();
     bool result = as.assemble_file(input_file, output_file.c_str());
-    f64 duration = Time::get_time() - start;
+    f64 duration = (std::chrono::high_resolution_clock::now() - start).count() / 1'000'000'000.0;
 
     printf("assembly tooks %fs\n", duration);
 
-    Time::shutdown();
     return result ? 0 : -1;
 }

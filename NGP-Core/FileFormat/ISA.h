@@ -413,6 +413,7 @@ enum NGPImmediate
     // MVN Rd, ~(#Imm16)
     NGP_MVN_IMMEDIATE = 0x1,
 
+    // Rd = RF[S/D][Dest]
     // FMOV Rd, #Imm16
     NGP_FMOV_S_IMMEDIATE = 0x2,
     NGP_FMOV_D_IMMEDIATE = 0x3,

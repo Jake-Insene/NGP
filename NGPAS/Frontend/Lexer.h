@@ -12,7 +12,7 @@ using TokenList = std::vector<Token>;
 
 struct Lexer
 {
-    void set(const char* source_file, u8* ctn, u32 s);
+    void set(const std::string& source_file, u8* ctn, u32 s);
     Token get_next();
 
     void skip_white_space();
@@ -29,7 +29,7 @@ struct Lexer
     bool is_hex(u8 c) const;
     bool is_bin(u8 c) const;
 
-    const char* file_path = nullptr;
+    std::string file_path = {};
     u8* content = nullptr;
     u32 size = 0;
 

@@ -10,8 +10,6 @@
 #include "Platform/Header.h"
 #include <cstdio>
 
-static inline OS::PageFaultHandler page_fault_handler = {};
-
 
 DWORD get_protection(OS::PageAccess access)
 {
@@ -59,19 +57,11 @@ u32 OS::exception_handler(void* ptr)
     {
         PhysicalAddress address = exception_info->ExceptionRecord->ExceptionInformation[1];
 
-        if ((address & 0xF000'0000) == 0x1000'0000)
-        {
-            Emulator::allow_continue = true;
-            Emulator::handle_readwrite_interrupt(VirtualAddress(address), exception_info->ExceptionRecord->ExceptionInformation[0] == 0);
-        }
-        else
-        {
-            printf(
-                "error: trying to write to inaccesible memory address: 0x%p\n"
-                "\tvirtual address: %08X\n", 
-                (void*)address, VirtualAddress(address)
-            );
-        }
+        printf(
+            "error: trying to write to inaccesible memory address: 0x%p\n"
+            "\tvirtual address: %08X\n",
+            (void*)address, VirtualAddress(address)
+        );
     }
 
     return EXCEPTION_EXECUTE_HANDLER;

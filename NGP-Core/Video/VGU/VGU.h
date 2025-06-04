@@ -17,8 +17,13 @@ struct VGPU
         bool present_requested;
 
         Word* display_address;
-        
+
         GU::GUDriver internal_driver;
+
+        i32 width;
+        i32 height;
+        IO::DisplayFormat display_format;
+        VirtualAddress fb;
     };
 
     static inline GPUState state;
@@ -29,8 +34,10 @@ struct VGPU
     static void shutdown();
 
     static void present(bool vsync);
+    static void request_present();
 
-    static void display_set(VirtualAddress vva, i32 width, i32 height, GU::GUDisplayFormat display_format);
+    static void display_set_config(i32 width, i32 height, IO::DisplayFormat display_format);
+    static void display_set_address(VirtualAddress vva);
 
     static Bus::CheckAddressResult check_vram_address(VirtualAddress vva);
 

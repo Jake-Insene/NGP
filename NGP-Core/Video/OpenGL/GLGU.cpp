@@ -16,7 +16,8 @@ GU::GUDriver GLGU::get_driver()
 
         .present = &GLGU::present,
 
-        .display_set = &GLGU::display_set,
+        .display_set_config = &GLGU::display_set_config,
+        .display_set_address = &GLGU::display_set_address,
 
         .check_vram_address = &GLGU::check_vram_address,
 
@@ -30,9 +31,10 @@ void GLGU::shutdown() {}
 
 void GLGU::present(bool vsync) {}
 
-void GLGU::display_set(VirtualAddress vva, i32 width, i32 height, GU::GUDisplayFormat display_format) {}
+void GLGU::display_set_config(i32 width, i32 height, IO::DisplayFormat display_format) {}
+void GLGU::display_set_address(VirtualAddress vva) {}
 
 Bus::CheckAddressResult GLGU::check_vram_address(VirtualAddress vva) { return Bus::ValidVirtualAddress; }
 
-VirtualAddress GLGU::create_framebuffer() { return VirtualAddress(0); }
-void GLGU::update_framebuffer(void* fbaddr) {}
+VirtualAddress GLGU::create_framebuffer(i32, i32) { return VirtualAddress(0); }
+void GLGU::update_framebuffer(VirtualAddress, void*) {}

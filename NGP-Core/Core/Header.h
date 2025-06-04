@@ -40,10 +40,12 @@ using PhysicalAddress = u64;
 
 #pragma warning(disable : 4201)
 
-union QWord {
+union QWord
+{
     Word w[4];
     u64 dw[2];
-    struct {
+    struct
+    {
         u64 lo;
         u64 hi;
     };
@@ -55,11 +57,13 @@ union QWord {
 #define FORCE_INLINE __attribute__((always_inline))
 #endif // _MSVC_LANG
 
-[[nodiscard]] constexpr u32 align_up(u32 size, u16 alignment) {
+[[nodiscard]] constexpr u32 align_up(u32 size, u16 alignment)
+{
     return (size + alignment - 1) & -(alignment);
 }
 
-[[nodiscard]] constexpr u32 align_down(u32 size, u16 alignment) {
+[[nodiscard]] constexpr u32 align_down(u32 size, u16 alignment)
+{
     return size & ~(alignment - 1);
 }
 

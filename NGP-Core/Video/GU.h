@@ -7,20 +7,14 @@
 #pragma once
 #include "Core/Header.h"
 
+#include "IO/Display/Display.h"
 #include "Memory/Bus.h"
 
 
 struct GU
 {
-    enum GUDisplayFormat
-    {
-        GU_DISPLAY_FMT_RGB8 = 0,
-        GU_DISPLAY_FMT_RGBA8 = 1,
-        GU_DISPLAY_FMT_RGB565 = 2,
-        GU_DISPLAY_FMT_RGBA4 = 3,
-
-        GU_DISPLAY_FMT_NONE = -1
-    };
+    static constexpr i32 MaxDeviceScreenWidth = 256;
+    static constexpr i32 MaxDeviceScreenHeight = 144;
 
     enum GUPositionFormat
     {
@@ -68,13 +62,15 @@ struct GU
         void(*shutdown)();
 
         void(*present)(bool);
+        void(*request_present)();
 
-        void(*display_set)(VirtualAddress, i32, i32, GUDisplayFormat);
+        void(*display_set_config)(i32, i32, IO::DisplayFormat);
+        void(*display_set_address)(VirtualAddress);
 
         Bus::CheckAddressResult(*check_vram_address)(VirtualAddress);
 
-        VirtualAddress(*create_framebuffer)();
-        void(*update_framebuffer)(void*);
+        VirtualAddress(*create_framebuffer)(i32, i32);
+        void(*update_framebuffer)(VirtualAddress, void*);
     };
 
     static inline GUDriver main_driver = {};
@@ -87,10 +83,6 @@ struct GU
     static void name(t1 arg1, t2 arg2, t3 arg3, t4 arg4) { main_driver.name(arg1, arg2, arg3, arg4); }
 #define VTFUNCDEFRET(ret, name) static ret name() { return main_driver.name(); }
 #define VTFUNCDEFRETARG1(ret, name, t1) static ret name(t1 arg1) { return main_driver.name(arg1); }
-
-
-    static constexpr i32 MaxDeviceScreenWidth = 256;
-    static constexpr i32 MaxDeviceScreenHeight = 144;
 
     enum DriverApi
     {
@@ -105,8 +97,10 @@ struct GU
 
     VTFUNCDEF(shutdown);
     VTFUNCDEFARG1(present, bool);
+    VTFUNCDEF(request_present);
 
-    VTFUNCDEFARG4(display_set, VirtualAddress, i32, i32, GUDisplayFormat);
+    VTFUNCDEFARG3(display_set_config, i32, i32, IO::DisplayFormat);
+    VTFUNCDEFARG1(display_set_address, VirtualAddress);
 
     VTFUNCDEFRETARG1(Bus::CheckAddressResult, check_vram_address, VirtualAddress);
 };

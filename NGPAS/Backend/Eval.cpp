@@ -30,6 +30,8 @@ static inline ParseFn rules[TOKEN_COUNT] =
 
     {&Assembler::parse_group, nullptr, ParsePrecedence::None},
     {}, // )
+    {}, // {
+    {}, // }
     {}, // =
     {}, // ==
     {}, // !=
@@ -64,22 +66,17 @@ static inline ParseFn get_rule(TokenType type)
 }
 
 // Prefix
-#define CHECK_IMMEDIATE(tk) \
-    if(tk.type != TOKEN_IMMEDIATE)\
-    {\
-        MAKE_ERROR(tk, return tk, "invalid expresion");\
-    }
 
 Token Assembler::parse_minus(Token, Token)
 {
-    Token tk = parse_expresion(ParsePrecedence::Unary);
+    Token tk = parse_expression(ParsePrecedence::Unary);
     tk.i = -tk.i;
     return tk;
 }
 
 Token Assembler::parse_not(Token, Token)
 {
-    Token tk = parse_expresion(ParsePrecedence::Unary);
+    Token tk = parse_expression(ParsePrecedence::Unary);
     tk.u = ~tk.u;
     return tk;
 }
@@ -110,7 +107,7 @@ Token Assembler::parse_symbol(Token, Token)
     if(context.is_in_resolve)
     {
         ErrorManager::error(
-            last->source_file, last->line,
+            last->source_file.c_str(), last->line,
             "undefined reference to %.*s", last->str.size(), last->str.data()
         );
     }
@@ -130,7 +127,7 @@ Token Assembler::parse_register(Token, Token)
 
 Token Assembler::parse_group(Token, Token)
 {
-    Token result = parse_expresion(ParsePrecedence::Start);
+    Token result = parse_expression(ParsePrecedence::Start);
     expected(TOKEN_RIGHT_PARENT, "')' was expected");
     return result;
 }
@@ -150,9 +147,15 @@ Token Assembler::parse_string(Token, Token)
 
 // Infix
 
+#define CHECK_IMMEDIATE(tk) \
+    if(tk.type != TOKEN_IMMEDIATE)\
+    {\
+        MAKE_ERROR(tk, return tk, "invalid expression");\
+    }
+
 #define CHECK_INFIX() \
     ParseFn rule = get_rule(last->type);\
-    rhs = parse_expresion(ParsePrecedence(u32(rule.precedence) + 1));\
+    rhs = parse_expression(ParsePrecedence(u32(rule.precedence) + 1));\
     CHECK_IMMEDIATE(lhs);\
     CHECK_IMMEDIATE(rhs);\
 
@@ -231,7 +234,7 @@ Token Assembler::parse_div(Token lhs, Token rhs)
     return lhs;
 }
 
-Token Assembler::parse_expresion(ParsePrecedence precedence)
+Token Assembler::parse_expression(ParsePrecedence precedence)
 {
     ParseFn rule = get_rule(current->type);
     advance();
@@ -243,7 +246,7 @@ Token Assembler::parse_expresion(ParsePrecedence precedence)
     }
     else
     {
-        MAKE_ERROR((*last), return result, "invalid expresion");
+        MAKE_ERROR((*last), return result, "invalid expression");
     }
 
     while (u32(precedence) <= u32((rule = get_rule(current->type)).precedence))

@@ -14,15 +14,15 @@
 namespace IO
 {
 
-static void gu_irq_mask(CPUCore& core, VirtualAddress value)
+static void gu_irq_mask(VirtualAddress value)
 {
 }
 
-static void gu_set_status(CPUCore& core, VirtualAddress value)
+static void gu_set_status(VirtualAddress value)
 {
 }
 
-static void gu_set_ctr(CPUCore& core, VirtualAddress value)
+static void gu_set_ctr(VirtualAddress value)
 {
 }
 
@@ -31,18 +31,18 @@ GURegisters& get_gu_registers()
     return *(GURegisters*)(Bus::MAPPED_BUS_ADDRESS_START + GU_BASE);
 }
 
-void gu_handle_write_word(CPUCore& core, VirtualAddress address, Word value)
+void gu_handle_write_word(VirtualAddress address, Word value)
 {
     switch (address)
     {
     case GU_IRQ_MASK:
-        gu_irq_mask(core, value);
+        gu_irq_mask(value);
         break;
     case GU_IRQ_STATUS:
-        gu_set_status(core, value);
+        gu_set_status(value);
         break;
     case GU_CTR:
-        gu_set_ctr(core, value);
+        gu_set_ctr(value);
         break;
     case GU_ID:
         // Ignored

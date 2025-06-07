@@ -237,7 +237,7 @@ void D3D11GU::present(bool vsync)
     state.swap_chain->Present(vsync, 0);
 }
 
-VirtualAddress D3D11GU::create_framebuffer(i32 width, i32 height)
+PhysicalAddress D3D11GU::create_framebuffer(i32 width, i32 height)
 {
     state.framebuffer_width = width;
     state.framebuffer_height = height;
@@ -251,13 +251,14 @@ VirtualAddress D3D11GU::create_framebuffer(i32 width, i32 height)
 
     state.device->CreateShaderResourceView(state.framebuffer, nullptr, &state.framebuffer_srv);
 
-    return VirtualAddress();
+    return PhysicalAddress(state.framebuffer);
 }
 
-void D3D11GU::update_framebuffer(VirtualAddress fb, void* va)
+void D3D11GU::update_framebuffer(PhysicalAddress fb, void* va)
 {
+    ID3D11Texture2D* framebuffer = (ID3D11Texture2D*)fb;
     D3D11_MAPPED_SUBRESOURCE mapped = {};
-    state.immediate_context->Map(state.framebuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+    state.immediate_context->Map(framebuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
     memcpy(mapped.pData, va, state.framebuffer_width * state.framebuffer_height * 4);
-    state.immediate_context->Unmap(state.framebuffer, 0);
+    state.immediate_context->Unmap(framebuffer, 0);
 }

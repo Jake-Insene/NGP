@@ -99,14 +99,18 @@ void VGPU::present(bool vsync)
         return;
 
     state.internal_driver.update_framebuffer(state.fb, state.display_address);
-    state.internal_driver.present(vsync);
+    state.internal_driver.present_framebuffer(state.fb, vsync);
 
+    state.sync_mutex.lock();
     state.present_requested = false;
+    state.sync_mutex.unlock();
 }
 
 void VGPU::request_present()
 {
+    state.sync_mutex.lock();
     state.present_requested = true;
+    state.sync_mutex.unlock();
 }
 
 void VGPU::display_set_config(i32 width, i32 height, IO::DisplayFormat display_format)

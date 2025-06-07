@@ -50,7 +50,7 @@ struct D3D11GU
 
     static void present(bool vsync);
 
-    static VirtualAddress create_framebuffer(i32 width, i32 height);
-    static void update_framebuffer(VirtualAddress fb, void* va);
+    static PhysicalAddress create_framebuffer(i32 width, i32 height);
+    static void update_framebuffer(PhysicalAddress fb, void* va);
 };
 

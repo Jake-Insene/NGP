@@ -20,7 +20,7 @@ namespace IO
 // [5] Display
 // [31] PAD
 static constexpr VirtualAddress IRQ_MASK =   IRQ_BASE | 0x00;
-static constexpr VirtualAddress IRQ_STATUS =        IRQ_BASE | 0x04;
+static constexpr VirtualAddress IRQ_STATUS = IRQ_BASE | 0x04;
 
 enum IRQMask
 {
@@ -41,6 +41,6 @@ struct IRQRegisters
 
 IRQRegisters& get_irq_registers();
 
-void irq_handle_write_word(CPUCore& core, VirtualAddress address, Word value);
+void irq_handle_write_word(VirtualAddress address, Word value);
 
 }

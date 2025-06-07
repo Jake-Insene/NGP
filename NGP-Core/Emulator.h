@@ -8,6 +8,7 @@
 #include "CPU/CPUCore.h"
 
 #include <thread>
+#include <vector>
 
 
 #define DEBUGGING 1
@@ -25,16 +26,19 @@ struct Emulator
 
     struct ThreadCore
     {
-        CPUCore core;
+        CPUCore* core;
         std::thread thread;
 
         Signal signal;
 
-        f64 elapsed = 0.0;
-        u64 last_cycle_counter = 0;
+        f64 elapsed;
+        usize last_cycle_counter;
+        usize cycle_counter;
+        usize clock_speed;
+        usize inst_counter;
     };
 
-    static inline ThreadCore* cores = nullptr;
+    static inline std::vector<ThreadCore> cores;
     static inline u32 number_of_cores = 1;
     static inline u64 clock_cycles = MHZ(100);
     static inline const char* bios_file = DefaultBIOSPath;

@@ -1,4 +1,3 @@
-#include "Bus.h"
 /******************************************************/
 /*              This file is part of NGP              */
 /******************************************************/
@@ -6,30 +5,93 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #include "Memory/Bus.h"
+
 #include "IO/IO.h"
 #include "CPU/CPUCore.h"
+#include "Emulator.h"
 #include "Platform/OS.h"
 #include <fstream>
+#include <vector>
+
+extern thread_local Emulator::ThreadCore* local_core;
 
 namespace Bus
 {
 
-static inline u8* ram = nullptr;
+enum PageAccess
+{
+    None = 0x0,
+    Read = 0x1,
+    Write = 0x2,
+    Execute = 0x4,
+};
+
+struct PageEntry
+{
+    PhysicalAddress physical_address;
+    VirtualAddress page_address;
+	// 2^22 - 1 == 1'048'575 page indexes, this is enough for 4 GB of address space
+    Word page_index : 20;
+    Word access : 12;
+};
+
+static inline std::vector<PageEntry> page_table;
+static inline usize number_of_pages = 0;
+
+// Default to 4 KB
+static constexpr Word DefaultPageSize = KB(64);
+
+static inline Word page_size = DefaultPageSize;
+static inline Word page_mask = DefaultPageSize - 1;
+static inline Word page_bits = bits_of(DefaultPageSize - 1);
+
 static inline u8* bios = nullptr;
 static inline u8* io = nullptr;
+static inline u8* ram = nullptr;
 
 // Default to 256 MB
-usize ram_size = MB(256);
+static inline usize ram_size = MB(256);
 // Default to 32 MB
-usize vram_size = MB(32);
+static inline usize vram_size = MB(32);
 
 void initialize()
 {
+    // VRAM is managed by the GPU
+    number_of_pages = (RAM_START + ram_size) / page_size;
+    
+    page_table.resize(number_of_pages);
+
     bios = (u8*)OS::allocate_virtual_memory((void*)MAPPED_BUS_ADDRESS_START, BIOS_SIZE, OS::PAGE_READ_WRITE);
 
     io = (u8*)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + IO_START), RAM_START - IO_START, OS::PAGE_READ_WRITE);
 
     ram = (u8*)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + RAM_START), ram_size, OS::PAGE_READ_WRITE);
+
+    // By default every bios, ram and io page is accessible
+    for(usize i = 0; i < number_of_pages; i++)
+    {
+        VirtualAddress page_address = i << page_bits;
+        page_table[i].page_index = i;
+
+        page_table[i].physical_address = PhysicalAddress(MAPPED_BUS_ADDRESS_START + page_address);
+        page_table[i].page_address = page_address;
+        if(page_address < BIOS_END)
+        {
+            page_table[i].access = Read | Write | Execute;
+        }
+        else if(page_address >= IO_START && page_address < IO_END)
+        {
+            page_table[i].access = Read | Write;
+        }
+        else if(page_address >= RAM_START && page_address < RAM_START + ram_size)
+        {
+            page_table[i].access = Read | Write | Execute;
+        }
+        else
+        {
+            page_table[i].access = None;
+        }
+    }
 
 #if !NDEBUG
     printf("DEBUG: BIOS mapped at: 0x%p\n", bios);
@@ -58,6 +120,18 @@ u32 get_ram_size()
     return (u32)ram_size;
 }
 
+void set_page_size(Word new_page_size)
+{
+    page_size = new_page_size;
+    page_mask = new_page_size - 1;
+    page_bits = bits_of(page_mask);
+}
+
+Word get_page_size()
+{
+    return page_size;
+}
+
 void set_vram_size(usize new_size)
 {
     vram_size = new_size;
@@ -83,16 +157,14 @@ u8* io_start_address()
     return io;
 }
 
-void invalid_read(CPUCore& core, VirtualAddress addr)
+void invalid_read(VirtualAddress addr)
 {
-    // TODO: Generate a exception
-    core.make_exception(CPUCore::InvalidRead, 0, 0);
+    local_core->core->handle_exception(CPUCore::InvalidRead, addr);
 }
 
-void invalid_write(CPUCore& core, VirtualAddress addr)
+void invalid_write(VirtualAddress addr)
 {
-    // TODO: Generate a exception
-    core.make_exception(CPUCore::InvalidWrite, 0, 0);
+    local_core->core->handle_exception(CPUCore::InvalidWrite, addr);
 }
 
 bool load_bios(const char* path)
@@ -137,80 +209,99 @@ CheckAddressResult check_virtual_address(VirtualAddress va, CheckAddressFlags fl
 
 
 template<typename T>
-FORCE_INLINE static T read_at(CPUCore& core, VirtualAddress addr)
+FORCE_INLINE static T read_at(VirtualAddress addr)
 {
-    return *(T*)(MAPPED_BUS_ADDRESS_START + addr);
+    u32 page_index = addr >> page_bits;
+    if(page_table[page_index].access & Read)
+    {
+        return *(T*)(MAPPED_BUS_ADDRESS_START + addr);
+    } 
+    else
+    {
+        invalid_read(addr);
+        return T();
+    }
 }
 
-QWord read_qword(CPUCore& core, VirtualAddress addr)
+QWord read_qword(VirtualAddress addr)
 {
-    return read_at<QWord>(core, addr);
+    return read_at<QWord>(addr);
 }
 
-DWord read_dword(CPUCore& core, VirtualAddress addr)
+DWord read_dword(VirtualAddress addr)
 {
-    return read_at<DWord>(core, addr);
+    return read_at<DWord>(addr);
 }
 
-u32 read_word(CPUCore& core, VirtualAddress addr)
+u32 read_word(VirtualAddress addr)
 {
-    return read_at<u32>(core, addr);
+    return read_at<u32>(addr);
 }
 
-u16 read_half(CPUCore& core, VirtualAddress addr)
+u16 read_half(VirtualAddress addr)
 {
-    return read_at<u16>(core, addr);
+    return read_at<u16>(addr);
 }
 
-u8 read_byte(CPUCore& core, VirtualAddress addr)
+u8 read_byte(VirtualAddress addr)
 {
-    return read_at<u8>(core, addr);
+    return read_at<u8>(addr);
 }
 
-i16 read_ihalf(CPUCore& core, VirtualAddress addr)
+i16 read_ihalf(VirtualAddress addr)
 {
-    return read_at<i16>(core, addr);
+    return read_at<i16>(addr);
 }
 
-i8 read_ibyte(CPUCore& core, VirtualAddress addr)
+i8 read_ibyte(VirtualAddress addr)
 {
-    return read_at<i8>(core, addr);
+    return read_at<i8>(addr);
 }
 
 template<typename T>
-inline void write_at(CPUCore& core, VirtualAddress addr, T value)
+inline void write_at(VirtualAddress addr, T value)
 {
-    if ((addr >> 28) == 1)
+    u32 page_index = addr >> page_bits;
+    if(page_table[page_index].access & Write)
     {
-        return IO::write_io<T>(core, addr, value);
+        if ((addr >> 28) == 1)
+        {
+            IO::write_io<T>(addr, value);
+        }
+        else
+        {
+            *(T*)(MAPPED_BUS_ADDRESS_START + addr) = value;
+        }
     }
-
-    *(T*)(MAPPED_BUS_ADDRESS_START + addr) = value;
+    else
+    {
+        invalid_write(addr);
+    }
 }
 
-void write_qword(CPUCore& core, VirtualAddress addr, QWord qword)
+void write_qword(VirtualAddress addr, QWord qword)
 {
-    write_at<QWord>(core, addr, qword);
+    write_at<QWord>(addr, qword);
 }
 
-void write_dword(CPUCore& core, VirtualAddress addr, DWord dword)
+void write_dword(VirtualAddress addr, DWord dword)
 {
-    write_at<DWord>(core, addr, dword);
+    write_at<DWord>(addr, dword);
 }
 
-void write_word(CPUCore& core, VirtualAddress addr, u32 word)
+void write_word(VirtualAddress addr, u32 word)
 {
-    write_at<u32>(core, addr, word);
+    write_at<u32>(addr, word);
 }
 
-void write_half(CPUCore& core, VirtualAddress addr, u16 half)
+void write_half(VirtualAddress addr, u16 half)
 {
-    write_at<u16>(core, addr, half);
+    write_at<u16>(addr, half);
 }
 
-void write_byte(CPUCore& core, VirtualAddress addr, u8 byte)
+void write_byte(VirtualAddress addr, u8 byte)
 {
-    write_at<u8>(core, addr, byte);
+    write_at<u8>(addr, byte);
 }
 
 }

@@ -69,10 +69,11 @@ struct D3D12GU
     static void initialize();
     static void shutdown();
 
+    static void present_framebuffer(PhysicalAddress fb, bool vsync);
     static void present(bool vsync);
 
-    static VirtualAddress create_framebuffer(i32 width, i32 height);
-    static void update_framebuffer(VirtualAddress fb, void* va);
+    static PhysicalAddress create_framebuffer(i32 width, i32 height);
+    static void update_framebuffer(PhysicalAddress fb, void* va);
 
     template<typename Fn, typename... TArgs>
     static void send_compute(Fn fn, TArgs&&... args)

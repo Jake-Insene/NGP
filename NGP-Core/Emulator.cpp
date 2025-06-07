@@ -34,48 +34,49 @@ void thread_core_callback(void* arg)
     {
         while (true)
         {
-            if (thread.core.psr.HALT)
+            if (thread.core->get_psr().HALT)
             {
 #if DEBUGGING
                 printf(
                     "Core: %d, MIPS: %llu, CPS: %llu, Elapsed: %f\n",
-                    core_index, thread.core.inst_counter / 1'000'000,
-                    thread.core.cycles_in_second, thread.elapsed
+                    core_index, thread.inst_counter / 1'000'000,
+                    thread.cycle_counter, thread.elapsed
                 );
-                thread.core.inst_counter = 0;
+                thread.inst_counter = 0;
                 thread.elapsed = 0.0;
                 thread.last_cycle_counter = 0;
-                thread.core.cycles_in_second = 0;
+                thread.cycle_counter = 0;
 #endif
                 return;
             }
 
-            if (thread.elapsed >= 1.0 || thread.core.cycles_in_second >= thread.core.clock_speed)
+            if (thread.elapsed >= 1.0 || thread.cycle_counter >= thread.clock_speed)
             {
 #if DEBUGGING
                 printf(
                     "Core: %d, MIPS: %llu, CPS: %llu, Elapsed: %f\n",
-                    core_index, thread.core.inst_counter / 1'000'000,
-                    thread.core.cycles_in_second, thread.elapsed
+                    core_index, thread.inst_counter / 1'000'000,
+                    thread.cycle_counter, thread.elapsed
                 );
       
-                thread.core.inst_counter = 0;
+                thread.inst_counter = 0;
 #endif
-                if (thread.core.cycles_in_second > thread.core.clock_speed)
+                if (thread.cycle_counter > thread.clock_speed)
                 {
-                    u64 cycles_passed = thread.core.cycles_in_second - thread.core.clock_speed;
-                    u32 to_wait = u32((cycles_passed * 1000) / thread.core.clock_speed);
+                    u64 cycles_passed = thread.cycle_counter - thread.clock_speed;
+                    u32 to_wait = u32((cycles_passed * 1000) / thread.clock_speed);
                     OS::sleep(to_wait);
                 }
 
                 thread.elapsed = 0.0;
-                thread.last_cycle_counter = thread.core.cycle_counter;
-                thread.core.cycles_in_second = 0;
+                thread.last_cycle_counter = thread.cycle_counter;
 
-                if (thread.core.cycles_in_second >= thread.core.clock_speed)
+                if (thread.cycle_counter >= thread.clock_speed)
                 {
                     thread.signal = Emulator::NONE;
                 }
+
+                thread.cycle_counter = 0;
             }
 
             switch (thread.signal)
@@ -85,13 +86,16 @@ void thread_core_callback(void* arg)
             case Emulator::RUN:
             {
                 auto start = Time::get_time();
-                u64 cycles_per_step = thread.core.clock_speed / 60;
+                u64 cycles_per_step = thread.clock_speed / 60;
                 
-                thread.core.dispatch(cycles_per_step);
+                usize remain = thread.core->dispatch(cycles_per_step);
 
                 auto dt = Time::get_time() - start;
                 thread.elapsed += dt;
-                thread.core.cycle_counter += thread.core.cycles_in_second;
+                thread.cycle_counter += cycles_per_step - remain;
+                
+                // WARNING: This is not precise
+                thread.inst_counter += cycles_per_step - remain;
             }
             break;
             case Emulator::END:
@@ -143,7 +147,7 @@ void Emulator::shutdown()
     end_cores();
     print_cores();
 
-    delete[] cores;
+    cores.clear();
 
     GU::shutdown();
     Window::shutdown();
@@ -154,27 +158,24 @@ void Emulator::shutdown()
 
 void Emulator::start_cores()
 {
-    if (cores == nullptr)
-    {
-        cores = new ThreadCore[number_of_cores]{};
-    }
-    else
-    {
-        ::new(cores) ThreadCore[number_of_cores]{};
-    }
+    cores.resize(number_of_cores);
 
     for (u32 core = 0; core < number_of_cores; core++)
     {
-        cores[core].core.initialize();
+        cores[core].core = CPUCore::create_cpu(CPUCore::CPUType::V1);
+        cores[core].core->initialize();
 
         // All cores are disable by default, except for core 0
-        cores[core].core.psr.HALT = core == 0 ? false : true;
-        cores[core].core.psr.CURRENT_EL = CPUCore::MaxExceptionLevel;
-        cores[core].core.clock_speed = clock_cycles;
+        CPUCore::ProgramStateRegister initial_psr =
+        {
+            .HALT = core == 0 ? false : true,
+            .CURRENT_EL = CPUCore::MaxExceptionLevel,
+        };
+        cores[core].core->set_psr(initial_psr);
+        cores[core].core->set_clock_speed(clock_cycles);
+        cores[core].clock_speed = clock_cycles;
 
-        cores[core].core.pc = Bus::BIOS_START;
-
-        cores[core].core.handle_pc_change();
+        cores[core].core->set_pc(Bus::BIOS_START);
 
         cores[core].thread = std::thread(thread_core_callback, *reinterpret_cast<void**>(&core));
     }
@@ -185,7 +186,7 @@ void Emulator::end_cores()
     for (u32 core = 0; core < number_of_cores; core++)
     {
         cores[core].thread.join();
-        cores[core].core.shutdown();
+        cores[core].core->shutdown();
     }
 }
 
@@ -194,7 +195,7 @@ void Emulator::cores_restore_context()
     for (u32 core = 0; core < number_of_cores; core++)
     {
         cores[core].thread.join();
-        cores[core].core.shutdown();
+        cores[core].core->shutdown();
     }
 
     start_cores();
@@ -205,7 +206,7 @@ void Emulator::print_cores()
     for (u32 core = 0; core < number_of_cores; core++)
     {
         printf("Core: %d\n", core);
-        cores[core].core.print_registers();
+        cores[core].core->print_registers();
     }
 }
 
@@ -213,7 +214,7 @@ void Emulator::signal_cores(Signal signal)
 {
     for (u32 core = 0; core < number_of_cores; core++)
     {
-        if(!cores[core].core.psr.HALT)
+        if(!cores[core].core->get_psr().HALT)
         {
             cores[core].signal = signal;
         }

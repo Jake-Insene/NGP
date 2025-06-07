@@ -584,7 +584,7 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             else if (indice.iword < 0)
             {
                 u32 aligned = align_down(indice.uword, alignment);
-                if (aligned != indice.u)
+                if (aligned != indice.uword)
                 {
                     MAKE_ERROR(indice, return, "immediate value must be a multiple of %d", alignment);
                 }

@@ -38,65 +38,65 @@ static constexpr VirtualAddress GU_BASE = IO_BASE | 0x0001'0000;
 void initialize();
 void shutdown();
 
-u8 read_io_byte(CPUCore& core, VirtualAddress address);
-u16 read_io_half(CPUCore& core, VirtualAddress address);
-Word read_io_word(CPUCore& core, VirtualAddress address);
-DWord read_io_dword(CPUCore& core, VirtualAddress address);
-QWord read_io_qword(CPUCore& core, VirtualAddress address);
+u8 read_io_byte(VirtualAddress address);
+u16 read_io_half(VirtualAddress address);
+Word read_io_word(VirtualAddress address);
+DWord read_io_dword(VirtualAddress address);
+QWord read_io_qword(VirtualAddress address);
 
-void write_io_byte(CPUCore& core, VirtualAddress address, u8 value);
-void write_io_half(CPUCore& core, VirtualAddress address, u16 value);
-void write_io_word(CPUCore& core, VirtualAddress address, Word value);
-void write_io_dword(CPUCore& core, VirtualAddress address, DWord value);
-void write_io_qword(CPUCore& core, VirtualAddress address, QWord value);
+void write_io_byte(VirtualAddress address, u8 value);
+void write_io_half(VirtualAddress address, u16 value);
+void write_io_word(VirtualAddress address, Word value);
+void write_io_dword(VirtualAddress address, DWord value);
+void write_io_qword(VirtualAddress address, QWord value);
 
 template<typename T>
-T read_io(CPUCore& core, u32 address)
+T read_io(u32 address)
 {
     if constexpr (std::same_as<T, u8>)
     {
-        return read_io_byte(core, address);
+        return read_io_byte(address);
     }
     else if constexpr (std::same_as<T, u16>)
     {
-        return read_io_half(core, address);
+        return read_io_half(address);
     }
     else if constexpr (std::same_as<T, Word>)
     {
-        return read_io_word(core, address);
+        return read_io_word(address);
     }
     else if constexpr (std::same_as<T, DWord>)
     {
-        return read_io_dword(core, address);
+        return read_io_dword(address);
     }
     else if constexpr (std::same_as<T, QWord>)
     {
-        return read_io_qword(core, address);
+        return read_io_qword(address);
     }
 }
 
 template<typename T>
-void write_io(CPUCore& core, u32 address, T value)
+void write_io(u32 address, T value)
 {
     if constexpr (std::same_as<T, u8>)
     {
-        write_io_byte(core, address, value);
+        write_io_byte(address, value);
     }
     else if constexpr (std::same_as<T, u16>)
     {
-        write_io_half(core, address, value);
+        write_io_half(address, value);
     }
     else if constexpr (std::same_as<T, Word>)
     {
-        write_io_word(core, address, value);
+        write_io_word(address, value);
     }
     else if constexpr (std::same_as<T, DWord>)
     {
-        write_io_dword(core, address, value);
+        write_io_dword(address, value);
     }
     else if constexpr (std::same_as<T, QWord>)
     {
-        write_io_qword(core, address, value);
+        write_io_qword(address, value);
     }
 }
 

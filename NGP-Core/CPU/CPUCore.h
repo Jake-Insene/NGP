@@ -8,14 +8,22 @@
 #include "Core/Header.h"
 #include "Memory/Bus.h"
 
+#undef OVERFLOW
 
-#define PROFILE 1
 
 static constexpr u32 DEFUALT_CORE_CLOCK_SPEED = MHZ(100);
 
 struct alignas(64) CPUCore
 {
+    enum class CPUType
+    {
+        Unknown = 0,
+        V1,
+    };
+
     static constexpr u32 ZeroRegister = 31;
+    static constexpr u32 LinkRegister = 30;
+    static constexpr u32 StackPointerRegister = 29;
     static constexpr u32 MaxExceptionLevel = 3;
     static constexpr u32 MaxExceptionLevelCount = 4;
     static constexpr u32 VBASize = sizeof(VirtualAddress) * 4;
@@ -43,6 +51,7 @@ struct alignas(64) CPUCore
         Breakpoint = 0x4,
         InvalidRead = 0x5,
         InvalidWrite = 0x6,
+        AccessViolation = 0x7,
     };
 
     union ProgramStateRegister
@@ -122,59 +131,23 @@ struct alignas(64) CPUCore
         DWord dw;
     };
 
-    union
-    {
-        GPRegisters gpr;
-        u32 list[32];
-        i32 ilist[32];
-    };
-    SIMDRegister simd[SIMDRegistersCount];
+    static CPUCore* create_cpu(CPUType type);
 
-    // CPU Registers
-    // System registers
-    ProgramStateRegister psr;
+    virtual void initialize() = 0;
+    virtual void shutdown() = 0;
 
-    // Level 0 has no save registers.
-    // Saved Program State Register IRQ
-    ProgramStateRegister spsr_irq;
-    // Saved Program State Register
-    SPSR_EL spsr;
-    // Exception Return Register
-    ELR_EL elr;
-    // Exception Code Register
-    ECR_EL ecr;
-    // Vector Table register
-    // Composition
-    // 0x00 -> Exception Handler
-    // 0x04 -> Interrupt Handler
-    VBAR_EL vbar;
+    virtual usize dispatch(usize num_cycles) = 0;
 
-    // PC registers
-    VirtualAddress offset;
-    VirtualAddress pc;
-    Word* mem_pc;
+    virtual void print_registers() = 0;
 
-    // Object fields
-    u64 clock_speed;
-    u64 cycle_counter;
-    u64 cycles_in_second;
-#if PROFILE
-    u64 inst_counter;
-#endif
+    virtual void set_psr(ProgramStateRegister psr) = 0;
+    virtual ProgramStateRegister get_psr() = 0;
+    virtual void set_pc(VirtualAddress new_pc) = 0;
+    virtual VirtualAddress get_pc() = 0;
 
-    void initialize();
-    void shutdown();
+    virtual void set_clock_speed(usize new_clock_speed) = 0;
+    virtual usize get_clock_speed() = 0;
 
-    void handle_pc_change();
-    Word fetch_inst();
-
-    void dispatch(u64 num_cycles);
-
-    void print_registers();
-
-    void make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 comment);
-    void return_exception();
-
-    void handle_breakpoint(u16 comment);
+    virtual void handle_exception(ExceptionCode, VirtualAddress addr) = 0;
 };
 

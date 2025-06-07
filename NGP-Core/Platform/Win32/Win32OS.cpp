@@ -10,6 +10,8 @@
 #include "Platform/Header.h"
 #include <cstdio>
 
+extern thread_local Emulator::ThreadCore* local_core;
+
 
 DWORD get_protection(OS::PageAccess access)
 {
@@ -23,6 +25,8 @@ DWORD get_protection(OS::PageAccess access)
         return PAGE_READWRITE;
     case OS::PAGE_NO_ACCESS:
         return PAGE_NOACCESS;
+    case OS::PAGE_READ_WRITE_EXECUTE:
+        return PAGE_EXECUTE_READWRITE;
     }
 
     return 0;
@@ -57,11 +61,22 @@ u32 OS::exception_handler(void* ptr)
     {
         PhysicalAddress address = exception_info->ExceptionRecord->ExceptionInformation[1];
 
-        printf(
-            "error: trying to write to inaccesible memory address: 0x%p\n"
-            "\tvirtual address: %08X\n",
-            (void*)address, VirtualAddress(address)
-        );
+        if((address & 0xFFFF'FFFF'0000'0000) == 0x1'0000'0000)
+        {
+            printf(
+                "error: trying to write to inaccesible memory address: %016llX\n"
+                "\tvirtual address: %08X\n",
+                address, VirtualAddress(address)
+            );
+            local_core->core->handle_exception(CPUCore::AccessViolation, VirtualAddress(address));
+        }
+        else
+        {
+            printf(
+                "error: emulator crash while reading/writing to address: %016llX\n",
+                address
+            );
+        }
     }
 
     return EXCEPTION_EXECUTE_HANDLER;

@@ -18,7 +18,7 @@ DisplayRegisters& get_display_registers()
 }
 
 
-void IO::display_handle_write_word(CPUCore& core, VirtualAddress address, Word value)
+void display_handle_write_word(VirtualAddress address, Word value)
 {
 	if (address != DISPLAY_CTR && (get_display_registers().ctr & DISPLAY_ENABLE) != 1)
 		return;

@@ -5,6 +5,7 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #include "Backend/Assembler.h"
+
 #include "ErrorManager.h"
 
 struct ParseFn

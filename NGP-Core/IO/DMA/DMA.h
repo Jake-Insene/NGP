@@ -80,6 +80,6 @@ struct DMARegisters
 
 DMARegisters& get_dma_registers();
 
-void dma_handle_write_word(CPUCore& core, VirtualAddress address, Word value);
+void dma_handle_write_word(VirtualAddress address, Word value);
 
 }

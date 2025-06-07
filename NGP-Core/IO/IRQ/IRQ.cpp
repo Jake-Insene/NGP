@@ -15,7 +15,7 @@ IRQRegisters& get_irq_registers()
 	return *(IRQRegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IRQ_BASE);
 }
 
-void irq_handle_write_word(CPUCore& core, VirtualAddress address, Word value)
+void irq_handle_write_word(VirtualAddress address, Word value)
 {
 	switch (address)
 	{

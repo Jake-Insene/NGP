@@ -57,7 +57,7 @@ DMARegisters& get_dma_registers()
     return *(DMARegisters*)(Bus::MAPPED_BUS_ADDRESS_START + DMA_BASE);
 }
 
-void dma_handle_write_word(CPUCore& core, VirtualAddress address, Word value)
+void dma_handle_write_word(VirtualAddress address, Word value)
 {
     if (address >= DMA_CHANNELS_START && address < DMA_CHANNELS_END)
     {

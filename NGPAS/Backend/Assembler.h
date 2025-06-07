@@ -5,7 +5,7 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #pragma once
-#include "Frontend/PreProcessor.h"
+#include "Frontend/AsmPreProcessor.h"
 #include "Backend/AssemblerUtility.h"
 #include "FileFormat/ISA.h"
 
@@ -128,7 +128,7 @@ struct Assembler {
 
     std::unordered_map<std::string, Symbol>::iterator find_label(const std::string_view label);
 
-    PreProcessor pre_processor;
+    AsmPreProcessor pre_processor;
 
     Token* last;
     Token* current;

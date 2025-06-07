@@ -23,6 +23,8 @@ void print_help()
 
 int main(int argc, char** argv)
 {
+    printf("NGP Assembler %s\n", NGP_VERSION);
+
     if (argc < 2)
     {
         puts(
@@ -98,7 +100,7 @@ int main(int argc, char** argv)
     bool result = as.assemble_file(input_file, output_file.c_str());
     f64 duration = (std::chrono::high_resolution_clock::now() - start).count() / 1'000'000'000.0;
 
-    printf("assembly tooks %fs\n", duration);
+    printf("assembly took's %fs\n", duration);
 
     return result ? 0 : -1;
 }

@@ -61,6 +61,7 @@ struct GU
         void(*initialize)();
         void(*shutdown)();
 
+        void(*present_framebuffer)(PhysicalAddress, bool);
         void(*present)(bool);
         void(*request_present)();
 
@@ -69,8 +70,8 @@ struct GU
 
         Bus::CheckAddressResult(*check_vram_address)(VirtualAddress);
 
-        VirtualAddress(*create_framebuffer)(i32, i32);
-        void(*update_framebuffer)(VirtualAddress, void*);
+        PhysicalAddress(*create_framebuffer)(i32, i32);
+        void(*update_framebuffer)(PhysicalAddress, void*);
     };
 
     static inline GUDriver main_driver = {};

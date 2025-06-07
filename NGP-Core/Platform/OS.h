@@ -15,6 +15,7 @@ struct OS
         PAGE_READ_ONLY = 0x1,
         PAGE_READ_WRITE = 0x2,
         PAGE_NO_ACCESS = 0x3,
+        PAGE_READ_WRITE_EXECUTE = 0x4,
     };
 
     using PageFaultHandler = void(*)(void*);

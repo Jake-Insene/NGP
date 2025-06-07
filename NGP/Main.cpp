@@ -17,10 +17,10 @@ void print_help()
         "options:\n"
         "\t-help show this help\n"
         "\t-bios <path> set the bios file\n"
-        "\t-m MB size of the ram\n"
-        "\t-vram MB set the size of vram\n"
-        "\t-cores N number of cores of the machine\n"
-        "\t-cycles N number of cycles per core\n"
+        "\t-m <MB> size of the ram\n"
+        "\t-vram <MB> set the size of vram\n"
+        "\t-cores <N> number of cores of the machine\n"
+        "\t-cycles <N> number of cycles per core\n"
     );
 }
 

@@ -56,6 +56,6 @@ struct DisplayRegisters
 
 DisplayRegisters& get_display_registers();
 
-void display_handle_write_word(CPUCore& core, VirtualAddress address, Word value);
+void display_handle_write_word(VirtualAddress address, Word value);
 
 }

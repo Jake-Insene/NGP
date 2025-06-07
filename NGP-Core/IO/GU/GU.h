@@ -122,6 +122,6 @@ struct GURegisters
 
 GURegisters& get_gu_registers();
 
-void gu_handle_write_word(CPUCore& core, VirtualAddress address, Word value);
+void gu_handle_write_word(VirtualAddress address, Word value);
 
 }

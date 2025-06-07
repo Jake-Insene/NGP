@@ -34,10 +34,12 @@ static constexpr usize VRamAddress = 0x2'0000'0000;
 GU::GUDriver D3D12GU::get_driver()
 {
     return GU::GUDriver{
-        .initialize = D3D12GU::initialize,
-        .shutdown = D3D12GU::shutdown,
+        .initialize = &D3D12GU::initialize,
+        .shutdown = &D3D12GU::shutdown,
 
-        .present = D3D12GU::present,
+        .present_framebuffer = &D3D12GU::present_framebuffer,
+        .present = &D3D12GU::present,
+
         .create_framebuffer = &D3D12GU::create_framebuffer,
         .update_framebuffer = &D3D12GU::update_framebuffer,
     };
@@ -438,8 +440,10 @@ void D3D12GU::shutdown()
     dx::release(state.device);
 }
 
-void D3D12GU::present(bool vsync)
+void D3D12GU::present_framebuffer(PhysicalAddress fb, bool vsync)
 {
+	ID3D12Resource* framebuffer = (ID3D12Resource*)fb;
+
     Framebuffer& frame = state.framebuffers[state.current_frame];
     if (frame.fence_value != frame.fence->GetCompletedValue())
     {
@@ -461,7 +465,7 @@ void D3D12GU::present(bool vsync)
     viewport.TopLeftX = 0;
     viewport.TopLeftY = 0;
     cmd_graphics->RSSetViewports(1, &viewport);
-    D3D12_RECT rect = {0, 0, Window::DefaultWindowWidth, Window::DefaultWindowHeight };
+    D3D12_RECT rect = { 0, 0, Window::DefaultWindowWidth, Window::DefaultWindowHeight };
     cmd_graphics->RSSetScissorRects(1, &rect);
 
     D3D12_RESOURCE_BARRIER b1 = dx::transition_barrier(
@@ -503,7 +507,45 @@ void D3D12GU::present(bool vsync)
     state.queue_graphics->Signal(frame.fence, ++frame.fence_value);
 }
 
-VirtualAddress D3D12GU::create_framebuffer(i32 width, i32 height)
+void D3D12GU::present(bool vsync)
+{
+    Framebuffer& frame = state.framebuffers[state.current_frame];
+    if (frame.fence_value != frame.fence->GetCompletedValue())
+    {
+        frame.fence->SetEventOnCompletion(frame.fence_value, frame.fence_event);
+        WaitForSingleObject(frame.fence_event, INFINITE);
+    }
+
+    ID3D12GraphicsCommandList4* cmd_graphics = frame.cmd_graphics;
+    frame.cmd_graphics_allocator->Reset();
+    cmd_graphics->Reset(frame.cmd_graphics_allocator, nullptr);
+
+    cmd_graphics->OMSetRenderTargets(1, &frame.handle, false, nullptr);
+
+    D3D12_VIEWPORT viewport = {};
+    viewport.Width = Window::DefaultWindowWidth;
+    viewport.Height = Window::DefaultWindowHeight;
+    viewport.MinDepth = 0;
+    viewport.MaxDepth = 1;
+    viewport.TopLeftX = 0;
+    viewport.TopLeftY = 0;
+    cmd_graphics->RSSetViewports(1, &viewport);
+    D3D12_RECT rect = {0, 0, Window::DefaultWindowWidth, Window::DefaultWindowHeight };
+    cmd_graphics->RSSetScissorRects(1, &rect);
+
+    cmd_graphics->Close();
+
+    ID3D12CommandList* cmd_list[] = { cmd_graphics };
+    state.queue_graphics->ExecuteCommandLists(1, cmd_list);
+
+    state.swap_chain->Present(vsync, 0);
+    state.current_frame = (state.current_frame + 1) % DefaultBufferCount;
+
+    // Signal fence
+    state.queue_graphics->Signal(frame.fence, ++frame.fence_value);
+}
+
+PhysicalAddress D3D12GU::create_framebuffer(i32 width, i32 height)
 {
     state.framebuffer_width = width;
     state.framebuffer_height = height;
@@ -546,11 +588,13 @@ VirtualAddress D3D12GU::create_framebuffer(i32 width, i32 height)
         D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&state.upload_framebuffer)
     );
 
-    return (VirtualAddress)0;
+    return PhysicalAddress(state.framebuffer);
 }
 
-void D3D12GU::update_framebuffer(VirtualAddress fb, void* va)
+void D3D12GU::update_framebuffer(PhysicalAddress fb, void* va)
 {
+    ID3D12Resource* framebuffer = (ID3D12Resource*)fb;
+
     void* data;
     state.upload_framebuffer->Map(0, nullptr, &data);
     memcpy(data, va, state.framebuffer_width * state.framebuffer_height * 4);
@@ -572,7 +616,7 @@ void D3D12GU::update_framebuffer(VirtualAddress fb, void* va)
     );
 
     D3D12_RESOURCE_BARRIER t4 = dx::transition_barrier(
-        state.framebuffer, 0, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST
+        framebuffer, 0, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST
     );
 
     D3D12_RESOURCE_BARRIER translations[] = { t3, t4};
@@ -580,7 +624,7 @@ void D3D12GU::update_framebuffer(VirtualAddress fb, void* va)
 
     D3D12_TEXTURE_COPY_LOCATION dest =
     {
-        .pResource = state.framebuffer,
+        .pResource = framebuffer,
         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
         .SubresourceIndex = 0,
     };
@@ -618,7 +662,7 @@ void D3D12GU::update_framebuffer(VirtualAddress fb, void* va)
     cmd_graphics->ResourceBarrier(1, &translation1);
 
     D3D12_RESOURCE_BARRIER translation2 = dx::transition_barrier(
-        state.framebuffer, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+        framebuffer, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
     );
     cmd_graphics->ResourceBarrier(1, &translation2);
 

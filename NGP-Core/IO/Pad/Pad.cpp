@@ -77,7 +77,7 @@ void pad_update(u32 port, PadButton button, bool down)
 }
 
 
-void pad_handle_write_word(CPUCore& core, VirtualAddress address, Word value)
+void pad_handle_write_word(VirtualAddress address, Word value)
 {
 }
 

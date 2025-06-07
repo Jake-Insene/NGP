@@ -23,7 +23,7 @@ struct GLGU
 
     static Bus::CheckAddressResult check_vram_address(VirtualAddress vva);
 
-    static VirtualAddress create_framebuffer(i32, i32);
-    static void update_framebuffer(VirtualAddress, void* fbaddr);
+    static PhysicalAddress create_framebuffer(i32, i32);
+    static void update_framebuffer(PhysicalAddress, void* fbaddr);
 
 };

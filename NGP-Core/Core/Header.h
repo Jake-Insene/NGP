@@ -67,3 +67,16 @@ union QWord
     return size & ~(alignment - 1);
 }
 
+[[nodiscard]] constexpr usize bits_of(usize val)
+{
+    usize counter = 0;
+
+    while ((val & 1))
+    {
+        counter++;
+        val >>= 1;
+    }
+
+    return counter;
+}
+

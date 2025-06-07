@@ -32,7 +32,7 @@
 // R30 = LR
 // R29 = SP
 
-static const u32 ZeroRegister = 31;
+static constexpr u32 ZeroRegister = 31;
 
 enum NGPBaseOpcode : u8
 {

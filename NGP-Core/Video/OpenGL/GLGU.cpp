@@ -36,5 +36,5 @@ void GLGU::display_set_address(VirtualAddress vva) {}
 
 Bus::CheckAddressResult GLGU::check_vram_address(VirtualAddress vva) { return Bus::ValidVirtualAddress; }
 
-VirtualAddress GLGU::create_framebuffer(i32, i32) { return VirtualAddress(0); }
-void GLGU::update_framebuffer(VirtualAddress, void*) {}
+PhysicalAddress GLGU::create_framebuffer(i32, i32) { return PhysicalAddress(0); }
+void GLGU::update_framebuffer(PhysicalAddress, void*) {}

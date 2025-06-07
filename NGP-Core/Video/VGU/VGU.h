@@ -8,6 +8,8 @@
 #include "Video/GU.h"
 #include "Video/Math.h"
 
+#include <mutex>
+
 
 struct VGPU
 {
@@ -23,7 +25,9 @@ struct VGPU
         i32 width;
         i32 height;
         IO::DisplayFormat display_format;
-        VirtualAddress fb;
+        PhysicalAddress fb;
+
+        std::mutex sync_mutex;
     };
 
     static inline GPUState state;

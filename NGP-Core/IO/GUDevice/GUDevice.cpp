@@ -4,14 +4,14 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "IO/GU/GU.h"
+#include "IO/GUDevice/GUDevice.h"
 
 #include "CPU/CPUCore.h"
 #include "Memory/Bus.h"
 #include "Video/GU.h"
 
 
-namespace IO
+namespace GUDevice
 {
 
 static void gu_irq_mask(VirtualAddress value)
@@ -26,11 +26,11 @@ static void gu_set_ctr(VirtualAddress value)
 {
 }
 
-IODevice gu_get_io_device()
+IO::IODevice gu_get_io_device()
 {
-    return IODevice
+    return IO::IODevice
     {
-        .base_address = GU_BASE,
+        .base_address = IO::GU_BASE,
 
         .read_byte = [](VirtualAddress) -> u8 { return 0; },
         .read_half = [](VirtualAddress) -> u16 { return 0; },
@@ -48,7 +48,7 @@ IODevice gu_get_io_device()
 
 GURegisters& gu_get_registers()
 {
-    return *(GURegisters*)(Bus::MAPPED_BUS_ADDRESS_START + GU_BASE);
+    return *(GURegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IO::GU_BASE);
 }
 
 void gu_handle_write_word(VirtualAddress address, Word value)
@@ -72,7 +72,7 @@ void gu_handle_write_word(VirtualAddress address, Word value)
         {
             u8 queue_priority = value & 0x3;
             u8 queue = (value >> 2) & 0x3;
-            GU::queue_execute(
+            ::GU::queue_execute(
                 queue, queue_priority, gu_get_registers().queue_addr,
                 gu_get_registers().queue_len
             );

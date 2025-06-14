@@ -8,7 +8,7 @@
 #include "Core/Header.h"
 
 #include "IO/Display/Display.h"
-#include "IO/GU/GU.h"
+#include "IO/GUDevice/GUDevice.h"
 #include "Memory/Bus.h"
 
 
@@ -26,7 +26,7 @@ struct GU
         void(*present)(bool);
         void(*request_present)();
 
-        void(*display_set_config)(i32, i32, IO::DisplayFormat);
+        void(*display_set_config)(i32, i32, Display::DisplayFormat);
         void(*display_set_address)(VirtualAddress);
 
         void(*queue_execute)(u8, u8, VirtualAddress, Word);
@@ -65,7 +65,7 @@ struct GU
     VTFUNCDEFARG1(present, bool);
     VTFUNCDEF(request_present);
 
-    VTFUNCDEFARG3(display_set_config, i32, i32, IO::DisplayFormat);
+    VTFUNCDEFARG3(display_set_config, i32, i32, Display::DisplayFormat);
     VTFUNCDEFARG1(display_set_address, VirtualAddress);
 
     VTFUNCDEFARG4(queue_execute, u8, u8, VirtualAddress, Word);

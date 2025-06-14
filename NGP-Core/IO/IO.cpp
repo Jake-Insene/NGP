@@ -8,7 +8,7 @@
 
 #include "IO/Display/Display.h"
 #include "IO/DMA/DMA.h"
-#include "IO/GU/GU.h"
+#include "IO/GUDevice/GUDevice.h"
 #include "IO/IRQ/IRQ.h"
 #include "IO/Pad/Pad.h"
 
@@ -53,19 +53,19 @@ void initialize()
         switch (io_page)
         {
         case IRQ_SEGMENT:
-            io_devices.emplace_back(irq_get_io_device());
+            io_devices.emplace_back(IRQ::irq_get_io_device());
             break;
         case DMA_SEGMENT:
-            io_devices.emplace_back(dma_get_io_device());
+            io_devices.emplace_back(DMA::dma_get_io_device());
             break;
         case PAD_SEGMENT:
-            io_devices.emplace_back(pad_get_io_device());
+            io_devices.emplace_back(Pad::pad_get_io_device());
             break;
         case DISPLAY_SEGMENT:
-            io_devices.emplace_back(display_get_io_device());
+            io_devices.emplace_back(Display::display_get_io_device());
             break;
         case GU_SEGMENT:
-            io_devices.emplace_back(gu_get_io_device());
+            io_devices.emplace_back(GUDevice::gu_get_io_device());
             break;
         default:
             io_devices.emplace_back(get_default_io_device(i));
@@ -77,7 +77,7 @@ void initialize()
             break;
     }
 
-    pad_reset();
+    Pad::pad_reset();
 }
 
 void shutdown()

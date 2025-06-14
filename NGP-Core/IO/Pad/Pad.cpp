@@ -9,7 +9,7 @@
 #include "Memory/Bus.h"
 
 
-namespace IO
+namespace Pad
 {
 
 struct PadInfo
@@ -24,11 +24,11 @@ struct PadInfo
     u32 port;
 } pads[MaxPadPort];
 
-IODevice pad_get_io_device()
+IO::IODevice pad_get_io_device()
 {
-    return IODevice
+    return IO::IODevice
     {
-        .base_address = PAD_BASE,
+        .base_address = IO::PAD_BASE,
 
         .read_byte = [](VirtualAddress) -> u8 { return 0; },
         .read_half = [](VirtualAddress) -> u16 { return 0; },
@@ -46,7 +46,7 @@ IODevice pad_get_io_device()
 
 MainPad& pad_get_main_pad()
 {
-    return *(MainPad*)(Bus::MAPPED_BUS_ADDRESS_START + PAD_BASE);
+    return *(MainPad*)(Bus::MAPPED_BUS_ADDRESS_START + IO::PAD_BASE);
 }
 
 void pad_reset()

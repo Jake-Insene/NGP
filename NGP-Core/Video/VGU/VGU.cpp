@@ -8,7 +8,7 @@
 
 #include "Memory/Bus.h"
 #include "IO/DMA/DMA.h"
-#include "IO/GU/GU.h"
+#include "IO/GUDevice/GUDevice.h"
 #include "Platform/OS.h"
 #include "Video/OpenGL/GLGU.h"
 
@@ -91,10 +91,10 @@ void VGU::initialize()
     state.internal_driver = get_internal_driver(GU::D3D12);
     state.internal_driver.initialize();
 
-    for (u32 i = 0; i < IO::GU_QUEUE_INDEX_MAX; i++)
+    for (u32 i = 0; i < GUDevice::GU_QUEUE_INDEX_MAX; i++)
     {
         state.queues[i].id = i;
-        state.queues[i].priority = IO::GU_QUEUE_PRIORITY_LOW;
+        state.queues[i].priority = GUDevice::GU_QUEUE_PRIORITY_LOW;
         state.queues[i].cmd_list = VirtualAddress(0);
         state.queues[i].cmd_len = 0;
     }
@@ -146,7 +146,7 @@ void VGU::request_present()
     state.sync_mutex.unlock();
 }
 
-void VGU::display_set_config(i32 width, i32 height, IO::DisplayFormat display_format)
+void VGU::display_set_config(i32 width, i32 height, Display::DisplayFormat display_format)
 {
     state.fb = state.internal_driver.create_framebuffer(width, height);
 
@@ -173,7 +173,7 @@ void VGU::queue_execute(u8 index, u8 priority, VirtualAddress cmd_list, Word cmd
     if (cmd_len == 0)
         return;
 
-    if (index >= IO::GU_QUEUE_INDEX_MAX)
+    if (index >= GUDevice::GU_QUEUE_INDEX_MAX)
     {
         VGPU_LOGGER("Invalid Queue Index");
         return;
@@ -197,7 +197,7 @@ void VGU::dma_send(VirtualAddress dest, VirtualAddress src, Word len, Word flags
 
     switch ((flags >> 3) & 0x7F)
     {
-    case IO::GU_DMA_TEXTURE_R8:
+    case DMA::GU_DMA_TEXTURE_R8:
         while (len--)
         {
             *((u8*)dest_mem) = *((u8*)src_mem);
@@ -205,7 +205,7 @@ void VGU::dma_send(VirtualAddress dest, VirtualAddress src, Word len, Word flags
             src_mem++;
         }
         break;
-    case IO::GU_DMA_TEXTURE_RG8:
+    case DMA::GU_DMA_TEXTURE_RG8:
         while (len--)
         {
             *((u16*)dest_mem) = *((u16*)src_mem);
@@ -213,7 +213,7 @@ void VGU::dma_send(VirtualAddress dest, VirtualAddress src, Word len, Word flags
             src_mem += 2;
         }
         break;
-    case IO::GU_DMA_TEXTURE_RGB8:
+    case DMA::GU_DMA_TEXTURE_RGB8:
         while (len--)
         {
             struct alignas(1) RGB { u8 r, g, b; };
@@ -223,7 +223,7 @@ void VGU::dma_send(VirtualAddress dest, VirtualAddress src, Word len, Word flags
             src_mem += 3;
         }
         break;
-    case IO::GU_DMA_TEXTURE_RGBA8:
+    case DMA::GU_DMA_TEXTURE_RGBA8:
         while (len--)
         {
             *((Word*)dest_mem) = *((Word*)src_mem);
@@ -276,14 +276,14 @@ void VGU::queue_execute_cmd(Queue* queue)
         cmd_list++;
         cmd_len--;
 
-        IO::GUCommand cmd = IO::GUCommand(cmd_w >> 24);
+        GUDevice::GUCommand cmd = GUDevice::GUCommand(cmd_w >> 24);
 
         switch (cmd)
         {
-        case IO::GU_COMMAND_END:
+        case GUDevice::GU_COMMAND_END:
             cmd_len = 0;
             break;
-        case IO::GU_COMMAND_RECT:
+        case GUDevice::GU_COMMAND_RECT:
         {
             if (!cmd_len) break;
 

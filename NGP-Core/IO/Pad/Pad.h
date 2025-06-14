@@ -9,7 +9,7 @@
 
 struct CPUCore;
 
-namespace IO
+namespace Pad
 {
 
 static constexpr VirtualAddress PAD_MAIN_BUTTONS = 0x000;
@@ -65,7 +65,7 @@ struct MainPad
     Word status;
 };
 
-IODevice pad_get_io_device();
+IO::IODevice pad_get_io_device();
 MainPad& pad_get_main_pad();
 
 void pad_reset();

@@ -9,9 +9,9 @@
 #include "Platform/Header.h"
 #include "IO/Pad/Pad.h"
 
-IO::PadButton buttons_map[256] = {};
+Pad::PadButton buttons_map[256] = {};
 
-static inline IO::PadButton _wp_to_buttons(WPARAM wp) {
+static inline Pad::PadButton _wp_to_buttons(WPARAM wp) {
     return buttons_map[wp & 0xFF];
 }
 
@@ -31,7 +31,7 @@ LRESULT wnd_proc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp)
         break;
     case WM_KEYDOWN:
     case WM_KEYUP:
-        IO::pad_update(0, _wp_to_buttons(wp), msg == WM_KEYDOWN);
+        Pad::pad_update(0, _wp_to_buttons(wp), msg == WM_KEYDOWN);
         break;
     }
 
@@ -40,20 +40,20 @@ LRESULT wnd_proc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp)
 
 void Window::initialize(i32 width, i32 height)
 {
-    buttons_map['A'] = IO::PAD_LEFT;
-    buttons_map['D'] = IO::PAD_RIGHT;
-    buttons_map['W'] = IO::PAD_UP;
-    buttons_map['S'] = IO::PAD_DOWN;
+    buttons_map['A'] = Pad::PAD_LEFT;
+    buttons_map['D'] = Pad::PAD_RIGHT;
+    buttons_map['W'] = Pad::PAD_UP;
+    buttons_map['S'] = Pad::PAD_DOWN;
 
-    buttons_map['J'] = IO::PAD_X;
-    buttons_map['L'] = IO::PAD_Y;
-    buttons_map['I'] = IO::PAD_Z;
-    buttons_map['K'] = IO::PAD_W;
+    buttons_map['J'] = Pad::PAD_X;
+    buttons_map['L'] = Pad::PAD_Y;
+    buttons_map['I'] = Pad::PAD_Z;
+    buttons_map['K'] = Pad::PAD_W;
 
-    buttons_map['Z'] = IO::PAD_SELECT;
-    buttons_map['X'] = IO::PAD_START;
-    buttons_map['Q'] = IO::PAD_LB;
-    buttons_map['E'] = IO::PAD_RB;
+    buttons_map['Z'] = Pad::PAD_SELECT;
+    buttons_map['X'] = Pad::PAD_START;
+    buttons_map['Q'] = Pad::PAD_LB;
+    buttons_map['E'] = Pad::PAD_RB;
 
     current_width = width;
     current_height = height;

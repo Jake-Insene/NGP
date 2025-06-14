@@ -9,7 +9,7 @@
 
 struct CPUCore;
 
-namespace IO
+namespace GUDevice
 {
 
 // DMA Channel Mask
@@ -108,7 +108,7 @@ struct GURegisters
     Word queue_len;
 };
 
-IODevice gu_get_io_device();
+IO::IODevice gu_get_io_device();
 GURegisters& gu_get_registers();
 
 void gu_handle_write_word(VirtualAddress address, Word value);

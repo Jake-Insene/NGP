@@ -9,7 +9,7 @@
 
 struct CPUCore;
 
-namespace IO
+namespace IRQ
 {
 
 // [0] DMA
@@ -39,7 +39,7 @@ struct IRQRegisters
     Word irq_status;
 };
 
-IODevice irq_get_io_device();
+IO::IODevice irq_get_io_device();
 IRQRegisters& irq_get_registers();
 
 void irq_handle_write_word(VirtualAddress address, Word value);

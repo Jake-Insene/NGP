@@ -39,11 +39,6 @@ main:
 CONFIG:
 	.word DISPLAY_FORMAT_CREATE 0x100, 0x100, DISPLAY_FORMAT_RGBA8
 
-VALUES:
-	.float32 1.0, 2.0, 3.0, 4.0
-VALUES2:
-	.float64 1.0, 2.0, 3.0, 4.0
-
 CommandList:
 	.word 0x010000FF
 	.word 0x00000000

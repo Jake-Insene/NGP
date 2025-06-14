@@ -9,7 +9,7 @@
 
 struct CPUCore;
 
-namespace IO
+namespace DMA
 {
 
 static constexpr VirtualAddress DMA_CHANNELS_START =    0x000;
@@ -101,7 +101,7 @@ struct DMARegisters
     Word wait_on_mask;
 };
 
-IODevice dma_get_io_device();
+IO::IODevice dma_get_io_device();
 DMARegisters& dma_get_registers();
 
 void dma_handle_write_word(VirtualAddress address, Word value);

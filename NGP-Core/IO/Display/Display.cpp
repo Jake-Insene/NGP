@@ -9,14 +9,14 @@
 #include "Video/GU.h"
 
 
-namespace IO
+namespace Display
 {
 
-IODevice display_get_io_device()
+IO::IODevice display_get_io_device()
 {
-	return IODevice
+	return IO::IODevice
 	{
-		.base_address = DISPLAY_BASE,
+		.base_address = IO::DISPLAY_BASE,
 
 		.read_byte = [](VirtualAddress) -> u8 { return 0; },
 		.read_half = [](VirtualAddress) -> u16 { return 0; },
@@ -34,7 +34,7 @@ IODevice display_get_io_device()
 
 DisplayRegisters& display_get_registers()
 {
-	return *(DisplayRegisters*)(Bus::MAPPED_BUS_ADDRESS_START + DISPLAY_BASE);
+	return *(DisplayRegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IO::DISPLAY_BASE);
 }
 
 
@@ -55,7 +55,10 @@ void display_handle_write_word(VirtualAddress address, Word value)
 	case DISPLAY_FORMAT:
 		if (display_get_registers().ctr & DISPLAY_ENABLE)
 		{
-			GU::display_set_config(value & 0x3FFF, (value >> 14) & 0x3FFF, (IO::DisplayFormat)(value >> 28));
+			GU::display_set_config(
+				value & 0x3FFF, (value >> 14) & 0x3FFF, 
+				(Display::DisplayFormat)(value >> 28)
+			);
 			display_get_registers().format = value;
 		}
 		break;

@@ -35,7 +35,16 @@ struct VGU
         QueueSignal signal;
     };
 
-    struct GPUState
+    struct TMU
+    {
+        VirtualAddress texture_address;
+        u8 min_filter;
+        u8 mag_filter;
+
+        PhysicalAddress cache_texture_address;
+    };
+
+    struct GUState
     {
         GU::GUDriver internal_driver;
 
@@ -44,10 +53,10 @@ struct VGU
 
         i32 width;
         i32 height;
-        IO::DisplayFormat display_format;
+        Display::DisplayFormat display_format;
         PhysicalAddress fb;
 
-        Queue queues[IO::GU_QUEUE_INDEX_MAX];
+        Queue queues[GUDevice::GU_QUEUE_INDEX_MAX];
 
         std::mutex sync_mutex;
 
@@ -56,7 +65,7 @@ struct VGU
         bool queue_requested;
     };
 
-    static inline GPUState state;
+    static inline GUState state;
 
     static GU::GUDriver get_driver();
 
@@ -66,7 +75,7 @@ struct VGU
     static void present(bool vsync);
     static void request_present();
 
-    static void display_set_config(i32 width, i32 height, IO::DisplayFormat display_format);
+    static void display_set_config(i32 width, i32 height, Display::DisplayFormat display_format);
     static void display_set_address(VirtualAddress vva);
 
     static void queue_execute(u8 index, u8 priority, VirtualAddress cmd_list, Word cmd_len);

@@ -9,7 +9,7 @@
 
 struct CPUCore;
 
-namespace IO
+namespace Display
 {
 
 // [0] HBLANK
@@ -54,7 +54,7 @@ struct DisplayRegisters
     Word format;
 };
 
-IODevice display_get_io_device();
+IO::IODevice display_get_io_device();
 DisplayRegisters& display_get_registers();
 
 void display_handle_write_word(VirtualAddress address, Word value);

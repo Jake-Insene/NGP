@@ -31,7 +31,7 @@ void GLGU::shutdown() {}
 
 void GLGU::present(bool vsync) {}
 
-void GLGU::display_set_config(i32 width, i32 height, IO::DisplayFormat display_format) {}
+void GLGU::display_set_config(i32 width, i32 height, Display::DisplayFormat display_format) {}
 void GLGU::display_set_address(VirtualAddress vva) {}
 
 Bus::CheckAddressResult GLGU::check_vram_address(VirtualAddress vva) { return Bus::ValidAddress; }

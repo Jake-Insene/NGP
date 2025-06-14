@@ -10,7 +10,7 @@
 #include "Memory/Bus.h"
 
 
-namespace IO
+namespace DMA
 {
 
 enum DMAStatusFlags
@@ -34,7 +34,7 @@ static inline void dma_channel_write(DMAChannel channel, u8 reg, Word value)
         case DMA_SPU:
             break;
         case DMA_GU:
-            GU::dma_send(chn.regs.dst, chn.regs.src, chn.regs.cnt, value);
+            ::GU::dma_send(chn.regs.dst, chn.regs.src, chn.regs.cnt, value);
             break;
         }
     }
@@ -55,11 +55,11 @@ static inline void dma_wait_on(Word value)
     dma_get_registers().wait_on_mask = value;
 }
 
-IODevice dma_get_io_device()
+IO::IODevice dma_get_io_device()
 {
-    return IODevice
+    return IO::IODevice
     {
-        .base_address = DMA_BASE,
+        .base_address = IO::DMA_BASE,
 
         .read_byte = [](VirtualAddress) -> u8 { return 0; },
         .read_half = [](VirtualAddress) -> u16 { return 0; },
@@ -77,7 +77,7 @@ IODevice dma_get_io_device()
 
 DMARegisters& dma_get_registers()
 {
-    return *(DMARegisters*)(Bus::MAPPED_BUS_ADDRESS_START + DMA_BASE);
+    return *(DMARegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IO::DMA_BASE);
 }
 
 void dma_handle_write_word(VirtualAddress address, Word value)

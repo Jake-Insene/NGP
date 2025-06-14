@@ -8,14 +8,14 @@
 
 #include "Memory/Bus.h"
 
-namespace IO
+namespace IRQ
 {
 
-IODevice irq_get_io_device()
+IO::IODevice irq_get_io_device()
 {
-	return IODevice
+	return IO::IODevice
 	{
-		.base_address = IRQ_BASE,
+		.base_address = IO::IRQ_BASE,
 
 		.read_byte = [](VirtualAddress) -> u8 { return 0; },
 		.read_half = [](VirtualAddress) -> u16 { return 0; },
@@ -33,7 +33,7 @@ IODevice irq_get_io_device()
 
 IRQRegisters& irq_get_registers()
 {
-	return *(IRQRegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IRQ_BASE);
+	return *(IRQRegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IO::IRQ_BASE);
 }
 
 void irq_handle_write_word(VirtualAddress address, Word value)

@@ -24,7 +24,27 @@ struct PadInfo
     u32 port;
 } pads[MaxPadPort];
 
-MainPad& get_main_pad()
+IODevice pad_get_io_device()
+{
+    return IODevice
+    {
+        .base_address = PAD_BASE,
+
+        .read_byte = [](VirtualAddress) -> u8 { return 0; },
+        .read_half = [](VirtualAddress) -> u16 { return 0; },
+        .read_word = [](VirtualAddress) -> Word { return 0; },
+        .read_dword = [](VirtualAddress) -> DWord { return 0; },
+        .read_qword = [](VirtualAddress) -> QWord { return QWord(); },
+
+        .write_byte = [](VirtualAddress, u8) {},
+        .write_half = [](VirtualAddress, u16) {},
+        .write_word = &pad_handle_write_word,
+        .write_dword = [](VirtualAddress, DWord) {},
+        .write_qword = [](VirtualAddress, QWord) {},
+    };
+}
+
+MainPad& pad_get_main_pad()
 {
     return *(MainPad*)(Bus::MAPPED_BUS_ADDRESS_START + PAD_BASE);
 }
@@ -53,7 +73,7 @@ void pad_update(u32 port, PadButton button, bool down)
             // Masking the button bit
             if(port == 0) 
             {
-                get_main_pad().buttons |= (1 << button);
+                pad_get_main_pad().buttons |= (1 << button);
             }
             pad.buttons |= (1 << button);
         }
@@ -69,7 +89,7 @@ void pad_update(u32 port, PadButton button, bool down)
             // Unmasking the button bit
             if (port == 0)
             {
-                get_main_pad().buttons &= ~(1 << button);
+                pad_get_main_pad().buttons &= ~(1 << button);
             }
             pad.buttons &= ~(1 << button);
         }

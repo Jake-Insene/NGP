@@ -2,25 +2,6 @@
 #include "Platform/Header.h"
 #include <stdio.h>
 
-#define DEBUG_OUTPUT(str) OutputDebugStringA(str)
-
-#define DX_ERROR(expr, ...)\
-    if((expr) != S_OK)\
-    {\
-        char buffer[256]{};\
-        snprintf(buffer, sizeof(buffer), __VA_ARGS__);\
-        OutputDebugStringA(buffer);\
-    }
-
-#define DX_EXI_ON_ERROR(expr, ...)\
-    if((expr) != S_OK)\
-    {\
-        char buffer[256]{};\
-        snprintf(buffer, sizeof(buffer), __VA_ARGS__);\
-        OutputDebugStringA(buffer);\
-        exit(-1);\
-    }
-
 
 namespace dx
 {

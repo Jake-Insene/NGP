@@ -10,10 +10,13 @@
 #include "FileFormat/ISA.h"
 
 #define MAKE_ERROR(TOKEN, BREAKER, ...) \
-    ErrorManager::error(TOKEN.source_file.c_str(), TOKEN.line, __VA_ARGS__);\
-    BREAKER;
+    {\
+        ErrorManager::error(TOKEN.source_file.c_str(), TOKEN.line, __VA_ARGS__);\
+        BREAKER;\
+    }
 
-enum class ParsePrecedence {
+enum class ParsePrecedence
+{
     None,
     Start,
     BitwiseOr,
@@ -28,14 +31,16 @@ enum class ParsePrecedence {
     Primary,
 };
 
-struct Symbol {
+struct Symbol
+{
     std::string symbol;
 
     const char* source_file;
     u32 line;
     bool is_defined;
 
-    union {
+    union
+    {
         u32 address;
         u64 uvalue;
         i64 ivalue;
@@ -44,13 +49,22 @@ struct Symbol {
     };
 };
 
-struct InstructionToResolve {
+enum ResolveType
+{
+    ResolveInstruction,
+    ResolveDirective,
+};
+
+struct ToResolveItem
+{
+    ResolveType type;
     // index to change
     u32 index;
     u32 address;
 };
 
-struct Assembler {
+struct Assembler
+{
     bool assemble_file(const char* file_path, const char* output_path);
 
     // First phase: search labels and constants
@@ -69,6 +83,8 @@ struct Assembler {
 
     void assemble_binary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit, bool is_additional_opc, bool use_amount);
 
+    void assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 q_opc);
+
     void assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit);
 
     void assemble_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8));
@@ -82,7 +98,7 @@ struct Assembler {
     void check_for_amount(u8& adder, u8& amount);
 
     // Third phase: resolving instructions
-    void resolve_instructions();
+    void resolve_pending();
 
     void advance();
     void synchronize();
@@ -135,7 +151,8 @@ struct Assembler {
     Token* next;
     u32 token_index;
 
-    struct {
+    struct
+    {
         bool undefined_label;
         bool unknown_label;
         bool is_in_resolve;
@@ -148,7 +165,7 @@ struct Assembler {
     std::string_view extension;
     std::string_view last_label;
     std::unordered_map<std::string, Symbol> symbols;
-    std::vector<InstructionToResolve> to_resolve;
+    std::vector<ToResolveItem> to_resolve;
 
     u32 origin_address;
     u32 last_size;

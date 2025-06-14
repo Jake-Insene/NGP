@@ -100,7 +100,7 @@ bool Assembler::assemble_file(const char* file_path, const char* output_path)
             return false;
         }
 
-        resolve_instructions();
+        resolve_pending();
         if (ErrorManager::is_panic_mode) {
             return false;
         }
@@ -347,7 +347,7 @@ void Assembler::phase2()
     }
 }
 
-void Assembler::resolve_instructions()
+void Assembler::resolve_pending()
 {
     context.is_in_resolve = true;
     u32 index = program_index;
@@ -363,7 +363,10 @@ void Assembler::resolve_instructions()
         advance();
         advance();
 
-        assemble_instruction();
+        if (tr.type == ResolveInstruction)
+            assemble_instruction();
+        else if(tr.type == ResolveDirective)
+            assemble_directive();
     }
 
     program_index = index;
@@ -394,7 +397,7 @@ void Assembler::synchronize()
             }
             break;
         case TOKEN_INSTRUCTION:
-            break;
+            return;
         case TOKEN_SYMBOL:
             if (next->is(TOKEN_EQUAL))
             {
@@ -445,17 +448,20 @@ void Assembler::advance_to_next_line()
 
 u8 Assembler::get_register(Token tk)
 {
-    if (tk.subtype >= TOKEN_R0 && tk.subtype <= TOKEN_R31) {
+    if (tk.subtype >= TOKEN_R0 && tk.subtype <= TOKEN_R31)
         return u8(tk.subtype);
-    }
-    else if (tk.subtype >= TOKEN_S0 && tk.subtype <= TOKEN_S31) {
+    else if (tk.subtype >= TOKEN_S0 && tk.subtype <= TOKEN_S31)
         return u8(tk.subtype - TOKEN_S0);
-    }
-    else if (tk.subtype >= TOKEN_D0 && tk.subtype <= TOKEN_D31) {
+    else if (tk.subtype >= TOKEN_D0 && tk.subtype <= TOKEN_D31)
         return u8(tk.subtype - TOKEN_D0);
-    }
+    else if (tk.subtype >= TOKEN_V0 && tk.subtype <= TOKEN_V31)
+        return u8(tk.subtype - TOKEN_V0);
+    else if (tk.subtype >= TOKEN_V0_S4 && tk.subtype <= TOKEN_V31_S4)
+        return u8(tk.subtype - TOKEN_V0_S4);
+    else if (tk.subtype >= TOKEN_V0_D2 && tk.subtype <= TOKEN_V31_D2)
+        return u8(tk.subtype - TOKEN_V0_D2);
 
-    return u8(-1);
+    MAKE_ERROR(tk, return u8(-1), "invalid register name");
 }
 
 u32& Assembler::new_word()

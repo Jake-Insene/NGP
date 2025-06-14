@@ -44,7 +44,7 @@ void OS::sleep(i32 milisec)
     Sleep(milisec);
 }
 
-void* OS::allocate_virtual_memory(void* address, u64 size, PageAccess access)
+void* OS::allocate_virtual_memory(void* address, usize size, PageAccess access)
 {
     return VirtualAlloc(address, size, MEM_COMMIT | MEM_RESERVE, get_protection(access));
 }
@@ -64,7 +64,7 @@ u32 OS::exception_handler(void* ptr)
         if((address & 0xFFFF'FFFF'0000'0000) == 0x1'0000'0000)
         {
             printf(
-                "error: trying to write to inaccesible memory address: %016llX\n"
+                "error: trying to write to inaccessible memory address: %016llX\n"
                 "\tvirtual address: %08X\n",
                 address, VirtualAddress(address)
             );

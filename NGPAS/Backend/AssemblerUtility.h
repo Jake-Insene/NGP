@@ -82,10 +82,21 @@
     );
 }
 
-[[nodiscard]] static constexpr u32 fbinary(u16 opcode, u8 dest, u8 src1, u8 src2, u8 src3)
+[[nodiscard]] static constexpr u32 fbinary(u16 opcode, u8 dest, u8 src1, u8 src2)
 {
     return u32(
         NGP_FP_OP
+        | (opcode << 6)
+        | (dest << 17)
+        | (src1 << 22)
+        | (src2 << 27)
+    );
+}
+
+[[nodiscard]] static constexpr u32 fp_4op(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3)
+{
+    return u32(
+        NGP_FP_4OP
         | (opcode << 6)
         | (dest << 12)
         | (src1 << 17)
@@ -117,7 +128,8 @@
     return u32(
         NGP_LOAD_STORE_FP_IMMEDIATE
         | (opcode << 6)
-        | (dest_src << 11) | (base << 16)
+        | (dest_src << 9)
+        | (base << 14)
         | (add_sub << 19)
         | (offset << 20)
     );

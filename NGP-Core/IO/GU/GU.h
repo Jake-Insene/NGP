@@ -15,39 +15,35 @@ namespace IO
 // DMA Channel Mask
 // [0] Transfer
 // [1] Queue
-static constexpr VirtualAddress GU_IRQ_MASK =   GU_BASE | 0x0000;
-static constexpr VirtualAddress GU_IRQ_STATUS = GU_BASE | 0x0004;
+static constexpr VirtualAddress GU_IRQ_MASK =   0x0000;
+static constexpr VirtualAddress GU_IRQ_STATUS = 0x0004;
 
 // GU Control
 // [0] Restart
-static constexpr VirtualAddress GU_CTR =        GU_BASE | 0x0008;
-static constexpr VirtualAddress GU_ID =         GU_BASE | 0x000C;
-
-// Transfer Protocol
-static constexpr VirtualAddress GU_TRANSFER_INADDR =    GU_BASE | 0x0010;
-static constexpr VirtualAddress GU_TRANSFER_INFMT =     GU_BASE | 0x0014;
-static constexpr VirtualAddress GU_TRANSFER_OUTADDR =   GU_BASE | 0x0018;
-static constexpr VirtualAddress GU_TRANSFER_OUTFMT =    GU_BASE | 0x001C;
-
-// [0 - 7] -> GUTransferCommand
-// [31] -> Start execution
-static constexpr VirtualAddress GU_TRANSFER_CTR =       GU_BASE | 0x0020;
-static constexpr VirtualAddress GU_TRANSFER_IRQ_MASK =  GU_BASE | 0x0024;
-static constexpr VirtualAddress GU_TRANSFER_ID =        GU_BASE | 0x0028;
+static constexpr VirtualAddress GU_CTR =        0x0008;
+static constexpr VirtualAddress GU_ID =         0x000C;
 
 // Command Queue
-// [0 - 2] Command List Type (Graphics, MISC)
-// [3 - 4] Execution Priority (Low, Normal, High)
-static constexpr VirtualAddress GU_QUEUE_CMD =      GU_BASE | 0x0030;
-static constexpr VirtualAddress GU_QUEUE_ADDR =     GU_BASE | 0x0034;
+// [0 - 1] Queue Priority
+// [2 - 3] Queue Index
 // [31] -> Start execution
-static constexpr VirtualAddress GU_QUEUE_CTR =      GU_BASE | 0x0038;
-static constexpr VirtualAddress GU_QUEUE_STATE =    GU_BASE | 0x003C;
+static constexpr VirtualAddress GU_QUEUE_CTR =      0x0010;
+// Command Queue State
+// [0 - 1] Queue State 0
+// [2 - 3] Queue State 1
+// [4 - 5] Queue State 2
+// [6 - 7] Queue State 3
+static constexpr VirtualAddress GU_QUEUE_STATE =    0x0014;
+// Command List Address
+// [0 - 31] Command List Base Address.
+static constexpr VirtualAddress GU_QUEUE_ADDR = 0x0018;
+// Command List Address
+// [0 - 31] Command List Buffer Size, in words.
+static constexpr VirtualAddress GU_QUEUE_LEN =  0x001C;
 
 enum GUIRQMask
 {
-    GU_IRQ_MASK_TRANSFER = 0x1,
-    GU_IRQ_MASK_QUEUE = 0x2,
+    GU_IRQ_MASK_QUEUE = 0x1,
 };
 
 enum GUControlBit
@@ -60,67 +56,60 @@ enum GUID
     GU1 = 0,
 };
 
-enum GUTransferControlBit
+enum GUQueueIndex
 {
-    GU_TRANSFER_START = 0x8000'0000,
-};
+    GU_QUEUE_INDEX0 = 0x0,
+    GU_QUEUE_INDEX1 = 0x1,
+    GU_QUEUE_INDEX2 = 0x2,
+    GU_QUEUE_INDEX3 = 0x3,
 
-enum GUTransferCommand
-{
-    GU_TRANSFER_TEXTURE_COPY = 0x0,
-};
-
-enum TransferID
-{
-    TRANSFER1 = 0,
+    GU_QUEUE_INDEX_MAX = 0x4,
 };
 
 enum GUQueueControlBit
 {
-    GU_QUEUE_START = 0x8000'0000,
+    GU_QUEUE_PRIORITY_LOW =     0x0,
+    GU_QUEUE_PRIORITY_NORMAL =  0x1,
+    GU_QUEUE_PRIORITY_HIGH =    0x2,
+
+    GU_QUEUE_START =            0x8000'0000,
 };
 
-enum GUQueueCommand
+// GU Command Layout
+// [0 - 23] Command arguments.
+// [24 - 31] Command ID.
+enum GUCommand
 {
-    GU_QUEUE_CMD_RUN = 0x0,
-};
+    GU_COMMAND_END = 0x0,
 
-enum GUQueuePriority
-{
-    GU_QUEUE_PRIORITY_LOW = 0x1,
-    GU_QUEUE_PRIORITY_NORMAL = 0x2,
-    GU_QUEUE_PRIORITY_HIGH = 0x4,
+    // 0x01BBGGRR | RGB color in command arguments, 8 bits each component.
+    // 0xYYYYXXXX | X, Y top left coordinates of the rectangle.
+    // 0xHHHHWWWW | W, H size of the rectangle.
+    GU_COMMAND_RECT = 0x1,
+
+    // 0x02AAAAAA | Texture address in command arguments, aligned in 256 bytes.
+    // 0xTFHHHWWW | W, H size of the texture, F for texture format,
+    //              T is for the texture unit
+    GU_COMMAND_TEXTURE_SET,
 };
 
 struct GURegisters
 {
-    // 0x00
+    // 0x000
     Word irq_mask;
     Word irq_status;
     Word ctr;
     Word id;
 
-    // 0x10
-    VirtualAddress transfer_in_address;
-    VirtualAddress transfer_in_fmt;
-
-    VirtualAddress transfer_out_address;
-    VirtualAddress transfer_out_fmt;
-
-    // 0x0020
-    Word transfer_ctr;
-    Word transfer_irq_mask;
-    Word transfer_id;
-    Word padding[1];
-
-    // 0x0030
-    Word queue_cmd;
-    Word queue_addr;
+    // 0x010
     Word queue_ctr;
     Word queue_state;
+    Word queue_addr;
+    Word queue_len;
 };
 
-GURegisters& get_gu_registers();
+IODevice gu_get_io_device();
+GURegisters& gu_get_registers();
 
 void gu_handle_write_word(VirtualAddress address, Word value);
 

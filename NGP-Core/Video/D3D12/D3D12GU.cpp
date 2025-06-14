@@ -11,6 +11,22 @@
 #include "Memory/Bus.h"
 #include "Platform/OS.h"
 
+#define D3D12_LOGGER(...) { printf("Video/D3D12: "); printf(__VA_ARGS__); putchar('\n'); }
+
+#define DEBUG_OUTPUT(str) OutputDebugStringA(str)
+
+#define DX_ERROR(expr, ...)\
+    if((expr) != S_OK)\
+    {\
+        D3D12_LOGGER(__VA_ARGS__);\
+    }
+
+#define DX_EXI_ON_ERROR(expr, ...)\
+    if((expr) != S_OK)\
+    {\
+        D3D12_LOGGER(__VA_ARGS__);\
+    }
+
 
 struct Vertex
 {
@@ -28,8 +44,6 @@ const Vertex vertices[] =
     Vertex(-1.f, -1.f, 0, 1),
     Vertex(-1.f, 1.f, 0, 0),
 };
-
-static constexpr usize VRamAddress = 0x2'0000'0000;
 
 GU::GUDriver D3D12GU::get_driver()
 {
@@ -407,8 +421,11 @@ void D3D12GU::shutdown()
     dx::release(state.root_signature);
     dx::release(state.vb);
 
-    dx::release(state.framebuffer);
-    dx::release(state.upload_framebuffer);
+    for (auto& [key, vfb] : state.vframebuffers)
+    {
+        dx::release(vfb.upload_buffer);
+        dx::release(vfb.framebuffer);
+    }
 
     dx::release(state.swap_chain);
     dx::release(state.dxgi_factory);
@@ -442,7 +459,14 @@ void D3D12GU::shutdown()
 
 void D3D12GU::present_framebuffer(PhysicalAddress fb, bool vsync)
 {
-	ID3D12Resource* framebuffer = (ID3D12Resource*)fb;
+    auto it = state.vframebuffers.find(D3D12_GPU_VIRTUAL_ADDRESS(fb));
+    if (it == state.vframebuffers.end())
+    {
+        DEBUG_OUTPUT("Invalid framebuffer address");
+        return;
+    }
+
+    VFramebuffer& vfb = it->second;
 
     Framebuffer& frame = state.framebuffers[state.current_frame];
     if (frame.fence_value != frame.fence->GetCompletedValue())
@@ -479,7 +503,7 @@ void D3D12GU::present_framebuffer(PhysicalAddress fb, bool vsync)
     cmd_graphics->SetPipelineState(state.blit_pipeline);
     cmd_graphics->SetGraphicsRootSignature(state.root_signature);
     cmd_graphics->SetDescriptorHeaps(1, &state.srv_heap);
-    cmd_graphics->SetGraphicsRootDescriptorTable(0, state.framebuffer_srv);
+    cmd_graphics->SetGraphicsRootDescriptorTable(0, vfb.srv);
     D3D12_VERTEX_BUFFER_VIEW vb_view =
     {
         .BufferLocation = state.vb->GetGPUVirtualAddress(),
@@ -547,8 +571,10 @@ void D3D12GU::present(bool vsync)
 
 PhysicalAddress D3D12GU::create_framebuffer(i32 width, i32 height)
 {
-    state.framebuffer_width = width;
-    state.framebuffer_height = height;
+    VFramebuffer new_vfb = {};
+
+    new_vfb.size.x = width;
+    new_vfb.size.y = height;
 
     D3D12_HEAP_PROPERTIES heap_properties = dx::heap_properties(D3D12_HEAP_TYPE_DEFAULT);
 
@@ -556,8 +582,8 @@ PhysicalAddress D3D12GU::create_framebuffer(i32 width, i32 height)
     {
         .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
         .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-        .Width = (UINT)state.framebuffer_width,
-        .Height = (UINT)state.framebuffer_height,
+        .Width = (UINT)width,
+        .Height = (UINT)height,
         .DepthOrArraySize = 1,
         .MipLevels = 1,
         .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -566,7 +592,7 @@ PhysicalAddress D3D12GU::create_framebuffer(i32 width, i32 height)
 
     (void)state.device->CreateCommittedResource(
         &heap_properties, D3D12_HEAP_FLAG_NONE, &resource_desc,
-        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(&state.framebuffer)
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(&new_vfb.framebuffer)
     );
 
     D3D12_SHADER_RESOURCE_VIEW_DESC view_desc =
@@ -577,28 +603,40 @@ PhysicalAddress D3D12GU::create_framebuffer(i32 width, i32 height)
         .Texture2D = {.MipLevels = 1}
     };
 
-    state.device->CreateShaderResourceView(state.framebuffer, &view_desc, state.srv_heap->GetCPUDescriptorHandleForHeapStart());
-    state.framebuffer_srv = state.srv_heap->GetGPUDescriptorHandleForHeapStart();
+    state.device->CreateShaderResourceView(new_vfb.framebuffer, &view_desc, state.srv_heap->GetCPUDescriptorHandleForHeapStart());
+    new_vfb.srv = state.srv_heap->GetGPUDescriptorHandleForHeapStart();
 
     heap_properties = dx::heap_properties(D3D12_HEAP_TYPE_UPLOAD);
-    resource_desc = dx::buffer_desc(state.framebuffer_width * state.framebuffer_height * 4);
+    resource_desc = dx::buffer_desc(width * height * 4);
 
     (void)state.device->CreateCommittedResource(
         &heap_properties, D3D12_HEAP_FLAG_NONE, &resource_desc,
-        D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&state.upload_framebuffer)
+        D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&new_vfb.upload_buffer)
     );
 
-    return PhysicalAddress(state.framebuffer);
+    D3D12_LOGGER(
+        "Framebuffer created at address: 0x%016llX, W: %d, H: %d", 
+        new_vfb.srv.ptr, width, height
+    );
+
+    state.vframebuffers.insert({ new_vfb.srv.ptr, new_vfb });
+    return PhysicalAddress(new_vfb.srv.ptr);
 }
 
 void D3D12GU::update_framebuffer(PhysicalAddress fb, void* va)
 {
-    ID3D12Resource* framebuffer = (ID3D12Resource*)fb;
+    auto it = state.vframebuffers.find(D3D12_GPU_VIRTUAL_ADDRESS(fb));
+    if (it == state.vframebuffers.end())
+    {
+        DEBUG_OUTPUT("Invalid framebuffer address");
+        return;
+    }
+    VFramebuffer& vfb = it->second;
 
     void* data;
-    state.upload_framebuffer->Map(0, nullptr, &data);
-    memcpy(data, va, state.framebuffer_width * state.framebuffer_height * 4);
-    state.upload_framebuffer->Unmap(0, nullptr);
+    vfb.upload_buffer->Map(0, nullptr, &data);
+    memcpy(data, va, vfb.size.x * vfb.size.y * 4);
+    vfb.upload_buffer->Unmap(0, nullptr);
 
     Framebuffer& frame = state.framebuffers[state.current_frame];
     if (frame.fence_value != frame.fence->GetCompletedValue())
@@ -612,11 +650,11 @@ void D3D12GU::update_framebuffer(PhysicalAddress fb, void* va)
     cmd_graphics->Reset(frame.cmd_graphics_allocator, nullptr);
 
     D3D12_RESOURCE_BARRIER t3 = dx::transition_barrier(
-        state.upload_framebuffer, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE
+        vfb.upload_buffer, 0, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE
     );
 
     D3D12_RESOURCE_BARRIER t4 = dx::transition_barrier(
-        framebuffer, 0, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST
+        vfb.framebuffer, 0, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST
     );
 
     D3D12_RESOURCE_BARRIER translations[] = { t3, t4};
@@ -624,24 +662,24 @@ void D3D12GU::update_framebuffer(PhysicalAddress fb, void* va)
 
     D3D12_TEXTURE_COPY_LOCATION dest =
     {
-        .pResource = framebuffer,
+        .pResource = vfb.framebuffer,
         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
         .SubresourceIndex = 0,
     };
 
     D3D12_TEXTURE_COPY_LOCATION src =
     {
-        .pResource = state.upload_framebuffer,
+        .pResource = vfb.upload_buffer,
         .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
     };
 
     src.PlacedFootprint.Footprint =
     {
         .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-        .Width = (UINT)state.framebuffer_width,
-        .Height = (UINT)state.framebuffer_height,
+        .Width = (UINT)vfb.size.x,
+        .Height = (UINT)vfb.size.y,
         .Depth = 1,
-        .RowPitch = (UINT)state.framebuffer_width*4
+        .RowPitch = (UINT)vfb.size.x*4
     };
 
     D3D12_BOX box =
@@ -649,20 +687,20 @@ void D3D12GU::update_framebuffer(PhysicalAddress fb, void* va)
         .left = 0,
         .top = 0,
         .front = 0,
-        .right = (UINT)state.framebuffer_width,
-        .bottom = (UINT)state.framebuffer_height,
+        .right = (UINT)vfb.size.x,
+        .bottom = (UINT)vfb.size.y,
         .back = 1,
     };
 
     cmd_graphics->CopyTextureRegion(&dest, 0, 0, 0, &src, &box);
 
     D3D12_RESOURCE_BARRIER translation1 = dx::transition_barrier(
-        state.upload_framebuffer, 0, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COMMON
+        vfb.upload_buffer, 0, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COMMON
     );
     cmd_graphics->ResourceBarrier(1, &translation1);
 
     D3D12_RESOURCE_BARRIER translation2 = dx::transition_barrier(
-        framebuffer, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+        vfb.framebuffer, 0, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
     );
     cmd_graphics->ResourceBarrier(1, &translation2);
 
@@ -674,5 +712,7 @@ void D3D12GU::update_framebuffer(PhysicalAddress fb, void* va)
     // Signal fence
     HRESULT result = state.queue_graphics->Signal(frame.fence, ++frame.fence_value);
     state.queue_graphics->Wait(frame.fence, frame.fence_value);
+
+    D3D12_LOGGER("Framebuffer 0x%016llX updated from address: 0x%016llX", vfb.srv.ptr, (u64)va);
 }
 

@@ -12,7 +12,27 @@
 namespace IO
 {
 
-DisplayRegisters& get_display_registers()
+IODevice display_get_io_device()
+{
+	return IODevice
+	{
+		.base_address = DISPLAY_BASE,
+
+		.read_byte = [](VirtualAddress) -> u8 { return 0; },
+		.read_half = [](VirtualAddress) -> u16 { return 0; },
+		.read_word = [](VirtualAddress) -> Word { return 0; },
+		.read_dword = [](VirtualAddress) -> DWord { return 0; },
+		.read_qword = [](VirtualAddress) -> QWord { return QWord(); },
+
+		.write_byte = [](VirtualAddress, u8) {},
+		.write_half = [](VirtualAddress, u16) {},
+		.write_word = &display_handle_write_word,
+		.write_dword = [](VirtualAddress, DWord) {},
+		.write_qword = [](VirtualAddress, QWord) {},
+	};
+}
+
+DisplayRegisters& display_get_registers()
 {
 	return *(DisplayRegisters*)(Bus::MAPPED_BUS_ADDRESS_START + DISPLAY_BASE);
 }
@@ -20,24 +40,30 @@ DisplayRegisters& get_display_registers()
 
 void display_handle_write_word(VirtualAddress address, Word value)
 {
-	if (address != DISPLAY_CTR && (get_display_registers().ctr & DISPLAY_ENABLE) != 1)
-		return;
-
 	switch (address)
 	{
 	case DISPLAY_CTR:
-		get_display_registers().ctr = value;
+		display_get_registers().ctr = value;
 		break;
-	case DISPLAY_BUFFER:
-		GU::display_set_address(value);
-		get_display_registers().buffer = value;
+	case DISPLAY_BUFFER_ADDR:
+		if (display_get_registers().ctr & DISPLAY_ENABLE)
+		{
+			GU::display_set_address(value);
+			display_get_registers().buffer_addr = value;
+		}
 		break;
 	case DISPLAY_FORMAT:
-		GU::display_set_config(value & 0x3FFF, (value >> 14) & 0x3FFF, (IO::DisplayFormat)(value >> 28));
-		get_display_registers().format = value;
+		if (display_get_registers().ctr & DISPLAY_ENABLE)
+		{
+			GU::display_set_config(value & 0x3FFF, (value >> 14) & 0x3FFF, (IO::DisplayFormat)(value >> 28));
+			display_get_registers().format = value;
+		}
 		break;
 	case DISPLAY_PRESENT:
-		GU::request_present();
+		if (display_get_registers().ctr & DISPLAY_ENABLE)
+		{
+			GU::request_present();
+		}
 		break;
 	default:
 		break;

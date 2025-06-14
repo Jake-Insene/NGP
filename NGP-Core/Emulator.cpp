@@ -71,7 +71,7 @@ void thread_core_callback(void* arg)
                 thread.elapsed = 0.0;
                 thread.last_cycle_counter = thread.cycle_counter;
 
-                if (thread.cycle_counter >= thread.clock_speed)
+                if (thread.cycle_counter >= thread.clock_speed && thread.signal != Emulator::END)
                 {
                     thread.signal = Emulator::NONE;
                 }

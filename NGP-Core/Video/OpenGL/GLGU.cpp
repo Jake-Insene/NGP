@@ -34,7 +34,7 @@ void GLGU::present(bool vsync) {}
 void GLGU::display_set_config(i32 width, i32 height, IO::DisplayFormat display_format) {}
 void GLGU::display_set_address(VirtualAddress vva) {}
 
-Bus::CheckAddressResult GLGU::check_vram_address(VirtualAddress vva) { return Bus::ValidVirtualAddress; }
+Bus::CheckAddressResult GLGU::check_vram_address(VirtualAddress vva) { return Bus::ValidAddress; }
 
 PhysicalAddress GLGU::create_framebuffer(i32, i32) { return PhysicalAddress(0); }
 void GLGU::update_framebuffer(PhysicalAddress, void*) {}

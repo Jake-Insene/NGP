@@ -7,6 +7,8 @@
 #include "Video/VGU/VGU.h"
 
 #include "Memory/Bus.h"
+#include "IO/DMA/DMA.h"
+#include "IO/GU/GU.h"
 #include "Platform/OS.h"
 #include "Video/OpenGL/GLGU.h"
 
@@ -18,6 +20,14 @@
 
 #include <cstdlib>
 #include <algorithm>
+
+#define VGPU_LOGGER(...) { printf("VGPU: "); printf(__VA_ARGS__); putchar('\n'); }
+
+static inline void queue_rutine(VGU::Queue* queue)
+{
+
+}
+
 
 GU::GUDriver get_internal_driver(GU::DriverApi api)
 {
@@ -46,56 +56,77 @@ GU::GUDriver get_internal_driver(GU::DriverApi api)
     return {};
 }
 
-static constexpr usize VRamAddress = 0x2'0000'0000;
 
-
-f32 signed_triangle_area(Vector2 p1, Vector2 p2, Vector2 p3)
-{
-    return 0.5f * ((p2.y - p1.y) * (p2.x + p1.x) + (p3.y - p2.y) * (p3.x + p2.x) + (p1.y - p3.y) * (p1.x + p3.x));
-}
-
-GU::GUDriver VGPU::get_driver()
+GU::GUDriver VGU::get_driver()
 {
     return GU::GUDriver
     {
-        .initialize = &VGPU::initialize,
-        .shutdown = &VGPU::shutdown,
+        .initialize = &VGU::initialize,
+        .shutdown = &VGU::shutdown,
         
-        .present = &VGPU::present,
-        .request_present = &VGPU::request_present,
+        .present = &VGU::present,
+        .request_present = &VGU::request_present,
 
-        .display_set_config = &VGPU::display_set_config,
-        .display_set_address = &VGPU::display_set_address,
+        .display_set_config = &VGU::display_set_config,
+        .display_set_address = &VGU::display_set_address,
 
-        .check_vram_address = &VGPU::check_vram_address,
+        .queue_execute = &VGU::queue_execute,
 
-        .create_framebuffer = nullptr,
-        .update_framebuffer = nullptr,
+        .dma_send = &VGU::dma_send,
+
+        .check_vram_address = &VGU::check_vram_address,
     };
 }
 
-void VGPU::initialize()
+void VGU::initialize()
 {
     // VRAM
     state.vram = (Word*)OS::allocate_virtual_memory((void*)VRamAddress, Bus::get_vram_size(), OS::PAGE_READ_WRITE);
 
     state.present_requested = false;
+    state.irq_pending = false;
+    state.queue_requested = false;
 
     // Internal driver
     state.internal_driver = get_internal_driver(GU::D3D12);
     state.internal_driver.initialize();
+
+    for (u32 i = 0; i < IO::GU_QUEUE_INDEX_MAX; i++)
+    {
+        state.queues[i].id = i;
+        state.queues[i].priority = IO::GU_QUEUE_PRIORITY_LOW;
+        state.queues[i].cmd_list = VirtualAddress(0);
+        state.queues[i].cmd_len = 0;
+    }
 }
 
-void VGPU::shutdown()
+void VGU::shutdown()
 {
     OS::deallocate_virtual_memory((void*)VRamAddress);
 
     state.internal_driver.shutdown();
 }
 
-void VGPU::present(bool vsync)
+void VGU::present(bool vsync)
 {
-    if (state.display_address == nullptr || state.width == 0 || state.height == 0 || !state.present_requested)
+    state.sync_mutex.lock();
+    bool present_requested = state.present_requested;
+    bool queue_requested = state.queue_requested;
+    state.sync_mutex.unlock();
+
+    if (queue_requested)
+    {
+        for (auto& queue : state.queues)
+        {
+            queue_execute_cmd(&queue);
+        }
+
+        state.sync_mutex.lock();
+        state.queue_requested = false;
+        state.sync_mutex.unlock();
+    }
+
+    if (state.display_address == nullptr || state.width == 0 || state.height == 0 || !present_requested)
         return;
 
     state.internal_driver.update_framebuffer(state.fb, state.display_address);
@@ -104,16 +135,18 @@ void VGPU::present(bool vsync)
     state.sync_mutex.lock();
     state.present_requested = false;
     state.sync_mutex.unlock();
+
+    VGPU_LOGGER("Present: FB=0x%016llX", state.fb);
 }
 
-void VGPU::request_present()
+void VGU::request_present()
 {
     state.sync_mutex.lock();
     state.present_requested = true;
     state.sync_mutex.unlock();
 }
 
-void VGPU::display_set_config(i32 width, i32 height, IO::DisplayFormat display_format)
+void VGU::display_set_config(i32 width, i32 height, IO::DisplayFormat display_format)
 {
     state.fb = state.internal_driver.create_framebuffer(width, height);
 
@@ -122,17 +155,91 @@ void VGPU::display_set_config(i32 width, i32 height, IO::DisplayFormat display_f
     state.display_format = display_format;
 }
 
-void VGPU::display_set_address(VirtualAddress vva)
+void VGU::display_set_address(VirtualAddress vva)
 {
-    state.display_address = (Word*)Bus::get_physical_addr(vva);
+    state.display_address = (Word*)((u8*)state.vram + vva);
 }
 
-Bus::CheckAddressResult VGPU::check_vram_address(VirtualAddress vva)
+void VGU::queue_execute(u8 index, u8 priority, VirtualAddress cmd_list, Word cmd_len)
 {
-    return vva < Bus::get_vram_size() ? Bus::ValidVirtualAddress : Bus::InvalidVirtualAddress;
+    Word* cmd_words = (Word*)Bus::get_physical_addr(cmd_list);
+
+    if ((cmd_len & 0x3) != 0)
+    {
+        VGPU_LOGGER("Unaligned Command List Base Address");
+        return;
+    }
+
+    if (cmd_len == 0)
+        return;
+
+    if (index >= IO::GU_QUEUE_INDEX_MAX)
+    {
+        VGPU_LOGGER("Invalid Queue Index");
+        return;
+    }
+
+    Queue* queue = &state.queues[index];
+    queue->queue_mutex.lock();
+    queue->priority = priority;
+    queue->cmd_list = cmd_list;
+    queue->cmd_len = cmd_len;
+    queue->queue_mutex.unlock();
+
+    // Non low priority start execution immediately
+    queue_send_signal(queue, QUEUE_START);
 }
 
-void VGPU::set_pixel(i32 x, i32 y, Color color)
+void VGU::dma_send(VirtualAddress dest, VirtualAddress src, Word len, Word flags)
+{
+    PhysicalAddress dest_mem = Bus::get_physical_addr(dest);
+    PhysicalAddress src_mem = Bus::get_physical_addr(src);
+
+    switch ((flags >> 3) & 0x7F)
+    {
+    case IO::GU_DMA_TEXTURE_R8:
+        while (len--)
+        {
+            *((u8*)dest_mem) = *((u8*)src_mem);
+            dest_mem++;
+            src_mem++;
+        }
+        break;
+    case IO::GU_DMA_TEXTURE_RG8:
+        while (len--)
+        {
+            *((u16*)dest_mem) = *((u16*)src_mem);
+            dest_mem += 2;
+            src_mem += 2;
+        }
+        break;
+    case IO::GU_DMA_TEXTURE_RGB8:
+        while (len--)
+        {
+            struct alignas(1) RGB { u8 r, g, b; };
+            *((RGB*)dest_mem) = *((RGB*)src_mem);
+            *((RGB*)dest_mem) = *((RGB*)src_mem);
+            dest_mem += 3;
+            src_mem += 3;
+        }
+        break;
+    case IO::GU_DMA_TEXTURE_RGBA8:
+        while (len--)
+        {
+            *((Word*)dest_mem) = *((Word*)src_mem);
+            dest_mem += 4;
+            src_mem += 4;
+        }
+        break;
+    }
+}
+
+Bus::CheckAddressResult VGU::check_vram_address(VirtualAddress vva)
+{
+    return vva < Bus::get_vram_size() ? Bus::ValidAddress : Bus::InvalidAddress;
+}
+
+void VGU::set_pixel(i32 x, i32 y, Color color)
 {
     if (x < 0 || x >= state.width || y < 0 || y >= state.height)
         return;
@@ -140,77 +247,83 @@ void VGPU::set_pixel(i32 x, i32 y, Color color)
     state.display_address[x + y * state.width] = *(Word*)&color;
 }
 
-void VGPU::draw_line(Vector2 start, Vector2 end, Color color)
+void VGU::queue_send_signal(Queue* queue, QueueSignal signal)
 {
-    f32 x0 = start.x;
-    f32 x1 = end.x;
-    f32 y0 = start.y;
-    f32 y1 = end.y;
+    queue->queue_mutex.lock();
+    queue->signal = signal;
+    queue->queue_mutex.unlock();
 
-    bool steep = false;
-    if (std::abs(x0 - x1) < std::abs(y0 - y1))
+    state.sync_mutex.lock();
+    state.queue_requested = true;
+    state.sync_mutex.unlock();
+}
+
+void VGU::queue_execute_cmd(Queue* queue)
+{
+    queue->queue_mutex.lock();
+    QueueSignal signal = queue->signal;
+    queue->queue_mutex.unlock();
+
+    if (signal == QUEUE_IDLE)
+        return;
+
+    Word* cmd_list = (Word*)Bus::get_physical_addr(queue->cmd_list);
+    Word cmd_len = queue->cmd_len;
+
+    while (cmd_len)
     {
-        std::swap(x0, y0);
-        std::swap(x1, y1);
-        steep = true;
-    }
-    if (x0 > x1)
-    {
-        std::swap(x0, x1);
-        std::swap(y0, y1);
-    }
-    f32 dx = x1 - x0;
-    f32 dy = y1 - y0;
-    f32 derror2 = std::abs(dy) * 2;
-    f32 error2 = 0;
-    f32 y = y0;
-    for (f32 x = x0; x <= x1; x++)
-    {
-        if (steep)
+        Word cmd_w = cmd_list[0];
+        cmd_list++;
+        cmd_len--;
+
+        IO::GUCommand cmd = IO::GUCommand(cmd_w >> 24);
+
+        switch (cmd)
         {
-            set_pixel((i32)y, (i32)x, color);
+        case IO::GU_COMMAND_END:
+            cmd_len = 0;
+            break;
+        case IO::GU_COMMAND_RECT:
+        {
+            if (!cmd_len) break;
+
+            Color rgb = {};
+            *((Word*)&rgb) = cmd_w & 0xFFFFFF;
+            rgb.a = 0xFF;
+
+            u16 x, y, w, h;
+            cmd_w = cmd_list[0];
+            cmd_list++;
+            cmd_len--;
+            if (!cmd_len) break;
+
+            x = cmd_w & 0xFFFF;
+            y = (cmd_w >> 16);
+
+            cmd_w = cmd_list[0];
+            cmd_list++;
+            cmd_len--;
+
+            w = (cmd_w) & 0xFFFF;
+            h = (cmd_w >> 16);
+
+            fill_rectangle(rgb, x, y, w, h);
         }
-        else
-        {
-            set_pixel((i32)x, (i32)y, color);
+            break;
         }
-        error2 += derror2;
-        if (error2 > dx)
+
+
+    }
+}
+
+void VGU::fill_rectangle(Color color, i32 x, i32 y, i32 w, i32 h)
+{
+    for (i32 y1 = y; y1 < y + h; y1++)
+    {
+        for (i32 x1 = x; x1 < x + w; x1++)
         {
-            y += (y1 > y0 ? 1 : -1);
-            error2 -= dx * 2;
+            state.display_address[(y1 * state.height) + x1] = color.rgba;
         }
     }
 }
 
-void VGPU::draw_triangle(Vector2 p1, Vector2 p2, Vector2 p3, Color color)
-{
-    draw_line(p1, p2, color);
-    draw_line(p2, p3, color);
-    draw_line(p3, p1, color);
-}
-
-void VGPU::draw_fill_triangle(Vector2 p1, Vector2 p2, Vector2 p3, Color color)
-{
-    // bounding box for the triangle
-    f32 bbminx = std::min(std::min(p1.x, p2.x), p3.x); 
-    // defined by its top left and bottom right corners
-    f32 bbminy = std::min(std::min(p1.y, p2.y), p3.y);
-    f32 bbmaxx = std::max(std::max(p1.x, p2.x), p3.x);
-    f32 bbmaxy = std::max(std::max(p1.y, p2.y), p3.y);
-    f32 total_area = signed_triangle_area(p1, p2, p3);
-
-    for (f32 x = bbminx; x <= bbmaxx; x++)
-    {
-        for (f32 y = bbminy; y <= bbmaxy; y++)
-        {
-            f32 alpha = signed_triangle_area(Vector2(x, y), p2, p3) / total_area;
-            f32 beta = signed_triangle_area(Vector2(x, y), p3, p1) / total_area;
-            f32 gamma = signed_triangle_area(Vector2(x, y), p1, p2) / total_area;
-            // negative barycentric coordinate => the pixel is outside the triangle
-            if (alpha < 0 || beta < 0 || gamma < 0)
-                continue;
-            set_pixel((i32)x, (i32)y, color);
-        }
-    }
-}

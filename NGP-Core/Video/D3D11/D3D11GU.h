@@ -7,11 +7,22 @@
 #pragma once
 #include "Platform/Header.h"
 #include "Video/GU.h"
+#include "Video/Math.h"
+
+#include <unordered_map>
+
 
 struct D3D11GU
 {
     static constexpr u32 DefaultBufferCount = 2;
     static constexpr DXGI_FORMAT DefaultFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    struct VFramebuffer
+    {
+        ID3D11Texture2D* framebuffer;
+        ID3D11ShaderResourceView* srv;
+        Vector2I size;
+    };
 
     struct GPUState
     {
@@ -31,13 +42,9 @@ struct D3D11GU
         ID3D11Buffer* vb;
         ID3D11SamplerState* sampler;
 
-        ID3D11Texture2D* framebuffer;
-        ID3D11ShaderResourceView* framebuffer_srv;
-        i32 framebuffer_width;
-        i32 framebuffer_height;
+        std::unordered_map<PhysicalAddress, VFramebuffer> vframebuffers;
 
         u64 current_frame;
-
         FLOAT clear_color[4];
     };
 
@@ -48,6 +55,7 @@ struct D3D11GU
     static void initialize();
     static void shutdown();
 
+    static void present_framebuffer(PhysicalAddress fb, bool vsync);
     static void present(bool vsync);
 
     static PhysicalAddress create_framebuffer(i32 width, i32 height);

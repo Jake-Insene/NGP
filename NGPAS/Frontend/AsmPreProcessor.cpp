@@ -8,7 +8,8 @@
 
 #include "Backend/AssemblerUtility.h"
 #include "ErrorManager.h"
-#include "Token.h"
+#include "Frontend/Token.h"
+#include "Frontend/AsmUtility.h"
 #include <fstream>  
 
 void AsmPreProcessor::process(const char* file_path)
@@ -94,27 +95,7 @@ void AsmPreProcessor::process_directive()
         file_path.resize(last.str.size());
         encode_string((u8*)file_path.data(), last.str);
 
-        std::string source_folder = last.source_file;
-#if defined(_WIN32)
-        u64 pos1 = source_folder.find_last_of('\\');
-        u64 pos2 = source_folder.find_last_of('/');
-        u64 pos = std::string::npos;
-        if (pos1 != pos2)
-        {
-            if (pos1 > pos2 && pos1 != std::string::npos)
-                pos = pos1;
-            else
-                pos = pos2;
-        }
-
-#else
-        u64 pos = source_folder.find_last_of('/');
-#endif
-        if(pos != std::string::npos)
-        {
-            source_folder = source_folder.substr(0, pos);
-            file_path = source_folder + "/" + file_path;
-        }
+        file_path = AsmUtility::path_relative_to(last.source_file, file_path);
 
         std::ifstream input{ file_path, std::ios::binary | std::ios::ate };
         if (!input.is_open())

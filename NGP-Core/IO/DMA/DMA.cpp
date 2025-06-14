@@ -6,7 +6,9 @@
 /******************************************************/
 #include "IO/DMA/DMA.h"
 
+#include "Video/GU.h"
 #include "Memory/Bus.h"
+
 
 namespace IO
 {
@@ -16,43 +18,64 @@ enum DMAStatusFlags
     DMA_STATUS_ENABLE = 0x1,
 };
 
-void dma_channel_write(u8 channel, u8 reg, u32 value)
+static inline void dma_channel_write(DMAChannel channel, u8 reg, Word value)
 {
-    switch (reg)
+    DMAChannelInfo& chn = dma_get_registers().channels[channel];
+
+    chn.raw_regs[reg >> 2] = value;
+    if (value & DMA_START)
     {
-    case 0: // DMA_CTR
-        if (value & DMA_START)
+        switch (channel)
         {
-
+        case DMA_RAM:
+            break;
+        case DMA_EMD:
+            break;
+        case DMA_SPU:
+            break;
+        case DMA_GU:
+            GU::dma_send(chn.regs.dst, chn.regs.src, chn.regs.cnt, value);
+            break;
         }
-        break;
-    case 1: // DMA_SRC
-        break;
-    case 2: // DMA_DST
-        break;
-    case 3: // DMA_CNT
-        break;
     }
-
-    get_dma_registers().channels[channel].raw_regs[reg & 0x3] = value;
 }
 
-void dma_set_irq_mask(u8 channel, u32 value)
+static inline void dma_set_irq_mask(Word value)
 {
-    get_dma_registers().irq_mask = value;
+    dma_get_registers().irq_mask = value;
 }
 
-void dma_set_irq_status(u32 value)
+static inline void dma_set_irq_status(Word value)
 {
-    get_dma_registers().irq_status = value;
+    dma_get_registers().irq_status = value;
 }
 
-void dma_wait_on(u32 value)
+static inline void dma_wait_on(Word value)
 {
-    get_dma_registers().wait_on_mask = value;
+    dma_get_registers().wait_on_mask = value;
 }
 
-DMARegisters& get_dma_registers()
+IODevice dma_get_io_device()
+{
+    return IODevice
+    {
+        .base_address = DMA_BASE,
+
+        .read_byte = [](VirtualAddress) -> u8 { return 0; },
+        .read_half = [](VirtualAddress) -> u16 { return 0; },
+        .read_word = [](VirtualAddress) -> Word { return 0; },
+        .read_dword = [](VirtualAddress) -> DWord { return 0; },
+        .read_qword = [](VirtualAddress) -> QWord { return QWord(); },
+
+        .write_byte = [](VirtualAddress, u8) {},
+        .write_half = [](VirtualAddress, u16) {},
+        .write_word = &dma_handle_write_word,
+        .write_dword = [](VirtualAddress, DWord) {},
+        .write_qword = [](VirtualAddress, QWord) {},
+    };
+}
+
+DMARegisters& dma_get_registers()
 {
     return *(DMARegisters*)(Bus::MAPPED_BUS_ADDRESS_START + DMA_BASE);
 }
@@ -61,14 +84,14 @@ void dma_handle_write_word(VirtualAddress address, Word value)
 {
     if (address >= DMA_CHANNELS_START && address < DMA_CHANNELS_END)
     {
-        dma_channel_write((address & 0xF0) >> 4, (address & 0xF) >> 2, value);
+        dma_channel_write(DMAChannel((address & 0xF0) >> 4), (address & 0xF) >> 2, value);
         return;
     }
 
     switch (address)
     {
     case DMA_IRQ_MASK:
-        dma_set_irq_mask((address & 0xF0) >> 4, value);
+        dma_set_irq_mask(value);
         break;
     case DMA_IRQ_STATUS:
         dma_set_irq_status(value);

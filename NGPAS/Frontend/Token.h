@@ -157,38 +157,104 @@ enum TokenRegister : u8
     TOKEN_D30,
     TOKEN_D31,
 
-    TOKEN_Q0,
-    TOKEN_Q1,
-    TOKEN_Q2,
-    TOKEN_Q3,
-    TOKEN_Q4,
-    TOKEN_Q5,
-    TOKEN_Q6,
-    TOKEN_Q7,
-    TOKEN_Q8,
-    TOKEN_Q9,
-    TOKEN_Q10,
-    TOKEN_Q11,
-    TOKEN_Q12,
-    TOKEN_Q13,
-    TOKEN_Q14,
-    TOKEN_Q15,
-    TOKEN_Q16,
-    TOKEN_Q17,
-    TOKEN_Q18,
-    TOKEN_Q19,
-    TOKEN_Q20,
-    TOKEN_Q21,
-    TOKEN_Q22,
-    TOKEN_Q23,
-    TOKEN_Q24,
-    TOKEN_Q25,
-    TOKEN_Q26,
-    TOKEN_Q27,
-    TOKEN_Q28,
-    TOKEN_Q29,
-    TOKEN_Q30,
-    TOKEN_Q31,
+    TOKEN_V0,
+    TOKEN_V1,
+    TOKEN_V2,
+    TOKEN_V3,
+    TOKEN_V4,
+    TOKEN_V5,
+    TOKEN_V6,
+    TOKEN_V7,
+    TOKEN_V8,
+    TOKEN_V9,
+    TOKEN_V10,
+    TOKEN_V11,
+    TOKEN_V12,
+    TOKEN_V13,
+    TOKEN_V14,
+    TOKEN_V15,
+    TOKEN_V16,
+    TOKEN_V17,
+    TOKEN_V18,
+    TOKEN_V19,
+    TOKEN_V20,
+    TOKEN_V21,
+    TOKEN_V22,
+    TOKEN_V23,
+    TOKEN_V24,
+    TOKEN_V25,
+    TOKEN_V26,
+    TOKEN_V27,
+    TOKEN_V28,
+    TOKEN_V29,
+    TOKEN_V30,
+    TOKEN_V31,
+
+    TOKEN_V0_S4,
+    TOKEN_V1_S4,
+    TOKEN_V2_S4,
+    TOKEN_V3_S4,
+    TOKEN_V4_S4,
+    TOKEN_V5_S4,
+    TOKEN_V6_S4,
+    TOKEN_V7_S4,
+    TOKEN_V8_S4,
+    TOKEN_V9_S4,
+    TOKEN_V10_S4,
+    TOKEN_V11_S4,
+    TOKEN_V12_S4,
+    TOKEN_V13_S4,
+    TOKEN_V14_S4,
+    TOKEN_V15_S4,
+    TOKEN_V16_S4,
+    TOKEN_V17_S4,
+    TOKEN_V18_S4,
+    TOKEN_V19_S4,
+    TOKEN_V20_S4,
+    TOKEN_V21_S4,
+    TOKEN_V22_S4,
+    TOKEN_V23_S4,
+    TOKEN_V24_S4,
+    TOKEN_V25_S4,
+    TOKEN_V26_S4,
+    TOKEN_V27_S4,
+    TOKEN_V28_S4,
+    TOKEN_V29_S4,
+    TOKEN_V30_S4,
+    TOKEN_V31_S4,
+
+    TOKEN_V0_D2,
+    TOKEN_V1_D2,
+    TOKEN_V2_D2,
+    TOKEN_V3_D2,
+    TOKEN_V4_D2,
+    TOKEN_V5_D2,
+    TOKEN_V6_D2,
+    TOKEN_V7_D2,
+    TOKEN_V8_D2,
+    TOKEN_V9_D2,
+    TOKEN_V10_D2,
+    TOKEN_V11_D2,
+    TOKEN_V12_D2,
+    TOKEN_V13_D2,
+    TOKEN_V14_D2,
+    TOKEN_V15_D2,
+    TOKEN_V16_D2,
+    TOKEN_V17_D2,
+    TOKEN_V18_D2,
+    TOKEN_V19_D2,
+    TOKEN_V20_D2,
+    TOKEN_V21_D2,
+    TOKEN_V22_D2,
+    TOKEN_V23_D2,
+    TOKEN_V24_D2,
+    TOKEN_V25_D2,
+    TOKEN_V26_D2,
+    TOKEN_V27_D2,
+    TOKEN_V28_D2,
+    TOKEN_V29_D2,
+    TOKEN_V30_D2,
+    TOKEN_V31_D2,
 };
 
 enum TokenDirective : u8
@@ -199,12 +265,17 @@ enum TokenDirective : u8
     TD_AS,
     TD_ORG,
     TD_INCLUDE,
+    TD_INCBIN,
     TD_MACRO,
     TD_STRING,
     TD_BYTE,
     TD_HALF,
     TD_WORD,
     TD_DWORD,
+    TD_FLOAT32,
+    TD_FLOAT64,
+    TD_SINGLE,
+    TD_DOUBLE,
     TD_ZERO,
     TD_SPACE,
     TD_ALIGN,
@@ -267,9 +338,9 @@ enum TokenInstruction : u8
     TI_ABS,
 
     TI_FMOV,
-    TI_FMOVNC,
-    TI_FCVTZS,
-    TI_FCVTZU,
+    TI_FSMOV,
+    TI_FUMOV,
+    TI_FCVT,
     TI_SCVTF,
     TI_UCVTF,
 
@@ -280,6 +351,9 @@ enum TokenInstruction : u8
 
     TI_FNEG,
     TI_FABS,
+
+    TI_FINS,
+    TI_FDUP,
 
     TI_LDP,
     TI_LD,
@@ -322,6 +396,21 @@ enum TokenInstruction : u8
     TI_HALT,
 };
 
+enum FPSubfix
+{
+    FPSubfixNone = 0,
+    FPSubfixS4,
+    FPSubfixD2,
+};
+
+enum FPType
+{
+    FPNone = 0,
+    FPSingle = 1,
+    FPDouble = 2,
+    FPVector = 3,
+};
+
 struct Token
 {
     std::string source_file;
@@ -333,7 +422,7 @@ struct Token
 
     union
     {
-        u8 byte[8] = {};
+        u8 byte[8];
         u16 ishort[4];
         u16 ushort[4];
         i32 iword;
@@ -354,9 +443,14 @@ struct Token
         return type == tk1 || type == tk2;
     }
 
-    [[nodiscard]] constexpr bool is_fpreg() const
+    [[nodiscard]] constexpr bool is_gp_reg() const
     {
-        return is_single_reg() || is_double_reg() || is_qword_reg();
+        return is(TOKEN_REGISTER) && (subtype >= TOKEN_R0 && subtype <= TOKEN_R31);
+    }
+
+    [[nodiscard]] constexpr bool is_fp_reg() const
+    {
+        return is_single_reg() || is_double_reg() || is_vector_reg();
     }
 
     [[nodiscard]] constexpr bool is_single_reg() const
@@ -369,10 +463,34 @@ struct Token
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_D0 && subtype <= TOKEN_D31);
     }
 
-    [[nodiscard]] constexpr bool is_qword_reg() const
+    [[nodiscard]] constexpr bool is_vector_reg() const
     {
-        return is(TOKEN_REGISTER) && (subtype >= TOKEN_Q0 && subtype <= TOKEN_Q31);
+        return is(TOKEN_REGISTER) && (subtype >= TOKEN_V0 && subtype <= TOKEN_V31_D2);
     }
 
+    [[nodiscard]] constexpr bool is_vector_s4_reg() const
+    {
+        return is(TOKEN_REGISTER) && (subtype >= TOKEN_V0_S4 && subtype <= TOKEN_V31_S4);
+    }
+
+    [[nodiscard]] constexpr bool is_vector_d2_reg() const
+    {
+        return is(TOKEN_REGISTER) && (subtype >= TOKEN_V0_D2 && subtype <= TOKEN_V31_D2);
+    }
+
+    [[nodiscard]] constexpr FPType get_fp_type() const
+    {
+        return is_single_reg() ? FPSingle
+            : is_double_reg() ? FPDouble
+            : is_vector_reg() ? FPVector
+            : FPNone;
+    }
+
+    [[nodiscard]] constexpr FPSubfix get_fp_subfix() const
+    {
+        return is_vector_s4_reg() ? FPSubfixS4
+            : is_vector_d2_reg() ? FPSubfixD2
+            : FPSubfixNone;
+    }
 };
 

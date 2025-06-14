@@ -24,7 +24,7 @@ void GU::initialize(GU::DriverApi api)
 		break;
 #endif // _WIN32
 	case GU::VGU:
-		main_driver = VGPU::get_driver();
+		main_driver = VGU::get_driver();
 		break;
 	case GU::OPENGL:
 		main_driver = GLGU::get_driver();

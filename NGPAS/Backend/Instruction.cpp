@@ -25,26 +25,53 @@
         BREAKER;\
     }
 
-#define GET_REG(var, message, BREAKER) \
-    if(!expected(TOKEN_REGISTER, message))\
+#define GET_REG(VAR, MESSAGE, BREAKER) \
+    if(!expected(TOKEN_REGISTER, MESSAGE))\
     {\
         BREAKER;\
     }\
-    u8 var = get_register(*last)
+    u8 VAR = get_register(*last)
+
+#define GET_VINDEX_REG(VAR, VAR_TK, VAR_IDX, MESSAGE, BREAKER) \
+    if(!expected(TOKEN_REGISTER, MESSAGE))\
+    {\
+        BREAKER;\
+    }\
+    Token* VAR_TK = last;\
+    u8 VAR = get_register((*last));\
+    INVALIDATE_GP((*last), BREAKER);\
+    if(last->get_fp_subfix() == FPSubfixNone)\
+    {\
+        MAKE_ERROR((*last), BREAKER, "expected a vector subfixed register");\
+    }\
+    EXPECTED_KEY_LEFT(BREAKER);\
+    Token VAR_IDX = parse_expression(ParsePrecedence::Start);\
+    if(!VAR_IDX.is(TOKEN_IMMEDIATE))\
+    {\
+        MAKE_ERROR(VAR_IDX, BREAKER, "expected a constant index");\
+    }\
+    EXPECTED_KEY_RIGHT(BREAKER);
+    
 
 #define INVALIDATE_FP(TOKEN, BREAKER) \
-    if (TOKEN.is_fpreg())\
+    if (TOKEN.is_fp_reg())\
     {\
         MAKE_ERROR(TOKEN, BREAKER, "expected a gp register but a fp register was given");\
     }
 
-#define BCOND(type_inst, ti)\
+#define INVALIDATE_GP(TOKEN, BREAKER) \
+    if (TOKEN.is_gp_reg())\
+    {\
+        MAKE_ERROR(TOKEN, BREAKER, "expected a fp register but a gp register was given");\
+    }
+
+#define BCOND(TYPE_INST, TI)\
     {\
     u32 index = token_index - 3;\
     auto target = parse_expression(ParsePrecedence::Start);\
     if (context.undefined_label == false)\
     {\
-        inst = bcond(type_inst, i32(target.u - program_index) / 4);\
+        inst = bcond(TYPE_INST, i32(target.u - program_index) / 4);\
     }\
     else if(context.is_in_resolve == false)\
     {\
@@ -56,23 +83,23 @@
     }
 
 
-#define RELATIVE(type_inst, ti) \
+#define RELATIVE(TYPE_INST, TI) \
     {\
     u32 index = token_index - 3;\
     auto target = parse_expression(ParsePrecedence::Start);\
     if (context.undefined_label == false)\
     {\
-        inst = type_inst(i32(target.u - program_index) / 4);\
+        inst = TYPE_INST(i32(target.u - program_index) / 4);\
     }\
     else if(context.is_in_resolve == false)\
     {\
         auto& tr = to_resolve.emplace_back();\
+        tr.type = ResolveInstruction;\
         tr.address = u32(program_index - 4);\
         tr.index = index;\
         advance_to_next_line();\
     }\
     }
-
 
 
 void Assembler::assemble_instruction()
@@ -263,9 +290,367 @@ void Assembler::assemble_instruction()
     case TI_ABS:
         assemble_one_operand(inst, [](u8 dest, u8 src)
             {
-                return extendedalu(NGP_ABS, dest, src, 0, 0);
+                return alu(NGP_ABS, dest, src, 0, 0);
             }
         );
+        break;
+    case TI_FMOV:
+    {
+        GET_REG(dest, "expected destination register", break);
+        Token* dest_tk = last;
+        Token dest_index;
+        if (dest_tk->get_fp_subfix() != FPSubfixNone)
+        {
+            EXPECTED_KEY_LEFT(break);
+            dest_index = parse_expression(ParsePrecedence::Start);
+            if (!dest_index.is(TOKEN_IMMEDIATE))
+            {
+                MAKE_ERROR(dest_index, break, "expected a constant index");
+            }
+            EXPECTED_KEY_RIGHT(break);
+        }
+        
+        EXPECTED_COMMA(break);
+
+        Token operand = parse_expression(ParsePrecedence::Start);
+
+        if (operand.is(TOKEN_IMMEDIATE))
+        {
+            MAKE_ERROR(operand, break, "fmov immediate, not implemented yet");
+        }
+        else if (operand.is(TOKEN_REGISTER))
+        {
+            if (dest_tk->is_gp_reg() && operand.is_gp_reg())
+            {
+                MAKE_ERROR((*dest_tk), break, "invalid register operands");
+            }
+            else if ((!dest_tk->is_single_reg() && dest_tk->get_fp_subfix() != FPSubfixS4) && operand.is_gp_reg()
+                || (dest_tk->is_gp_reg() && !operand.is_single_reg() && operand.get_fp_subfix() != FPSubfixS4))
+            {
+                MAKE_ERROR((*dest_tk), break, "register width mismatch");
+            }
+            else if (dest_tk->is_fp_reg() && operand.is_fp_reg() && 
+                (!dest_tk->is_vector_reg() && !operand.is_vector_reg() && dest_tk->get_fp_type() != operand.get_fp_type()))
+            {
+                MAKE_ERROR((*dest_tk), break, "register type mismatch");
+            }
+            else if (dest_tk->get_fp_type() == FPSingle && operand.is_vector_reg() && operand.get_fp_subfix() != FPSubfixS4)
+            {
+                MAKE_ERROR((*dest_tk), break, "register type mismatch");
+            }
+            else if (dest_tk->get_fp_type() == FPDouble && operand.is_vector_reg() && operand.get_fp_subfix() != FPSubfixD2)
+            {
+                MAKE_ERROR((*dest_tk), break, "register type mismatch");
+            }
+
+            if (!dest_tk->is_vector_reg() && operand.get_fp_subfix() != FPSubfixNone)
+            {
+                EXPECTED_KEY_LEFT(break);
+                Token src_index = parse_expression(ParsePrecedence::Start);
+                if (!src_index.is(TOKEN_IMMEDIATE))
+                {
+                    MAKE_ERROR(src_index, break, "expected a constant index");
+                }
+                EXPECTED_KEY_RIGHT(break);
+
+                if (dest_tk->is_single_reg())
+                {
+                    inst = fbinary(NGP_FDUP_S_V_S4, dest, get_register(operand), src_index.u & 0x3);
+                }
+                else if (dest_tk->is_single_reg())
+                {
+                    inst = fbinary(NGP_FDUP_D_V_D2, dest, get_register(operand), src_index.u & 0x3);
+                }
+                else if (dest_tk->is_gp_reg())
+                {
+                    inst = fbinary(NGP_FUMOV_W_V_S4, dest, get_register(operand), src_index.u & 0x3);
+                }
+            }
+            else if (dest_tk->is_vector_reg() && operand.get_fp_subfix() != FPSubfixNone)
+            {
+                EXPECTED_KEY_LEFT(break);
+                Token src_index = parse_expression(ParsePrecedence::Start);
+                if (!src_index.is(TOKEN_IMMEDIATE))
+                {
+                    MAKE_ERROR(src_index, break, "expected a constant index");
+                }
+                EXPECTED_KEY_RIGHT(break);
+
+                if (operand.get_fp_subfix() == FPSubfixS4)
+                {
+                    inst = fbinary(NGP_FDUP_V_V_S4, dest, get_register(operand), src_index.u & 0x3);
+                }
+                else if (operand.get_fp_subfix() == FPSubfixD2)
+                {
+                    inst = fbinary(NGP_FDUP_V_V_D2, dest, get_register(operand), src_index.u & 0x1);
+                }
+            }
+            else if (dest_tk->get_fp_subfix() != FPSubfixNone && operand.is_gp_reg())
+            {
+                inst = fbinary(NGP_FINS_V_S4_W, dest, dest_index.u & 0x3, get_register(operand));
+            }
+            else if (dest_tk->is_single_reg() && operand.is_gp_reg())
+            {
+                inst = fbinary(NGP_FMOV_S_W, dest, get_register(operand), 0);
+            }
+            else if (dest_tk->is_gp_reg() && operand.is_single_reg())
+            {
+                inst = fbinary(NGP_FMOV_W_S, dest, get_register(operand), 0);
+            }
+            else if (dest_tk->is_single_reg())
+            {
+                inst = fbinary(NGP_FMOV_S_S, dest, get_register(operand), 0);
+            }
+            else if (dest_tk->is_double_reg())
+            {
+                inst = fbinary(NGP_FMOV_D_D, dest, get_register(operand), 0);
+            }
+            else if (dest_tk->is_vector_reg())
+            {
+                inst = fbinary(NGP_FMOV_V_V, dest, get_register(operand), 0);
+            }
+        }
+        else if (operand.is(TOKEN_NEW_LINE))
+        {
+            MAKE_ERROR(operand, {}, "expected a source operand");
+        }
+        else
+        {
+            MAKE_ERROR(operand, {}, "invalid operand");
+        }
+    }
+        break;
+    case TI_FSMOV:
+    {
+        GET_REG(dest, "expected destination register", break);
+        INVALIDATE_FP((*last), break);
+        EXPECTED_COMMA(break);
+
+        GET_VINDEX_REG(src, src_tk, src_index, "expected source vector register", break);
+        if (src_tk->get_fp_subfix() == FPSubfixS4)
+        {
+            inst = fbinary(NGP_FSMOV_W_V_S4, dest, src, src_index.u & 0x3);
+        }
+        else
+        {
+            MAKE_ERROR((*src_tk), break, "register width mismatch");
+        }
+    }
+        break;
+    case TI_FUMOV:
+    {
+        GET_REG(dest, "expected destination register", break);
+        INVALIDATE_FP((*last), break);
+        EXPECTED_COMMA(break);
+
+        GET_VINDEX_REG(src, src_tk, src_index, "expected source vector register", break);
+        if (src_tk->get_fp_subfix() == FPSubfixS4)
+        {
+            inst = fbinary(NGP_FUMOV_W_V_S4, dest, src, src_index.u & 0x3);
+        }
+        else
+        {
+            MAKE_ERROR((*src_tk), break, "register width mismatch");
+        }
+    }
+        break;
+    case TI_FCVT:
+    {
+        GET_REG(dest, "expected destination register", break);
+        INVALIDATE_GP((*last), break);
+        Token* dest_tk = last;
+        EXPECTED_COMMA(break);
+
+        GET_REG(src, "expected source register", break);
+        INVALIDATE_GP((*last), break);
+        Token* src_tk = last;
+
+        if (dest_tk->is_single_reg() && src_tk->is_double_reg())
+        {
+            inst = fbinary(NGP_FCVT_S_D, dest, src, 0);
+        }
+        else if (dest_tk->is_double_reg() && src_tk->is_single_reg())
+        {
+            inst = fbinary(NGP_FCVT_D_S, dest, src, 0);
+        }
+    }
+        break;
+    case TI_SCVTF:
+    {
+        GET_REG(dest, "expected destination register", break);
+        INVALIDATE_GP((*last), break);
+        Token* dest_tk = last;
+        EXPECTED_COMMA(break);
+
+        GET_REG(src, "expected source register", break);
+        INVALIDATE_FP((*last), break);
+        Token* src_tk = last;
+
+        if (dest_tk->is_single_reg())
+        {
+            inst = fbinary(NGP_SCVTF_S_W, dest, src, 0);
+        }
+        else if (dest_tk->is_double_reg())
+        {
+            inst = fbinary(NGP_SCVTF_D_W, dest, src, 0);
+        }
+    }
+        break;
+    case TI_UCVTF:
+    {
+        GET_REG(dest, "expected destination register", break);
+        INVALIDATE_GP((*last), break);
+        Token* dest_tk = last;
+        EXPECTED_COMMA(break);
+
+        GET_REG(src, "expected source register", break);
+        INVALIDATE_FP((*last), break);
+        Token* src_tk = last;
+
+        if (dest_tk->is_single_reg())
+        {
+            inst = fbinary(NGP_UCVTF_S_W, dest, src, 0);
+        }
+        else if (dest_tk->is_double_reg())
+        {
+            inst = fbinary(NGP_UCVTF_D_W, dest, src, 0);
+        }
+    }
+        break;
+    case TI_FADD:
+        assemble_fbinary(inst, NGP_FADD_S, NGP_FADD_D, 0);
+        break;
+    case TI_FSUB:
+        assemble_fbinary(inst, NGP_FSUB_S, NGP_FSUB_D, 0);
+        break;
+    case TI_FMUL:
+        assemble_fbinary(inst, NGP_FMUL_S, NGP_FMUL_D, 0);
+        break;
+    case TI_FDIV:
+        assemble_fbinary(inst, NGP_FDIV_S, NGP_FDIV_D, 0);
+        break;
+    case TI_FNEG:
+    {
+        GET_REG(dest, "expected destination register", break);
+        INVALIDATE_GP((*last), break);
+        Token* dest_tk = last;
+        EXPECTED_COMMA(break);
+
+        GET_REG(src, "expected source register", break);
+        INVALIDATE_GP((*last), break);
+        Token* src_tk = last;
+
+        if (dest_tk->get_fp_type() != src_tk->get_fp_type())
+        {
+            MAKE_ERROR((*dest_tk), break, "register width mismatch");
+        }
+
+        if (dest_tk->get_fp_type() == FPSingle)
+        {
+            inst = fbinary(NGP_FNEG_S, dest, src, 0);
+        }
+        else if (dest_tk->get_fp_type() == FPDouble)
+        {
+            inst = fbinary(NGP_FNEG_D, dest, src, 0);
+        }
+    }
+        break;
+    case TI_FABS:
+    {
+        GET_REG(dest, "expected destination register", break);
+        INVALIDATE_GP((*last), break);
+        Token* dest_tk = last;
+        EXPECTED_COMMA(break);
+
+        GET_REG(src, "expected source register", break);
+        INVALIDATE_GP((*last), break);
+        Token* src_tk = last;
+
+        if (dest_tk->get_fp_type() != src_tk->get_fp_type())
+        {
+            MAKE_ERROR((*dest_tk), break, "register width mismatch");
+        }
+
+        if (dest_tk->get_fp_type() == FPSingle)
+        {
+            inst = fbinary(NGP_FABS_S, dest, src, 0);
+        }
+        else if (dest_tk->get_fp_type() == FPDouble)
+        {
+            inst = fbinary(NGP_FABS_D, dest, src, 0);
+        }
+    }
+    break;
+    case TI_FINS:
+    {
+        GET_VINDEX_REG(dest, dest_tk, dest_index, "expected destination register", break);
+        EXPECTED_COMMA(break);
+
+        Token operand = parse_expression(ParsePrecedence::Start);
+        if (!operand.is(TOKEN_REGISTER))
+        {
+            MAKE_ERROR(operand, break, "expected source register");
+        }
+
+        if(operand.is_vector_reg() && dest_tk->get_fp_subfix() != operand.get_fp_subfix()
+            && operand.is_fp_reg())
+        {
+            MAKE_ERROR((*dest_tk), break, "register subfix mismatch");
+        }
+
+        if (operand.is_gp_reg())
+        {
+            inst = fbinary(NGP_FINS_V_S4_W, dest, dest_index.u & 0x3, get_register(operand));
+        }
+        else
+        {
+            EXPECTED_KEY_LEFT(break);
+            Token src_index = parse_expression(ParsePrecedence::Start);
+            if (!src_index.is(TOKEN_IMMEDIATE))
+            {
+                MAKE_ERROR(src_index, break, "expected a constant index");
+            }
+            EXPECTED_KEY_RIGHT(break);
+            if (dest_tk->get_fp_subfix() == FPSubfixS4 && operand.get_fp_subfix() == FPSubfixS4)
+            {
+                inst = fp_4op(NGP_FINS_V_S4, dest, dest_index.u & 0x3, src_index.u, operand.u & 0x3);
+            }
+            else
+            {
+                inst = fp_4op(NGP_FINS_V_D2, dest, dest_index.u & 0x1, src_index.u, src_index.u & 0x1);
+            }
+        }
+    }
+        break;
+    case TI_FDUP:
+    {
+        GET_REG(dest, "expected destination register", break);
+        Token* dest_tk = last;
+        INVALIDATE_GP((*last), break);
+        EXPECTED_COMMA(break);
+
+        GET_VINDEX_REG(src, src_tk, src_index, "expected source register", break);
+
+        if (dest_tk->get_fp_type() == FPSingle && src_tk->get_fp_subfix() != FPSubfixS4)
+        {
+            MAKE_ERROR((*dest_tk), break, "register width mismatch")
+        }
+        else if (dest_tk->get_fp_type() == FPDouble && src_tk->get_fp_subfix() != FPSubfixD2)
+        {
+            MAKE_ERROR((*dest_tk), break, "register width mismatch")
+        }
+
+        if (dest_tk->get_fp_subfix() == FPSingle)
+        {
+            inst = fbinary(NGP_FDUP_S_V_S4, dest, src, src_index.u & 0x3);
+        }
+        else if(dest_tk->get_fp_subfix() == FPDouble)
+        {
+            inst = fbinary(NGP_FDUP_D_V_D2, dest, src, src_index.u & 0x1);
+        }
+    }
+        break;
+    case TI_LDP:
         break;
     case TI_LD:
         assemble_load_store(inst, NGP_LD_IMMEDIATE, NGP_LD, 4, true);
@@ -386,7 +771,7 @@ void Assembler::assemble_instruction()
         GET_REG(dest, "expected destination register", break);
         INVALIDATE_FP((*last), break);
         EXPECTED_COMMA(break);
-
+        
         Token operand = parse_expression(ParsePrecedence::Start);
         if (operand.is(TOKEN_IMMEDIATE))
         {
@@ -497,21 +882,10 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
 
     GET_REG(dest, "expected source register", return);
 
-    u8 fp_type = 0;
-    if (last->is_fpreg())
+    FPType fp_type = FPNone;
+    if (last->is_fp_reg())
     {
-        if (last->is_single_reg())
-        {
-            fp_type = 1;
-        }
-        else if (last->is_double_reg())
-        {
-            fp_type = 2;
-        }
-        else if (last->is_qword_reg())
-        {
-            fp_type = 3;
-        }
+        fp_type = last->get_fp_type();
     }
     EXPECTED_COMMA(return);
 
@@ -520,17 +894,17 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
         Token symbol = parse_expression(ParsePrecedence::Start);
         if (context.undefined_label == false)
         {
-            if (fp_type == 1)
+            if (fp_type == FPSingle)
             {
-                inst = pcrel(NGP_LD_PC, dest, i32((symbol.u - program_index) / 4));
+                inst = pcrel(NGP_LD_S_PC, dest, i32((symbol.u - program_index) / 4));
             }
-            else if (fp_type == 2)
+            else if (fp_type == FPDouble)
             {
-                inst = pcrel(NGP_LD_PC, dest, i32((symbol.u - program_index) / 4));
+                inst = pcrel(NGP_LD_D_PC, dest, i32((symbol.u - program_index) / 4));
             }
-            else if (fp_type == 3)
+            else if (fp_type == FPVector)
             {
-                inst = pcrel(NGP_LD_PC, dest, i32((symbol.u - program_index) / 4));
+                inst = pcrel(NGP_LD_V_PC, dest, i32((symbol.u - program_index) / 4));
             }
             else
             {
@@ -559,57 +933,75 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
     if (current->is(TOKEN_RIGHT_KEY))
     {
         advance();
-        inst = memoryi(imm_opcode, dest, base, 0, 0);
+        if (fp_type != FPNone)
+        {
+            if (fp_type == FPSingle)
+            {
+                inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_S_IMMEDIATE : NGP_LD_S_IMMEDIATE, dest, base, 0, 0);
+            }
+            else if (fp_type == FPDouble)
+            {
+                inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_D_IMMEDIATE : NGP_LD_D_IMMEDIATE, dest, base, 0, 0);
+            }
+            else if (fp_type == FPVector)
+            {
+                inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_V_IMMEDIATE : NGP_LD_V_IMMEDIATE, dest, base, 0, 0);
+            }
+        }
+        else
+        {
+            inst = memoryi(imm_opcode, dest, base, 0, 0);
+        }
     }
     else if (!current->is(TOKEN_NEW_LINE))
     {
         expected(TOKEN_COMMA, "',' was expected");
-
-        Token indice = parse_expression(ParsePrecedence::Start);
-        if (indice.is(TOKEN_IMMEDIATE))
+        
+        Token index_reg = parse_expression(ParsePrecedence::Start);
+        if (index_reg.is(TOKEN_IMMEDIATE))
         {
-            if (indice.iword >= 0)
+            if (index_reg.iword >= 0)
             {
-                u32 aligned = align_up(indice.uword, alignment);
-                if (aligned != indice.u)
+                u32 aligned = align_up(index_reg.uword, alignment);
+                if (aligned != index_reg.u)
                 {
-                    MAKE_ERROR(indice, return, "immediate value must be a multiple of %d", alignment);
+                    MAKE_ERROR(index_reg, return, "immediate value must be a multiple of %d", alignment);
                 }
 
-                if (indice.u > 0xFFF)
+                if (index_reg.u > 0xFFF)
                 {
-                    MAKE_ERROR(indice, return, "immediate offset too long");
+                    MAKE_ERROR(index_reg, return, "immediate offset too long");
                 }
             }
-            else if (indice.iword < 0)
+            else if (index_reg.iword < 0)
             {
-                u32 aligned = align_down(indice.uword, alignment);
-                if (aligned != indice.uword)
+                u32 aligned = align_down(index_reg.uword, alignment);
+                if (aligned != index_reg.uword)
                 {
-                    MAKE_ERROR(indice, return, "immediate value must be a multiple of %d", alignment);
+                    MAKE_ERROR(index_reg, return, "immediate value must be a multiple of %d", alignment);
                 }
 
-                if (indice.iword < -0xFFF)
+                if (index_reg.iword < -0xFFF)
                 {
                     advance();
-                    MAKE_ERROR(indice, return, "immediate offset too long");
+                    MAKE_ERROR(index_reg, return, "immediate offset too long");
                 }
             }
 
             // check if we need to subtract or add
-            bool sub = indice.i < 0 ? 1 : 0;
-            i16 offset = (i16)std::abs(indice.i);
-            if (fp_type == 1)
+            bool sub = index_reg.i < 0 ? 1 : 0;
+            i16 offset = (i16)std::abs(index_reg.i);
+            if (fp_type == FPSingle)
             {
-                inst = fmemoryi(NGP_LD_S_IMMEDIATE, dest, base, offset / alignment, sub);
+                inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_S_IMMEDIATE : NGP_LD_S_IMMEDIATE, dest, base, offset / alignment, sub);
             }
-            else if (fp_type == 2)
+            else if (fp_type == FPDouble)
             {
-                inst = fmemoryi(NGP_LD_D_IMMEDIATE, dest, base, offset / alignment, sub);
+                inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_D_IMMEDIATE : NGP_LD_D_IMMEDIATE, dest, base, offset / alignment, sub);
             }
-            else if (fp_type == 3)
+            else if (fp_type == FPVector)
             {
-                inst = fmemoryi(NGP_LD_Q_IMMEDIATE, dest, base, offset / alignment, sub);
+                inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_V_IMMEDIATE : NGP_LD_V_IMMEDIATE, dest, base, offset / alignment, sub);
             }
             else
             {
@@ -617,22 +1009,22 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             }
             EXPECTED_KEY_RIGHT(return);
         }
-        else if (indice.is(TOKEN_REGISTER))
+        else if (index_reg.is(TOKEN_REGISTER))
         {
-            u8 reg_index = get_register(indice);
-            INVALIDATE_FP(indice, return);
+            u8 reg_index = get_register(index_reg);
+            INVALIDATE_FP(index_reg, return);
 
-            if (fp_type == 1)
+            if (fp_type == FPSingle)
             {
-                inst = fbinary(NGP_LD_S, dest, base, reg_index, 0);
+                inst = memoryr(NGP_LD_S, dest, base, reg_index);
             }
-            else if (fp_type == 2)
+            else if (fp_type == FPDouble)
             {
-                inst = fbinary(NGP_LD_D, dest, base, reg_index, 0);
+                inst = memoryr(NGP_LD_D, dest, base, reg_index);
             }
-            else if (fp_type == 3)
+            else if (fp_type == FPVector)
             {
-                inst = fbinary(NGP_LD_Q, dest, base, reg_index, 0);
+                inst = memoryr(NGP_LD_V, dest, base, reg_index);
             }
             else
             {
@@ -640,13 +1032,13 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             }
             EXPECTED_KEY_RIGHT(return);
         }
-        else if (indice.is(TOKEN_NEW_LINE))
+        else if (index_reg.is(TOKEN_NEW_LINE))
         {
-            MAKE_ERROR(indice, {}, "expected a second source operand");
+            MAKE_ERROR(index_reg, {}, "expected a second source operand");
         }
         else
         {
-            MAKE_ERROR(indice, {}, "invalid operand");
+            MAKE_ERROR(index_reg, {}, "invalid operand");
         }
     }
     else
@@ -710,6 +1102,34 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
     {
         MAKE_ERROR(second_operand, {}, "invalid operand");
     }
+}
+
+void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 q_opc)
+{
+    GET_REG(dest, "expected destination register", return);
+    INVALIDATE_GP((*last), return);
+    Token* dest_tk = last;
+    EXPECTED_COMMA(return);
+
+    GET_REG(src1, "expected destination register", return);
+    INVALIDATE_GP((*last), return);
+    Token* src1_tk = last;
+    EXPECTED_COMMA(return);
+    
+    GET_REG(src2, "expected destination register", return);
+    INVALIDATE_GP((*last), return);
+    Token* src2_tk = last;
+
+    if (dest_tk->get_fp_type() != src1_tk->get_fp_type() 
+        || dest_tk->get_fp_type() != src2_tk->get_fp_type())
+    {
+        MAKE_ERROR((*dest_tk), return, "register type mismatch");
+    }
+
+    u8 final_opc = dest_tk->get_fp_type() == FPSingle ? s_opc 
+        : dest_tk->get_fp_type() == FPDouble ? d_opc
+        : q_opc;
+    inst = fbinary(final_opc, dest, src1, src2);
 }
 
 void Assembler::assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit)
@@ -840,7 +1260,7 @@ void Assembler::assemble_shift(u32& inst, u8 opcode)
     if (third_operand.is(TOKEN_REGISTER))
     {
         INVALIDATE_FP(third_operand, return);
-        inst = extendedalu(opcode, dest, src1, get_register(third_operand), 0);
+        inst = alu(opcode, dest, src1, get_register(third_operand), 0);
     }
     else if (third_operand.is(TOKEN_IMMEDIATE))
     {

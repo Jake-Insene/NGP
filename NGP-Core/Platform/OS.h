@@ -25,7 +25,7 @@ struct OS
 
     static void sleep(i32 milisec);
 
-    static void* allocate_virtual_memory(void* address, u64 size, PageAccess access);
+    static void* allocate_virtual_memory(void* address, usize size, PageAccess access);
     static void deallocate_virtual_memory(void* address);
 
     static u32 exception_handler(void*);

@@ -9,6 +9,24 @@
 #include "Video/D3D12/DX.h"
 #include "Video/Window.h"
 
+#define D3D11_LOGGER(...) { printf("Video/D3D11: "); printf(__VA_ARGS__); putchar('\n'); }
+
+
+#define DEBUG_OUTPUT(str) OutputDebugStringA(str)
+
+#define DX_ERROR(expr, ...)\
+    if((expr) != S_OK)\
+    {\
+        D3D11_LOGGER(__VA_ARGS__);\
+    }
+
+#define DX_EXI_ON_ERROR(expr, ...)\
+    if((expr) != S_OK)\
+    {\
+        D3D11_LOGGER(__VA_ARGS__);\
+    }
+
+
 
 struct Vertex
 {
@@ -35,7 +53,9 @@ GU::GUDriver D3D11GU::get_driver()
         .initialize = &D3D11GU::initialize,
         .shutdown = &D3D11GU::shutdown,
 
+        .present_framebuffer = &D3D11GU::present_framebuffer,
         .present = &D3D11GU::present,
+
         .create_framebuffer = &D3D11GU::create_framebuffer,
         .update_framebuffer = &D3D11GU::update_framebuffer,
     };
@@ -189,8 +209,11 @@ void D3D11GU::initialize()
 
 void D3D11GU::shutdown()
 {
-    dx::release(state.framebuffer_srv);
-    dx::release(state.framebuffer);
+    for (auto& [key, vfb] : state.vframebuffers)
+    {
+        dx::release(vfb.framebuffer);
+        dx::release(vfb.srv);
+    }
 
     dx::release(state.ps);
     dx::release(state.vs);
@@ -209,8 +232,16 @@ void D3D11GU::shutdown()
     dx::release(state.device);
 }
 
-void D3D11GU::present(bool vsync)
+void D3D11GU::present_framebuffer(PhysicalAddress fb, bool vsync)
 {
+    auto it = state.vframebuffers.find(fb);
+    if (it == state.vframebuffers.end())
+    {
+        DEBUG_OUTPUT("Invalid framebuffer address");
+        return;
+    }
+    VFramebuffer& vfb = it->second;
+
     state.immediate_context->OMSetRenderTargets(1, &state.rtv, nullptr);
 
     D3D11_VIEWPORT viewport =
@@ -231,34 +262,67 @@ void D3D11GU::present(bool vsync)
     state.immediate_context->VSSetShader(state.vs, nullptr, 0);
 
     state.immediate_context->PSSetSamplers(0, 1, &state.sampler);
-    state.immediate_context->PSSetShaderResources(0, 1, &state.framebuffer_srv);
+    state.immediate_context->PSSetShaderResources(0, 1, &vfb.srv);
     state.immediate_context->Draw(6, 0);
+
+    state.swap_chain->Present(vsync, 0);
+}
+
+void D3D11GU::present(bool vsync)
+{
+    state.immediate_context->OMSetRenderTargets(1, &state.rtv, nullptr);
+
+    D3D11_VIEWPORT viewport =
+    {
+        .Width = Window::DefaultWindowWidth,
+        .Height = Window::DefaultWindowHeight,
+    };
+    state.immediate_context->RSSetViewports(1, &viewport);
+    state.immediate_context->ClearRenderTargetView(state.rtv, state.clear_color);
 
     state.swap_chain->Present(vsync, 0);
 }
 
 PhysicalAddress D3D11GU::create_framebuffer(i32 width, i32 height)
 {
-    state.framebuffer_width = width;
-    state.framebuffer_height = height;
+    VFramebuffer new_vfb = {};
+
+    new_vfb.size.x = width;
+    new_vfb.size.y = height;
 
     CD3D11_TEXTURE2D_DESC framebuffer_desc
     {
         DefaultFormat, (UINT)width, (UINT)width,
         1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE
     };
-    state.device->CreateTexture2D(&framebuffer_desc, nullptr, &state.framebuffer);
+    
+    DX_ERROR(
+        state.device->CreateTexture2D(&framebuffer_desc, nullptr, &new_vfb.framebuffer),
+        "Couldn't create framebuffer with size (W: %d, H: %d)", width, height
+    );
 
-    state.device->CreateShaderResourceView(state.framebuffer, nullptr, &state.framebuffer_srv);
+    state.device->CreateShaderResourceView(new_vfb.framebuffer, nullptr, &new_vfb.srv);
 
-    return PhysicalAddress(state.framebuffer);
+    D3D11_LOGGER("Framebuffer created at address: 0x%016llX, W: %d, H: %d", (u64)new_vfb.framebuffer, width, height);
+    
+    state.vframebuffers.insert({ (PhysicalAddress)new_vfb.framebuffer, new_vfb });
+    return PhysicalAddress(new_vfb.framebuffer);
 }
 
 void D3D11GU::update_framebuffer(PhysicalAddress fb, void* va)
 {
-    ID3D11Texture2D* framebuffer = (ID3D11Texture2D*)fb;
+    auto it = state.vframebuffers.find(fb);
+    if (it == state.vframebuffers.end())
+    {
+        DEBUG_OUTPUT("Invalid framebuffer address");
+        return;
+    }
+    VFramebuffer& vfb = it->second;
+
     D3D11_MAPPED_SUBRESOURCE mapped = {};
-    state.immediate_context->Map(framebuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-    memcpy(mapped.pData, va, state.framebuffer_width * state.framebuffer_height * 4);
-    state.immediate_context->Unmap(framebuffer, 0);
+    state.immediate_context->Map(vfb.framebuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+    memcpy(mapped.pData, va, vfb.size.x * vfb.size.y * 4);
+    state.immediate_context->Unmap(vfb.framebuffer, 0);
+
+    D3D11_LOGGER("Framebuffer 0x%016llX updated from address: 0x%016llX", (u64)vfb.framebuffer, (u64)va);
 }

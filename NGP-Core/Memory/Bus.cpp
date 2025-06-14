@@ -26,7 +26,7 @@ enum PageAccess
     Execute = 0x4,
 };
 
-struct PageEntry
+struct Page
 {
     PhysicalAddress physical_address;
     VirtualAddress page_address;
@@ -35,11 +35,12 @@ struct PageEntry
     Word access : 12;
 };
 
-static inline std::vector<PageEntry> page_table;
-static inline usize number_of_pages = 0;
+static inline std::vector<Page> page_table;
 
 // Default to 4 KB
-static constexpr Word DefaultPageSize = KB(64);
+static constexpr Word DefaultPageSize = KB(4);
+
+static constexpr Word MaxPageCount4K = 0x1'0000'0000 >> bits_of(DefaultPageSize - 1);
 
 static inline Word page_size = DefaultPageSize;
 static inline Word page_mask = DefaultPageSize - 1;
@@ -50,25 +51,24 @@ static inline u8* io = nullptr;
 static inline u8* ram = nullptr;
 
 // Default to 256 MB
-static inline usize ram_size = MB(256);
+static inline u32 ram_size = MB(256);
 // Default to 32 MB
-static inline usize vram_size = MB(32);
+static inline u32 vram_size = MB(32);
 
 void initialize()
 {
-    // VRAM is managed by the GPU
-    number_of_pages = (RAM_START + ram_size) / page_size;
-    
-    page_table.resize(number_of_pages);
+    // VRAM is managed by the GU
+    Word page_count = 0x1'0000'0000 >> page_bits;
+    page_table.resize(page_count);
 
     bios = (u8*)OS::allocate_virtual_memory((void*)MAPPED_BUS_ADDRESS_START, BIOS_SIZE, OS::PAGE_READ_WRITE);
 
     io = (u8*)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + IO_START), RAM_START - IO_START, OS::PAGE_READ_WRITE);
 
-    ram = (u8*)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + RAM_START), ram_size, OS::PAGE_READ_WRITE);
+    ram = (u8*)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + RAM_START), usize(ram_size), OS::PAGE_READ_WRITE);
 
     // By default every bios, ram and io page is accessible
-    for(usize i = 0; i < number_of_pages; i++)
+    for(usize i = 0; i < page_count; i++)
     {
         VirtualAddress page_address = i << page_bits;
         page_table[i].page_index = i;
@@ -94,15 +94,20 @@ void initialize()
     }
 
 #if !NDEBUG
-    printf("DEBUG: BIOS mapped at: 0x%p\n", bios);
-    printf("DEBUG: IO mapped at:   0x%p\n", io);
-    printf("DEBUG: RAM mapped at:  0x%p\n", ram);
+    printf("DEBUG: BIOS mapped at: 0x%016llX\n", u64(bios));
+    printf("DEBUG: IO mapped at:   0x%016llX\n", u64(io));
+    printf(
+        "DEBUG: RAM mapped at:  0x%016llX\n"
+        "       RAM size: 0x%08X\n",
+        u64(ram), ram_size
+    );
 #endif // !NDEBUG
 }
 
 void shutdown()
 {
     OS::deallocate_virtual_memory(bios);
+    OS::deallocate_virtual_memory(io);
     OS::deallocate_virtual_memory(ram);
 }
 
@@ -134,7 +139,7 @@ Word get_page_size()
 
 void set_vram_size(usize new_size)
 {
-    vram_size = new_size;
+    vram_size = MB(new_size);
 }
 
 usize get_vram_size()
@@ -191,20 +196,12 @@ bool load_bios(const char* path)
 
 CheckAddressResult check_virtual_address(VirtualAddress va, CheckAddressFlags flags)
 {
-    if (va > BIOS_END && va < IO_START)
-    {
-        return InvalidVirtualAddress;
-    }
-    else if (flags & WriteableAddress && va >= IO_START && va < RAM_START)
-    {
-        return InvalidVirtualAddress;
-    }
-    else if (va >= RAM_START && va < RAM_START + ram_size)
-    {
-        return ValidVirtualAddress;
-    }
+    VirtualAddress page_index = va >> page_bits;
+    Page& page = page_table[page_index];
+    if(flags & WriteableAddress && !(page.access & Write))
+        return InvalidAddress;
 
-    return InvalidVirtualAddress;
+    return ValidAddress;
 }
 
 
@@ -261,7 +258,7 @@ i8 read_ibyte(VirtualAddress addr)
 template<typename T>
 inline void write_at(VirtualAddress addr, T value)
 {
-    u32 page_index = addr >> page_bits;
+    VirtualAddress page_index = addr >> page_bits;
     if(page_table[page_index].access & Write)
     {
         if ((addr >> 28) == 1)
@@ -289,9 +286,9 @@ void write_dword(VirtualAddress addr, DWord dword)
     write_at<DWord>(addr, dword);
 }
 
-void write_word(VirtualAddress addr, u32 word)
+void write_word(VirtualAddress addr, Word word)
 {
-    write_at<u32>(addr, word);
+    write_at<Word>(addr, word);
 }
 
 void write_half(VirtualAddress addr, u16 half)

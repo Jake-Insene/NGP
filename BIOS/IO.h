@@ -24,13 +24,15 @@ IRQ_STATUS =	IRQ_BASE | 0x04
 
 
 ; DMA
-DMA_RAM_CHANNEL = DMA_BASE | 0x000
-DMA_EMD_CHANNEL = DMA_BASE | 0x010
-DMA_SPU_CHANNEL = DMA_BASE | 0x020
+DMA_RAM_CHANNEL =	DMA_BASE | 0x000
+DMA_EMD_CHANNEL =	DMA_BASE | 0x010
+DMA_SPU_CHANNEL =	DMA_BASE | 0x020
+DMA_GU_CHANNEL =	DMA_BASE | 0x030
 
 ; DMA Channel Register Controller
 ; [0] Start / Busy
 ; [1 - 2] Priority Level
+; [30] Fill Mode
 ; [31] IRQ Enable
 
 ; DMA Channel Register Src
@@ -57,10 +59,16 @@ DMA_SPU_CHANNEL_SRC = DMA_SPU_CHANNEL | 0x4
 DMA_SPU_CHANNEL_DST = DMA_SPU_CHANNEL | 0x8
 DMA_SPU_CHANNEL_CNT = DMA_SPU_CHANNEL | 0xC
 
+DMA_GU_CHANNEL_CTR = DMA_GU_CHANNEL | 0x0
+DMA_GU_CHANNEL_SRC = DMA_GU_CHANNEL | 0x4
+DMA_GU_CHANNEL_DST = DMA_GU_CHANNEL | 0x8
+DMA_GU_CHANNEL_CNT = DMA_GU_CHANNEL | 0xC
+
 ; Channel Interrupt Mask
 ; [0] RAM
 ; [1] EMD
 ; [2] SPU
+; [2] GU
 DMA_IRQ_MASK =		DMA_BASE | 0x100
 DMA_IRQ_STATUS =	DMA_BASE | 0x104
 DMA_WAIT_ON_MASK =	DMA_BASE | 0x108
@@ -99,8 +107,7 @@ DISPLAY_PRESENT =		DISPLAY_BASE | 0x018
 
 ; GU Registers
 
-; [0] Transfer
-; [1] Queue
+; [0] Queue
 GU_IRQ_MASK =	GU_BASE | 0x0000
 GU_IRQ_STATUS = GU_BASE | 0x0004
 ; [0] Restart GU : 1 -> Restart
@@ -108,44 +115,22 @@ GU_CTR =		GU_BASE | 0x0008
 ; [0 - 31] GU Model ID
 GU_ID =			GU_BASE | 0x000C
 
-
-; Transfer Controller
-; VRAM Source Address
-GU_TRANSFER_INADDR =	GU_BASE | 0x0010
-; Destination Source Format
-; [0 - 11] Width
-; [12 - 23] Height
-; [24 - 31] Display Format
-GU_TRANSFER_INFMT =		GU_BASE | 0x0014
-; VRAM Destination Address
-GU_TRANSFER_OUTADDR =	GU_BASE | 0x0018
-; [0 - 11] Width
-; [12 - 23] Height
-; [24 - 31] Display Format
-GU_TRANSFER_OUTFMT =	GU_BASE | 0x001C
-
-; [0 - 7] Transfer Command
-; [31] Start Transfer
-GU_TRANSFER_CTR =		GU_BASE | 0x0020
-; [0] Transfer Complete
-GU_TRANSFER_IRQ_MASK =	GU_BASE | 0x0024
-; [31] Transfer Model ID
-GU_TRANSFER_ID =		GU_BASE | 0x0028
-
-
-; GPU Queue Controller
-; [0 - 15] Command
-; [16 - 17] Queue Index
-GU_QUEUE_CMD =		GU_BASE | 0x0030
-; Queue Command Buffer Address
-; [0 - 31] Buffer Address
-GU_QUEUE_ADDR =		GU_BASE | 0x0034
 ; Queue Controller
-; [0] Queue 0 Execution State
-; [1] Queue 1 Execution State
-; [2] Queue 2 Execution State
-; [3] Queue 3 Execution State
+; [0 - 1] Queue Priority
+; [2 - 3] Queue Index
 ; [31] Start Execution
-GU_QUEUE_CTR =		GU_BASE | 0x0038
-GU_QUEUE_STATUS =	GU_BASE | 0x003C
+GU_QUEUE_CTR =		GU_BASE | 0x0010
+; Queue State
+; [0 - 1] Queue 0 State
+; [2 - 3] Queue 1 State
+; [4 - 5] Queue 2 State
+; [6 - 7] Queue 3 State
+GU_QUEUE_STATUS =	GU_BASE | 0x0014
+
+; Queue Command List Address
+; [0 - 31] Command List Base Address
+GU_QUEUE_ADDR =		GU_BASE | 0x0018
+; Queue Command Buffer Length
+; [0 - 31] Buffer Length
+GU_QUEUE_LEN =		GU_BASE | 0x001C
 

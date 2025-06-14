@@ -7,28 +7,63 @@
 #include "Backend/Assembler.h"
 
 #include "ErrorManager.h"
+#include "Frontend/AsmUtility.h"
 #include <fstream>
 
-void Assembler::assemble_directive() {
+
+#define ADD_RESOLVE_DIRECTIVE(IDX, PIDX) \
+    {\
+        ToResolveItem& tr = to_resolve.emplace_back();\
+        tr.type = ResolveDirective;\
+        tr.address = PIDX;\
+        tr.index = IDX;\
+        advance_to_next_line();\
+    }
+
+#define HANDLE_NON_VALID_IMM(TK, IMM_LIMIT, IDX, PIDX) \
+    if (context.undefined_label == true && context.is_in_resolve == false)\
+        ADD_RESOLVE_DIRECTIVE(IDX, PIDX)\
+    else if (context.undefined_label == true && context.is_in_resolve == true)\
+        return;\
+    else if (TK.u > IMM_LIMIT)\
+        MAKE_ERROR(TK, return, "immediate value too long")
+
+#define HANDLE_NON_VALID_IMM_FP(TK, IDX, PIDX) \
+    if (context.undefined_label == true && context.is_in_resolve == false)\
+        ADD_RESOLVE_DIRECTIVE(IDX, PIDX)\
+    else if (context.undefined_label == true && context.is_in_resolve == true)\
+        return;\
+
+
+void Assembler::assemble_directive()
+{
     advance();
-    switch (last->subtype) {
+    switch (last->subtype)
+    {
     case TD_FORMAT:
     {
-        if (current->is(TOKEN_DIRECTIVE)) {
-            if (current->subtype == TD_FORMAT_RAW || current->subtype == TD_FORMAT_ROM) {
+        if (current->is(TOKEN_DIRECTIVE))
+        {
+            if (current->subtype == TD_FORMAT_RAW || current->subtype == TD_FORMAT_ROM)
+            {
                 file_format = TokenDirective(current->subtype);
 
                 advance(); // file_format
             }
-            else {
+            else
+            {
                 MAKE_ERROR((*current), return, "invalid format specifier");
             }
-        }else{
+        }
+        else
+        {
             MAKE_ERROR((*current), return, "a format directive was expected");
         }
 
-        if (current->is(TOKEN_DIRECTIVE) && current->subtype == TD_AS) {
-            if (!next->is(TOKEN_STRING)) {
+        if (current->is(TOKEN_DIRECTIVE) && current->subtype == TD_AS)
+        {
+            if (!next->is(TOKEN_STRING))
+            {
                 MAKE_ERROR((*current), return, "a file extension was expected");
             }
 
@@ -42,24 +77,52 @@ void Assembler::assemble_directive() {
     case TD_ORG:
     {
         Token result = parse_expression(ParsePrecedence::Start);
-        if (!result.is(TOKEN_IMMEDIATE)) {
-            MAKE_ERROR(result, break, "a immediate value was expected");
+        if (!result.is(TOKEN_IMMEDIATE))
+        {
+            MAKE_ERROR(result, return, "a immediate value was expected");
         }
 
-        if (result.u > 0xFFFF'FFFF) {
-            MAKE_ERROR(result, break, "invalid origin");
+        if (result.u > 0xFFFF'FFFF)
+        {
+            MAKE_ERROR(result, return, "invalid origin");
         }
 
         origin_address = result.uword;
         last_size = program_index;
     }
     break;
+    case TD_INCBIN:
+    {
+        if (!expected(TOKEN_STRING, "a file path was expected"))
+            return;
+
+        std::string file_path{};
+        file_path.resize(last->str.size());
+        encode_string((u8*)file_path.data(), last->str);
+
+        file_path = AsmUtility::path_relative_to(last->source_file, file_path);
+
+        std::ifstream input{ file_path, std::ios::binary | std::ios::ate };
+        if (!input.is_open())
+        {
+            MAKE_ERROR((*last), return, "the file '%s' was not founded", file_path.c_str());
+        }
+
+        std::streamoff file_size = input.tellg();
+        input.seekg(0);
+
+        u8* mem = reserve(file_size);
+        input.read((char*)mem, file_size);
+        input.close();
+    }
+        break;
     case TD_STRING:
     {
         Token string = parse_expression(ParsePrecedence::Start);
 
-        if (!string.is(TOKEN_STRING)) {
-            MAKE_ERROR(string, break, "a string was expected");
+        if (!string.is(TOKEN_STRING))
+        {
+            MAKE_ERROR(string, return, "a string was expected");
         }
 
         u32 len = get_real_string_len(string.str);
@@ -72,24 +135,26 @@ void Assembler::assemble_directive() {
     case TD_BYTE:
     {
         bool is_first = true;
-        while (current->is(TOKEN_COMMA) || is_first) {
-            if (is_first) {
+        u32 index = token_index - 3;
+        u32 prog_idx = program_index;
+        while (current->is(TOKEN_COMMA) || is_first)
+        {
+            if (is_first)
+            {
                 is_first = false;
             }
-            else {
+            else
+            {
                 advance(); // ,
             }
-            
+
             Token byte = parse_expression(ParsePrecedence::Start);
-            if (!byte.is(TOKEN_IMMEDIATE)) {
-                MAKE_ERROR(byte, break, "a immediate value was expected");
+            if (!byte.is(TOKEN_IMMEDIATE))
+            {
+                MAKE_ERROR(byte, return, "a immediate value was expected");
             }
 
-            if (byte.u > 0xFF) {
-                MAKE_ERROR(byte, break, "immediate value too long");
-                return;
-            }
-            
+            HANDLE_NON_VALID_IMM(byte, 0xFF, index, prog_idx);
             new_byte() = byte.byte[0];
         }
     }
@@ -97,24 +162,26 @@ void Assembler::assemble_directive() {
     case TD_HALF:
     {
         bool is_first = true;
-        while (current->is(TOKEN_COMMA) || is_first) {
-            if (is_first) {
+        u32 index = token_index - 3;
+        u32 prog_idx = program_index;
+        while (current->is(TOKEN_COMMA) || is_first)
+        {
+            if (is_first)
+            {
                 is_first = false;
             }
-            else {
+            else
+            {
                 advance(); // ,
             }
 
             Token half = parse_expression(ParsePrecedence::Start);
-            if (!half.is(TOKEN_IMMEDIATE)) {
+            if (!half.is(TOKEN_IMMEDIATE))
+            {
                 MAKE_ERROR(half, break, "a immediate value was expected");
             }
 
-            if (half.u > 0xFFFF) {
-                MAKE_ERROR(half, break, "immediate value too long");
-                return;
-            }
-
+            HANDLE_NON_VALID_IMM(half, 0xFFFF, index, prog_idx);
             new_half() = half.ushort[0];
         }
     }
@@ -122,24 +189,26 @@ void Assembler::assemble_directive() {
     case TD_WORD:
     {
         bool is_first = true;
-        while (current->is(TOKEN_COMMA) || is_first) {
-            if (is_first) {
+        u32 index = token_index - 3;
+        u32 prog_idx = program_index;
+        while (current->is(TOKEN_COMMA) || is_first)
+        {
+            if (is_first)
+            {
                 is_first = false;
             }
-            else {
+            else
+            {
                 advance(); // ,
             }
-
+            
             Token word = parse_expression(ParsePrecedence::Start);
-            if (!word.is(TOKEN_IMMEDIATE)) {
-                MAKE_ERROR(word, break, "a immediate value was expected");
+            if (!word.is(TOKEN_IMMEDIATE))
+            {
+                MAKE_ERROR(word, return, "a immediate value was expected");
             }
 
-            if (word.u > 0xFFFF'FFFF) {
-                MAKE_ERROR(word, break, "immediate value too long");
-                return;
-            }
-
+            HANDLE_NON_VALID_IMM(word, 0xFFFF'FFFF, index, prog_idx);
             new_word() = word.uword;
         }
     }
@@ -147,36 +216,161 @@ void Assembler::assemble_directive() {
     case TD_DWORD:
     {
         bool is_first = true;
-        while (current->is(TOKEN_COMMA) || is_first) {
-            if (is_first) {
+        u32 index = token_index - 3;
+        u32 prog_idx = program_index;
+        while (current->is(TOKEN_COMMA) || is_first)
+        {
+            if (is_first)
+            {
                 is_first = false;
             }
-            else {
+            else
+            {
                 advance(); // ,
             }
 
             Token dword = parse_expression(ParsePrecedence::Start);
-            if (!dword.is(TOKEN_IMMEDIATE)) {
-                MAKE_ERROR(dword, break, "a immediate value was expected");
+            if (!dword.is(TOKEN_IMMEDIATE))
+            {
+                MAKE_ERROR(dword, return, "a immediate value was expected");
             }
 
-            new_word() = dword.u >> 32;
+            HANDLE_NON_VALID_IMM(dword, 0xFFFF'FFFF'FFFF'FFFF, index, prog_idx);
             new_word() = dword.u & 0xFFFF'FFFF;
+            new_word() = dword.u >> 32;
+        }
+    }
+    break;
+    case TD_FLOAT32:
+    {
+        bool is_first = true;
+        u32 index = token_index - 3;
+        u32 prog_idx = program_index;
+        while (current->is(TOKEN_COMMA) || is_first)
+        {
+            if (is_first)
+            {
+                is_first = false;
+            }
+            else
+            {
+                advance(); // ,
+            }
+
+            Token f = parse_expression(ParsePrecedence::Start);
+            if (!f.is(TOKEN_IMMEDIATE))
+            {
+                MAKE_ERROR(f, return, "a immediate value was expected");
+            }
+
+            HANDLE_NON_VALID_IMM_FP(f, index, prog_idx);
+            f.s = f32(f.d);
+            new_word() = f.uword;
+        }
+    }
+    break;
+    case TD_FLOAT64:
+    {
+        bool is_first = true;
+        u32 index = token_index - 3;
+        u32 prog_idx = program_index;
+        while (current->is(TOKEN_COMMA) || is_first)
+        {
+            if (is_first)
+            {
+                is_first = false;
+            }
+            else
+            {
+                advance(); // ,
+            }
+
+            Token f = parse_expression(ParsePrecedence::Start);
+            if (!f.is(TOKEN_IMMEDIATE))
+            {
+                MAKE_ERROR(f, return, "a immediate value was expected");
+            }
+            
+            HANDLE_NON_VALID_IMM_FP(f, index, prog_idx);
+            new_word() = f.u & 0xFFFF'FFFF;
+            new_word() = f.u >> 32;
+        }
+    }
+    break;
+    case TD_SINGLE:
+    {
+        bool is_first = true;
+        u32 index = token_index - 3;
+        u32 prog_idx = program_index;
+        while (current->is(TOKEN_COMMA) || is_first)
+        {
+            if (is_first)
+            {
+                is_first = false;
+            }
+            else
+            {
+                advance(); // ,
+            }
+
+            Token f = parse_expression(ParsePrecedence::Start);
+            if (!f.is(TOKEN_IMMEDIATE))
+            {
+                MAKE_ERROR(f, return, "a immediate value was expected");
+            }
+
+            HANDLE_NON_VALID_IMM_FP(f, index, prog_idx);
+            f.s = f32(f.d);
+            new_word() = f.u;
+        }
+    }
+    break;
+    case TD_DOUBLE:
+    {
+        bool is_first = true;
+        u32 index = token_index - 3;
+        u32 prog_idx = program_index;
+        while (current->is(TOKEN_COMMA) || is_first)
+        {
+            if (is_first)
+            {
+                is_first = false;
+            }
+            else
+            {
+                advance(); // ,
+            }
+
+            Token f = parse_expression(ParsePrecedence::Start);
+            if (!f.is(TOKEN_IMMEDIATE))
+            {
+                MAKE_ERROR(f, return, "a immediate value was expected");
+            }
+
+            HANDLE_NON_VALID_IMM_FP(f, index, prog_idx);
+            new_word() = f.u & 0xFFFF'FFFF;
+            new_word() = f.u >> 32;
         }
     }
     break;
     case TD_ZERO:
     {
+        u32 index = token_index - 3;
+        u32 prog_idx = program_index;
+        
         Token count = parse_expression(ParsePrecedence::Start);
-        if (!count.is(TOKEN_IMMEDIATE)) {
-            MAKE_ERROR(count, break, "a immediate value was expected");
+        if (!count.is(TOKEN_IMMEDIATE))
+        {
+            MAKE_ERROR(count, return, "a immediate value was expected");
         }
 
-        if (count.i < 0) {
-            MAKE_ERROR(count, break, "a negative value is not allowed %lli", count.i);
+        if (count.i < 0)
+        {
+            MAKE_ERROR(count, return, "a negative value is not allowed %lli", count.i);
         }
 
-        while (count.u--) {
+        while (count.u--)
+        {
             new_byte() = 0;
         }
     }
@@ -191,12 +385,12 @@ void Assembler::assemble_directive() {
         Token alignment = parse_expression(ParsePrecedence::Start);
         if (!alignment.is(TOKEN_IMMEDIATE))
         {
-            MAKE_ERROR(alignment, break, "a immediate value was expected");
+            MAKE_ERROR(alignment, return, "a immediate value was expected");
         }
 
         if (alignment.i < 0)
         {
-            MAKE_ERROR(alignment, break, "a negative value is not allowed: '%lli'", alignment.i);
+            MAKE_ERROR(alignment, return, "a negative value is not allowed: '%lli'", alignment.i);
         }
 
         u32 aligned = align_up(this->program_index, (u16)alignment.u);
@@ -205,7 +399,7 @@ void Assembler::assemble_directive() {
         while (required_bytes--)
             new_byte() = 0;
     }
-        break;
+    break;
     default:
         break;
     }

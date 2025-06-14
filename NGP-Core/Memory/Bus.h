@@ -32,8 +32,8 @@ static constexpr u64 MAPPED_BUS_ADDRESS_START = 0x1'0000'0000;
 
 enum CheckAddressResult
 {
-    ValidVirtualAddress = 0,
-    InvalidVirtualAddress,
+    ValidAddress = 0,
+    InvalidAddress,
 };
 
 enum CheckAddressFlags
@@ -72,7 +72,7 @@ FORCE_INLINE static PhysicalAddress get_physical_addr(VirtualAddress pc)
 
 QWord read_qword(VirtualAddress addr);
 DWord read_dword(VirtualAddress addr);
-u32 read_word(VirtualAddress addr);
+Word read_word(VirtualAddress addr);
 u16 read_half(VirtualAddress addr);
 u8 read_byte(VirtualAddress addr);
 i16 read_ihalf(VirtualAddress addr);
@@ -80,7 +80,7 @@ i8 read_ibyte(VirtualAddress addr);
 
 void write_qword(VirtualAddress addr, QWord qword);
 void write_dword(VirtualAddress addr, DWord dword);
-void write_word(VirtualAddress addr, u32 word);
+void write_word(VirtualAddress addr, Word word);
 void write_half(VirtualAddress addr, u16 half);
 void write_byte(VirtualAddress addr, u8 byte);
 

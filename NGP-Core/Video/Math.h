@@ -13,15 +13,35 @@ struct Vector2
     f32 x, y;
 };
 
+struct Vector2I
+{
+    i32 x, y;
+};
+
+struct Vector2I16
+{
+    i16 x, y;
+};
+
+struct Vector2I8
+{
+    i8 x, y;
+};
+
 struct Vector3
 {
     f32 x, y, z;
 };
 
-struct Color
+union Color
 {
-    u8 r;
-    u8 g;
-    u8 b;
-    u8 a;
+    struct
+    {
+        u8 r;
+        u8 g;
+        u8 b;
+        u8 a;
+    };
+
+    Word rgba;
 };

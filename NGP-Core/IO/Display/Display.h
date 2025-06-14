@@ -13,17 +13,17 @@ namespace IO
 {
 
 // [0] HBLANK
-static constexpr VirtualAddress DISPLAY_IRQ_MASK =	DISPLAY_BASE | 0x0000;
-static constexpr VirtualAddress DISPLAY_STATUS =	DISPLAY_BASE | 0x0004;
-static constexpr VirtualAddress DISPLAY_CTR =	    DISPLAY_BASE | 0x0008;
-static constexpr VirtualAddress DISPLAY_ID =	    DISPLAY_BASE | 0x000C;
-static constexpr VirtualAddress DISPLAY_BUFFER =	DISPLAY_BASE | 0x0010;
+static constexpr VirtualAddress DISPLAY_IRQ_MASK =	    0x0000;
+static constexpr VirtualAddress DISPLAY_IRQ_STATUS =	0x0004;
+static constexpr VirtualAddress DISPLAY_CTR =	        0x0008;
+static constexpr VirtualAddress DISPLAY_ID =	        0x000C;
+static constexpr VirtualAddress DISPLAY_BUFFER_ADDR =	0x0010;
 // [0 - 13] Width
 // [14 - 27] Height
 // [28 - 31] Display Format
-static constexpr VirtualAddress DISPLAY_FORMAT =	DISPLAY_BASE | 0x0014;
+static constexpr VirtualAddress DISPLAY_FORMAT =	0x0014;
 // Write anything to trigger a presentation
-static constexpr VirtualAddress DISPLAY_PRESENT =   DISPLAY_BASE | 0x0018;
+static constexpr VirtualAddress DISPLAY_PRESENT =   0x0018;
 
 
 enum DisplayIRQMask
@@ -50,11 +50,12 @@ struct DisplayRegisters
     Word irq_status;
     Word ctr;
     Word id;
-    Word buffer;
+    Word buffer_addr;
     Word format;
 };
 
-DisplayRegisters& get_display_registers();
+IODevice display_get_io_device();
+DisplayRegisters& display_get_registers();
 
 void display_handle_write_word(VirtualAddress address, Word value);
 

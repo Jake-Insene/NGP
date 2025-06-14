@@ -97,7 +97,8 @@ Token Assembler::parse_symbol(Token, Token)
             context.undefined_label = true;
         }
 
-        return Token{
+        return Token
+        {
             .source_file = last->source_file,
             .line = last->line,
             .type = TOKEN_IMMEDIATE,
@@ -107,14 +108,12 @@ Token Assembler::parse_symbol(Token, Token)
 
     if(context.is_in_resolve)
     {
-        ErrorManager::error(
-            last->source_file.c_str(), last->line,
-            "undefined reference to %.*s", last->str.size(), last->str.data()
-        );
+        MAKE_ERROR((*last), {}, "undefined reference to %.*s", last->str.size(), last->str.data());
     }
     context.undefined_label = true;
     context.unknown_label = true;
-    return Token{
+    return Token
+    {
         current->source_file,
         current->line,
         TOKEN_ERROR,
@@ -148,10 +147,10 @@ Token Assembler::parse_string(Token, Token)
 
 // Infix
 
-#define CHECK_IMMEDIATE(tk) \
-    if(tk.type != TOKEN_IMMEDIATE)\
+#define CHECK_IMMEDIATE(TK) \
+    if(TK.type != TOKEN_IMMEDIATE)\
     {\
-        MAKE_ERROR(tk, return tk, "invalid expression");\
+        MAKE_ERROR(TK, return TK, "invalid expression");\
     }
 
 #define CHECK_INFIX() \
@@ -160,11 +159,11 @@ Token Assembler::parse_string(Token, Token)
     CHECK_IMMEDIATE(lhs);\
     CHECK_IMMEDIATE(rhs);\
 
-#define OP_IN_CASE(op) \
-        lhs.i = lhs.i op rhs.i;
+#define OP_IN_CASE(OP) \
+        lhs.i = lhs.i OP rhs.i;
 
-#define OP_IN_CASE_BIN(field, op) \
-        lhs.field = lhs.field op rhs.field;\
+#define OP_IN_CASE_BIN(field, OP) \
+        lhs.field = lhs.field OP rhs.field;\
 
 Token Assembler::parse_add(Token lhs, Token rhs)
 {
@@ -240,7 +239,7 @@ Token Assembler::parse_expression(ParsePrecedence precedence)
     ParseFn rule = get_rule(current->type);
     advance();
 
-    Token result = {};
+    Token result = *current;
     if (rule.prefix)
     {
         result = (this->*rule.prefix)(Token{}, Token{});

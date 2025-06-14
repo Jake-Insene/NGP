@@ -9,11 +9,12 @@
 
 struct CPUCore;
 
-namespace IO {
+namespace IO
+{
 
-static constexpr VirtualAddress PAD_MAIN_BUTTONS = PAD_BASE | 0x000;
-static constexpr VirtualAddress PAD_MAIN_STICKS = PAD_BASE | 0x004;
-static constexpr VirtualAddress PAD_MAIN_STATUS = PAD_BASE | 0x008;
+static constexpr VirtualAddress PAD_MAIN_BUTTONS = 0x000;
+static constexpr VirtualAddress PAD_MAIN_STICKS =  0x004;
+static constexpr VirtualAddress PAD_MAIN_STATUS =  0x008;
 
 static constexpr u32 MaxPadPort = 4;
 
@@ -64,7 +65,8 @@ struct MainPad
     Word status;
 };
 
-MainPad& get_main_pad();
+IODevice pad_get_io_device();
+MainPad& pad_get_main_pad();
 
 void pad_reset();
 

@@ -17,7 +17,7 @@ struct alignas(64) NGPV1 : CPUCore
         u32 list[32];
         i32 ilist[32];
     };
-    SIMDRegister simd[SIMDRegistersCount];
+    SIMDRegisterV1 simd[SIMDRegistersCount];
 
     // CPU Registers
     // System registers

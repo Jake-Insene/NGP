@@ -27,17 +27,22 @@ SymbolInfo symbols[] =
     {.symbol = "as", .size = 2, .type = TOKEN_DIRECTIVE, .subtype = TD_AS },
     {.symbol = "org", .size = 3, .type = TOKEN_DIRECTIVE, .subtype = TD_ORG },
     {.symbol = "include", .size = 7, .type = TOKEN_DIRECTIVE, .subtype = TD_INCLUDE },
+    {.symbol = "incbin", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_INCBIN },
     {.symbol = "macro", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_MACRO },
     {.symbol = ".string", .size = 7, .type = TOKEN_DIRECTIVE, .subtype = TD_STRING },
     {.symbol = ".byte", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_BYTE },
     {.symbol = ".half", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_HALF },
     {.symbol = ".word", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_WORD },
     {.symbol = ".dword", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_DWORD },
+    {.symbol = ".float32", .size = 8, .type = TOKEN_DIRECTIVE, .subtype = TD_FLOAT32 },
+    {.symbol = ".float64", .size = 8, .type = TOKEN_DIRECTIVE, .subtype = TD_FLOAT64 },
+    {.symbol = ".single", .size = 7, .type = TOKEN_DIRECTIVE, .subtype = TD_SINGLE },
+    {.symbol = ".double", .size = 7, .type = TOKEN_DIRECTIVE, .subtype = TD_DOUBLE },
     {.symbol = ".zero", .size = 5, .type = TOKEN_DIRECTIVE, .subtype = TD_ZERO },
     {.symbol = ".space", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_SPACE },
     {.symbol = ".align", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_ALIGN },
 
-    // general purporse registers
+    // general purpose registers
     {.symbol = "r0", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R0},
     {.symbol = "r1", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R1},
     {.symbol = "r2", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R2},
@@ -139,39 +144,114 @@ SymbolInfo symbols[] =
     {.symbol = "d30", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D30},
     {.symbol = "d31", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_D31},
 
-    // qword precision
-    {.symbol = "q0", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_Q0 },
-    {.symbol = "q1", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_Q1 },
-    {.symbol = "q2", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_Q2 },
-    {.symbol = "q3", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_Q3 },
-    {.symbol = "q4", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_Q4 },
-    {.symbol = "q5", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_Q5 },
-    {.symbol = "q6", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_Q6 },
-    {.symbol = "q7", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_Q7 },
-    {.symbol = "q8", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_Q8 },
-    {.symbol = "q9", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_Q9 },
-    {.symbol = "q10", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q10 },
-    {.symbol = "q11", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q11 },
-    {.symbol = "q12", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q12 },
-    {.symbol = "q13", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q13 },
-    {.symbol = "q14", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q14 },
-    {.symbol = "q15", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q15 },
-    {.symbol = "q16", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q16 },
-    {.symbol = "q17", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q17 },
-    {.symbol = "q18", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q18 },
-    {.symbol = "q19", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q19 },
-    {.symbol = "q20", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q20 },
-    {.symbol = "q21", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q21 },
-    {.symbol = "q22", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q22 },
-    {.symbol = "q23", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q23 },
-    {.symbol = "q24", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q24 },
-    {.symbol = "q25", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q25 },
-    {.symbol = "q26", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q26 },
-    {.symbol = "q27", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q27 },
-    {.symbol = "q28", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q28 },
-    {.symbol = "q29", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q29 },
-    {.symbol = "q30", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q30 },
-    {.symbol = "q31", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_Q31 },
+    // vector registers
+    {.symbol = "v0", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_V0 },
+    {.symbol = "v1", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_V1 },
+    {.symbol = "v2", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_V2 },
+    {.symbol = "v3", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_V3 },
+    {.symbol = "v4", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_V4 },
+    {.symbol = "v5", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_V5 },
+    {.symbol = "v6", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_V6 },
+    {.symbol = "v7", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_V7 },
+    {.symbol = "v8", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_V8 },
+    {.symbol = "v9", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_V9 },
+    {.symbol = "v10", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V10 },
+    {.symbol = "v11", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V11 },
+    {.symbol = "v12", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V12 },
+    {.symbol = "v13", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V13 },
+    {.symbol = "v14", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V14 },
+    {.symbol = "v15", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V15 },
+    {.symbol = "v16", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V16 },
+    {.symbol = "v17", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V17 },
+    {.symbol = "v18", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V18 },
+    {.symbol = "v19", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V19 },
+    {.symbol = "v20", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V20 },
+    {.symbol = "v21", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V21 },
+    {.symbol = "v22", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V22 },
+    {.symbol = "v23", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V23 },
+    {.symbol = "v24", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V24 },
+    {.symbol = "v25", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V25 },
+    {.symbol = "v26", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V26 },
+    {.symbol = "v27", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V27 },
+    {.symbol = "v28", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V28 },
+    {.symbol = "v29", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V29 },
+    {.symbol = "v30", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V30 },
+    {.symbol = "v31", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V31 },
+
+    // fp subfixes per register
+#define DEFINE_VSUBFIXEX_S4(VNAME, SIZE, REG) \
+    {.symbol = VNAME ##".s4", .size = SIZE + 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V0_S4 + REG}
+#define DEFINE_VSUBFIXEX_D2(VNAME, SIZE, REG) \
+    {.symbol = VNAME ##".d2", .size = SIZE + 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V0_D2 + REG}
+
+    DEFINE_VSUBFIXEX_S4("v0", 2, 0),
+    DEFINE_VSUBFIXEX_S4("v1", 2, 1),
+    DEFINE_VSUBFIXEX_S4("v2", 2, 2),
+    DEFINE_VSUBFIXEX_S4("v3", 2, 3),
+    DEFINE_VSUBFIXEX_S4("v4", 2, 4),
+    DEFINE_VSUBFIXEX_S4("v5", 2, 5),
+    DEFINE_VSUBFIXEX_S4("v6", 2, 6),
+    DEFINE_VSUBFIXEX_S4("v7", 2, 7),
+    DEFINE_VSUBFIXEX_S4("v8", 2, 8),
+    DEFINE_VSUBFIXEX_S4("v9", 2, 9),
+    DEFINE_VSUBFIXEX_S4("v10", 3, 10),
+    DEFINE_VSUBFIXEX_S4("v11", 3, 11),
+    DEFINE_VSUBFIXEX_S4("v12", 3, 12),
+    DEFINE_VSUBFIXEX_S4("v13", 3, 13),
+    DEFINE_VSUBFIXEX_S4("v14", 3, 14),
+    DEFINE_VSUBFIXEX_S4("v15", 3, 15),
+    DEFINE_VSUBFIXEX_S4("v16", 3, 16),
+    DEFINE_VSUBFIXEX_S4("v17", 3, 17),
+    DEFINE_VSUBFIXEX_S4("v18", 3, 18),
+    DEFINE_VSUBFIXEX_S4("v19", 3, 19),
+    DEFINE_VSUBFIXEX_S4("v20", 3, 20),
+    DEFINE_VSUBFIXEX_S4("v21", 3, 21),
+    DEFINE_VSUBFIXEX_S4("v22", 3, 22),
+    DEFINE_VSUBFIXEX_S4("v23", 3, 23),
+    DEFINE_VSUBFIXEX_S4("v24", 3, 24),
+    DEFINE_VSUBFIXEX_S4("v25", 3, 25),
+    DEFINE_VSUBFIXEX_S4("v26", 3, 26),
+    DEFINE_VSUBFIXEX_S4("v27", 3, 27),
+    DEFINE_VSUBFIXEX_S4("v28", 3, 28),
+    DEFINE_VSUBFIXEX_S4("v29", 3, 29),
+    DEFINE_VSUBFIXEX_S4("v30", 3, 30),
+    DEFINE_VSUBFIXEX_S4("v31", 3, 31),
+
+    DEFINE_VSUBFIXEX_D2("v0", 2, 0),
+    DEFINE_VSUBFIXEX_D2("v1", 2, 1),
+    DEFINE_VSUBFIXEX_D2("v2", 2, 2),
+    DEFINE_VSUBFIXEX_D2("v3", 2, 3),
+    DEFINE_VSUBFIXEX_D2("v4", 2, 4),
+    DEFINE_VSUBFIXEX_D2("v5", 2, 5),
+    DEFINE_VSUBFIXEX_D2("v6", 2, 6),
+    DEFINE_VSUBFIXEX_D2("v7", 2, 7),
+    DEFINE_VSUBFIXEX_D2("v8", 2, 8),
+    DEFINE_VSUBFIXEX_D2("v9", 2, 9),
+    DEFINE_VSUBFIXEX_D2("v10", 3, 10),
+    DEFINE_VSUBFIXEX_D2("v11", 3, 11),
+    DEFINE_VSUBFIXEX_D2("v12", 3, 12),
+    DEFINE_VSUBFIXEX_D2("v13", 3, 13),
+    DEFINE_VSUBFIXEX_D2("v14", 3, 14),
+    DEFINE_VSUBFIXEX_D2("v15", 3, 15),
+    DEFINE_VSUBFIXEX_D2("v16", 3, 16),
+    DEFINE_VSUBFIXEX_D2("v17", 3, 17),
+    DEFINE_VSUBFIXEX_D2("v18", 3, 18),
+    DEFINE_VSUBFIXEX_D2("v19", 3, 19),
+    DEFINE_VSUBFIXEX_D2("v20", 3, 20),
+    DEFINE_VSUBFIXEX_D2("v21", 3, 21),
+    DEFINE_VSUBFIXEX_D2("v22", 3, 22),
+    DEFINE_VSUBFIXEX_D2("v23", 3, 23),
+    DEFINE_VSUBFIXEX_D2("v24", 3, 24),
+    DEFINE_VSUBFIXEX_D2("v25", 3, 25),
+    DEFINE_VSUBFIXEX_D2("v26", 3, 26),
+    DEFINE_VSUBFIXEX_D2("v27", 3, 27),
+    DEFINE_VSUBFIXEX_D2("v28", 3, 28),
+    DEFINE_VSUBFIXEX_D2("v29", 3, 29),
+    DEFINE_VSUBFIXEX_D2("v30", 3, 30),
+    DEFINE_VSUBFIXEX_D2("v31", 3, 31),
+
+#undef DEFINE_VSUBFIXEX_S4
+#undef DEFINE_VSUBFIXEX_D2
 
     // aliases
     {.symbol = "zr", .size = 2, .type = TOKEN_REGISTER, .subtype = TOKEN_R31 },
@@ -235,11 +315,11 @@ SymbolInfo symbols[] =
     {.symbol = "abs", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_ABS },
 
     {.symbol = "fmov", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOV },
-    {.symbol = "fmovnc", .size = 6, .type = TOKEN_INSTRUCTION, .subtype = TI_FMOVNC },
-    {.symbol = "fcvts", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FCVTZS },
-    {.symbol = "fcvtu", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_FCVTZU },
-    {.symbol = "scvtf", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_SCVTF },
-    {.symbol = "ucvtf", .size = 7, .type = TOKEN_INSTRUCTION, .subtype = TI_UCVTF },
+    {.symbol = "fsmov", .size = 5, .type = TOKEN_INSTRUCTION, .subtype = TI_FSMOV },
+    {.symbol = "fumov", .size = 5, .type = TOKEN_INSTRUCTION, .subtype = TI_FUMOV },
+    {.symbol = "fcvt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FCVT },
+    {.symbol = "scvtf", .size = 5, .type = TOKEN_INSTRUCTION, .subtype = TI_SCVTF },
+    {.symbol = "ucvtf", .size = 5, .type = TOKEN_INSTRUCTION, .subtype = TI_UCVTF },
 
     {.symbol = "fadd", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FADD },
     {.symbol = "fsub", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FSUB },
@@ -247,6 +327,8 @@ SymbolInfo symbols[] =
     {.symbol = "fdiv", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FDIV },
     {.symbol = "fneg", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FNEG },
     {.symbol = "fabs", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FABS },
+    {.symbol = "fins", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FINS },
+    {.symbol = "fdup", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FDUP },
 
     {.symbol = "ldp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDP },
     {.symbol = "ld", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_LD },
@@ -282,6 +364,8 @@ SymbolInfo symbols[] =
     {.symbol = "evc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_EVC },
     {.symbol = "smc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SMC },
     {.symbol = "halt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_HALT },
+
+    // fp subfixes
 };
 
 #define MAKE_TOKEN(TYPE) { \
@@ -319,6 +403,8 @@ Token AsmLexer::get_next()
 {
     Token tk = {};
     tk.type = TOKEN_ERROR;
+    tk.source_file = file_path;
+    tk.line = line;
 
     skip_white_space();
 
@@ -602,33 +688,16 @@ Token AsmLexer::get_immediate()
         ErrorManager::error(file_path.c_str(), line, "constant number too long", current);
     }
 
-    bool is_single = false;
     if (current == '.')
     {
-        if (peek(1) == 'f' || peek(1) == 'F')
-        {
-            is_single = true;
-        }
+        advance(); // Skip '.'
 
-        while (is_num(current) && i < 32)
+        while (is_num(current))
         {
             advance();
-            i++;
         }
 
-        if (i >= 32)
-        {
-            ErrorManager::error(file_path.c_str(), line, "constant number too long", current);
-        }
-
-        if (is_single)
-        {
-            tk.s = std::strtof((char*)content + start, nullptr);
-        }
-        else
-        {
-            tk.d = std::strtod((char*)content + start, nullptr);
-        }
+        tk.d = std::strtod((char*)content + start, nullptr);
     }
     else
     {

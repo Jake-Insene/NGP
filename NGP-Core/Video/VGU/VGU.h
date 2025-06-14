@@ -11,23 +11,49 @@
 #include <mutex>
 
 
-struct VGPU
+struct VGU
 {
+    static constexpr PhysicalAddress VRamAddress = 0x2'0000'0000;
+    
+    enum QueueSignal
+    {
+        QUEUE_IDLE = 0,
+        QUEUE_START = 1,
+    };
+
+    struct Queue
+    {
+        u8 id;
+        u8 priority;
+        VirtualAddress cmd_list;
+        // In words
+        Word cmd_len;
+
+        // Implementation data
+        std::mutex queue_mutex;
+
+        QueueSignal signal;
+    };
+
     struct GPUState
     {
-        Word* vram;
-        bool present_requested;
-
-        Word* display_address;
-
         GU::GUDriver internal_driver;
+
+        Word* vram;
+        Word* display_address;
 
         i32 width;
         i32 height;
         IO::DisplayFormat display_format;
         PhysicalAddress fb;
 
+        Queue queues[IO::GU_QUEUE_INDEX_MAX];
+
         std::mutex sync_mutex;
+
+        bool present_requested;
+        bool irq_pending;
+        bool queue_requested;
     };
 
     static inline GPUState state;
@@ -43,11 +69,19 @@ struct VGPU
     static void display_set_config(i32 width, i32 height, IO::DisplayFormat display_format);
     static void display_set_address(VirtualAddress vva);
 
+    static void queue_execute(u8 index, u8 priority, VirtualAddress cmd_list, Word cmd_len);
+
+    static void dma_send(VirtualAddress dest, VirtualAddress src, Word len, Word flags);
+
     static Bus::CheckAddressResult check_vram_address(VirtualAddress vva);
 
+    // Internal functions
     static void set_pixel(i32 x, i32 y, Color color);
 
-    static void draw_line(Vector2 start, Vector2 end, Color color);
-    static void draw_triangle(Vector2 p1, Vector2 p2, Vector2 p3, Color color);
-    static void draw_fill_triangle(Vector2 p1, Vector2 p2, Vector2 p3, Color color);
+    // Queue
+    static void queue_send_signal(Queue* queue, QueueSignal signal);
+    static void queue_execute_cmd(Queue* queue);
+
+    // Drawing
+    static void fill_rectangle(Color color, i32 x, i32 y, i32 w, i32 h);
 };

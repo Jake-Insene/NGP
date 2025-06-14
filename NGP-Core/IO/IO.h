@@ -16,6 +16,14 @@ namespace IO
 // The MMIO is segmented, each segment has a size of 4096 bytes.
 static constexpr VirtualAddress IO_BASE = 0x1000'0000;
 
+static constexpr VirtualAddress IRQ_BASE = IO_BASE | 0x0000'0000;
+static constexpr VirtualAddress DMA_BASE = IO_BASE | 0x0000'1000;
+static constexpr VirtualAddress PAD_BASE = IO_BASE | 0x0000'2000;
+static constexpr VirtualAddress EMD_BASE = IO_BASE | 0x0000'3000;
+static constexpr VirtualAddress DISPLAY_BASE = IO_BASE | 0x0000'4000;
+
+static constexpr VirtualAddress GU_BASE = IO_BASE | 0x0001'0000;
+
 enum IOSegments
 {
     IRQ_SEGMENT = 0x0,
@@ -25,15 +33,25 @@ enum IOSegments
     DISPLAY_SEGMENT = 0x4,
 
     GU_SEGMENT = 0x10,
+
+    LAST_SEGMENT,
 };
 
-static constexpr VirtualAddress IRQ_BASE =      IO_BASE | 0x0000'0000;
-static constexpr VirtualAddress DMA_BASE =      IO_BASE | 0x0000'1000;
-static constexpr VirtualAddress PAD_BASE =      IO_BASE | 0x0000'2000;
-static constexpr VirtualAddress EMD_BASE =      IO_BASE | 0x0000'3000;
-static constexpr VirtualAddress DISPLAY_BASE =  IO_BASE | 0x0000'4000;
+struct IODevice
+{
+    VirtualAddress base_address;
 
-static constexpr VirtualAddress GU_BASE = IO_BASE | 0x0001'0000;
+    u8(*read_byte)(VirtualAddress addr);
+    u16(*read_half)(VirtualAddress addr);
+    Word(*read_word)(VirtualAddress addr);
+    DWord(*read_dword)(VirtualAddress addr);
+    QWord(*read_qword)(VirtualAddress addr);
+    void(*write_byte)(VirtualAddress addr, u8);
+    void(*write_half)(VirtualAddress addr, u16);
+    void(*write_word)(VirtualAddress addr, Word);
+    void(*write_dword)(VirtualAddress addr, DWord);
+    void(*write_qword)(VirtualAddress addr, QWord);
+};
 
 void initialize();
 void shutdown();

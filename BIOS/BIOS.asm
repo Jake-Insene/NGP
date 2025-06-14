@@ -2,14 +2,17 @@ FORMAT RAW AS 'BIN'
 ORG 0x00000000
 vector_address_table:
 B main ; Reset Address/Entry point
-.word 0 ; IRQ Handler
-.word 0 ; Exception Handler
-.word 0 ; Not Used
+B $ ; IRQ Handler
+B $ ; Exception Handler
+B $ ; Not Used
 
 INCLUDE "DEBUG.h"
 INCLUDE "DISPLAY.h"
 INCLUDE "GU.h"
 INCLUDE "MACROS.h"
+INCLUDE "MEMORY.h"
+
+COMMAND_LIST_SIZE = 0x1000
 
 main:	
 	; Setting Up SP
@@ -18,28 +21,38 @@ main:
 
 	BL EnableDisplay
 
-	ADR R0, DisplayBuffer
+	MOV R0, 0 ; VRAM 0x00000000
 	LD R1, CONFIG
-	BL CreateDisplay
+	BL SetDisplayBuffer
 
-	IMM32 R0, 0x200000FF
 .loop:
-	ADR R1, DisplayBuffer
-	IMM32 R2, 0x40000
-	BL ClearDisplay
+	ADR R0, CommandList
+	MOV R1, COMMAND_LIST_SIZE/4
+	MOV R2, GU_QUEUE_INDEX0
+	MOV R3, GU_QUEUE_PRIORITY_NORMAL
+	BL GUSendCommandList
 
-	ST R0, [SP, 4]
 	BL PresentDisplay
-	LD R0, [SP, 4]
-
 	B .loop
 	HALT
 
 CONFIG:
-.word DISPLAY_FORMAT_CREATE 0x100, 0x100, DISPLAY_FORMAT_RGBA8
+	.word DISPLAY_FORMAT_CREATE 0x100, 0x100, DISPLAY_FORMAT_RGBA8
 
-DisplayBuffer:
-	.zero 0x40000 ; 0x100 * 0x100 * 4 bytes (RGBA8 format)
+VALUES:
+	.float32 1.0, 2.0, 3.0, 4.0
+VALUES2:
+	.float64 1.0, 2.0, 3.0, 4.0
+
+CommandList:
+	.word 0x010000FF
+	.word 0x00000000
+	.word 0x00100010
+	.zero COMMAND_LIST_SIZE
+
+.align 256
+my_image:
+	INCBIN "my_image.bin"
 
 .align 0x10
 .zero 0x400000-$

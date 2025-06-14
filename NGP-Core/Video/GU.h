@@ -8,6 +8,7 @@
 #include "Core/Header.h"
 
 #include "IO/Display/Display.h"
+#include "IO/GU/GU.h"
 #include "Memory/Bus.h"
 
 
@@ -15,46 +16,6 @@ struct GU
 {
     static constexpr i32 MaxDeviceScreenWidth = 256;
     static constexpr i32 MaxDeviceScreenHeight = 144;
-
-    enum GUPositionFormat
-    {
-        GU_VB_XYF32 = 0,
-        GU_VB_XYZF32 = 1,
-        GU_VB_XYI32 = 2,
-        GU_VB_XYZI32 = 3,
-    };
-
-    enum GUUVFormat
-    {
-        GU_VB_UVF32 = 0,
-        GU_VB_UVWF32 = 1,
-        GU_VB_UVI32 = 2,
-        GU_VB_UVWI32 = 3,
-    };
-
-    enum GUColorFormat
-    {
-        GU_VB_RGBF32 = 0,
-        GU_VB_RGBAF32 = 1,
-        GU_VB_RGB8 = 2,
-        GU_VB_RGBA8 = 3,
-    };
-
-    // Each command is 16 bytes size
-    enum GUCommand
-    {
-        GU_COMMAND_END = 0,
-        // [32 - 34] Position FMT
-        // [35 - 37] UV FMT
-        // [38 - 40] Color FMT
-        GU_COMMAND_SET_VS_FMT = 1,
-
-        // [32 - 39] 8 bits for red component 
-        // [40 - 47] 8 bits for green component 
-        // [48 - 55] 8 bits for blue component 
-        // [56 - 63] 8 bits for alpha component 
-        GU_COMMAND_CLEAR = 2,
-    };
 
     struct GUDriver
     {
@@ -67,6 +28,10 @@ struct GU
 
         void(*display_set_config)(i32, i32, IO::DisplayFormat);
         void(*display_set_address)(VirtualAddress);
+
+        void(*queue_execute)(u8, u8, VirtualAddress, Word);
+
+        void(*dma_send)(VirtualAddress, VirtualAddress, Word, Word);
 
         Bus::CheckAddressResult(*check_vram_address)(VirtualAddress);
 
@@ -102,6 +67,10 @@ struct GU
 
     VTFUNCDEFARG3(display_set_config, i32, i32, IO::DisplayFormat);
     VTFUNCDEFARG1(display_set_address, VirtualAddress);
+
+    VTFUNCDEFARG4(queue_execute, u8, u8, VirtualAddress, Word);
+
+    VTFUNCDEFARG4(dma_send, VirtualAddress, VirtualAddress, Word, Word);
 
     VTFUNCDEFRETARG1(Bus::CheckAddressResult, check_vram_address, VirtualAddress);
 };

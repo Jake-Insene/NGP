@@ -7,6 +7,10 @@
 #pragma once
 #include "Platform/Header.h"
 #include "Video/GU.h"
+#include "Video/Math.h"
+
+#include <unordered_map>
+
 
 struct D3D12GU
 {
@@ -24,6 +28,14 @@ struct D3D12GU
 
         ID3D12CommandAllocator* cmd_graphics_allocator;
         ID3D12GraphicsCommandList4* cmd_graphics;
+    };
+
+    struct VFramebuffer
+    {
+        ID3D12Resource* upload_buffer;
+        ID3D12Resource* framebuffer;
+        D3D12_GPU_DESCRIPTOR_HANDLE srv;
+        Vector2I size;
     };
 
     struct GPUState
@@ -49,16 +61,10 @@ struct D3D12GU
 
         // Upload buffers
         ID3D12Resource* vb;
-        ID3D12Resource* upload_framebuffer;
 
-        // Virtual Framebuffer
-        ID3D12Resource* framebuffer;
-        D3D12_GPU_DESCRIPTOR_HANDLE framebuffer_srv;
-        i32 framebuffer_width;
-        i32 framebuffer_height;
+        std::unordered_map<D3D12_GPU_VIRTUAL_ADDRESS, VFramebuffer> vframebuffers;
 
         u32 current_frame;
-
         FLOAT clear_color[4];
     };
 

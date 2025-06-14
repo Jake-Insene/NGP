@@ -43,15 +43,16 @@ struct alignas(64) CPUCore
 
     enum ExceptionCode
     {
-        DivideByZeroException = 0x0,
-        SupervisorException = 0x1,
-        ExtendedSupervisorException = 0x2,
-        SecureMachineControllerException = 0x3,
+        SupervisorException = 0x0,
+        ExtendedSupervisorException = 0x1,
+        SecureMachineControllerException = 0x2,
 
         Breakpoint = 0x4,
         InvalidRead = 0x5,
         InvalidWrite = 0x6,
         AccessViolation = 0x7,
+
+        DivideByZeroException = 0x8,
     };
 
     union ProgramStateRegister
@@ -122,8 +123,25 @@ struct alignas(64) CPUCore
 
     static constexpr u32 SIMDRegistersCount = 32;
 
-    union SIMDRegister
+    union Vec128
     {
+        struct
+        {
+            f32 x, y, z, w;
+        } vec4;
+
+        struct
+        {
+            f64 x, y;
+        } vec2;
+
+        f32 s4[4];
+        f64 d2[2];
+    };
+
+    union SIMDRegisterV1
+    {
+        Vec128 vec;
         QWord qw;
         f32 s;
         Word w;

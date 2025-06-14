@@ -10,7 +10,28 @@
 
 namespace IO
 {
-IRQRegisters& get_irq_registers()
+
+IODevice irq_get_io_device()
+{
+	return IODevice
+	{
+		.base_address = IRQ_BASE,
+
+		.read_byte = [](VirtualAddress) -> u8 { return 0; },
+		.read_half = [](VirtualAddress) -> u16 { return 0; },
+		.read_word = [](VirtualAddress) -> Word { return 0; },
+		.read_dword = [](VirtualAddress) -> DWord { return 0; },
+		.read_qword = [](VirtualAddress) -> QWord { return QWord(); },
+
+		.write_byte = [](VirtualAddress, u8) {},
+		.write_half = [](VirtualAddress, u16) {},
+		.write_word = &irq_handle_write_word,
+		.write_dword = [](VirtualAddress, DWord) {},
+		.write_qword = [](VirtualAddress, QWord) {},
+	};
+}
+
+IRQRegisters& irq_get_registers()
 {
 	return *(IRQRegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IRQ_BASE);
 }
@@ -20,10 +41,10 @@ void irq_handle_write_word(VirtualAddress address, Word value)
 	switch (address)
 	{
 	case IRQ_MASK:
-		get_irq_registers().irq_mask = value;
+		irq_get_registers().irq_mask = value;
 		break;
 	case IRQ_STATUS:
-		get_irq_registers().irq_status = value;
+		irq_get_registers().irq_status = value;
 		break;
 	}
 }

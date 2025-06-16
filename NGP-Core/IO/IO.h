@@ -16,13 +16,17 @@ namespace IO
 // The MMIO is segmented, each segment has a size of 4096 bytes.
 static constexpr VirtualAddress IO_BASE = 0x1000'0000;
 
-static constexpr VirtualAddress IRQ_BASE = IO_BASE | 0x0000'0000;
-static constexpr VirtualAddress DMA_BASE = IO_BASE | 0x0000'1000;
-static constexpr VirtualAddress PAD_BASE = IO_BASE | 0x0000'2000;
-static constexpr VirtualAddress EMD_BASE = IO_BASE | 0x0000'3000;
-static constexpr VirtualAddress DISPLAY_BASE = IO_BASE | 0x0000'4000;
+static constexpr VirtualAddress IRQ_BASE =      IO_BASE | 0x0000'0000;
+static constexpr VirtualAddress DMA_BASE =      IO_BASE | 0x0000'1000;
+static constexpr VirtualAddress PAD_BASE =      IO_BASE | 0x0000'2000;
+static constexpr VirtualAddress EMD_BASE =      IO_BASE | 0x0000'3000;
+static constexpr VirtualAddress DISPLAY_BASE =  IO_BASE | 0x0000'4000;
 
 static constexpr VirtualAddress GU_BASE = IO_BASE | 0x0001'0000;
+
+static constexpr Word SegmentSize = 0x1000;
+static constexpr Word SegmentBits = 12;
+static constexpr Word SegmentMask = SegmentSize - 1;
 
 enum IOSegments
 {
@@ -41,6 +45,10 @@ struct IODevice
 {
     VirtualAddress base_address;
 
+    void(*initialize)();
+    void(*shutdown)();
+    void(*dispatch)();
+
     u8(*read_byte)(VirtualAddress addr);
     u16(*read_half)(VirtualAddress addr);
     Word(*read_word)(VirtualAddress addr);
@@ -55,6 +63,8 @@ struct IODevice
 
 void initialize();
 void shutdown();
+
+void dispatch();
 
 u8 read_io_byte(VirtualAddress address);
 u16 read_io_half(VirtualAddress address);

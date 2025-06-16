@@ -31,7 +31,7 @@ LRESULT wnd_proc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp)
         break;
     case WM_KEYDOWN:
     case WM_KEYUP:
-        Pad::pad_update(0, _wp_to_buttons(wp), msg == WM_KEYDOWN);
+        Pad::update(0, _wp_to_buttons(wp), msg == WM_KEYDOWN);
         break;
     }
 

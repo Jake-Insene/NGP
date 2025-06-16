@@ -180,9 +180,9 @@ SymbolInfo symbols[] =
 
     // fp subfixes per register
 #define DEFINE_VSUBFIXEX_S4(VNAME, SIZE, REG) \
-    {.symbol = VNAME ##".s4", .size = SIZE + 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V0_S4 + REG}
+    {.symbol = VNAME ".s4", .size = SIZE + 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V0_S4 + REG}
 #define DEFINE_VSUBFIXEX_D2(VNAME, SIZE, REG) \
-    {.symbol = VNAME ##".d2", .size = SIZE + 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V0_D2 + REG}
+    {.symbol = VNAME ".d2", .size = SIZE + 3, .type = TOKEN_REGISTER, .subtype = TOKEN_V0_D2 + REG}
 
     DEFINE_VSUBFIXEX_S4("v0", 2, 0),
     DEFINE_VSUBFIXEX_S4("v1", 2, 1),
@@ -329,6 +329,8 @@ SymbolInfo symbols[] =
     {.symbol = "fabs", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FABS },
     {.symbol = "fins", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FINS },
     {.symbol = "fdup", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_FDUP },
+    {.symbol = "fmadd", .size = 5, .type = TOKEN_INSTRUCTION, .subtype = TI_FMADD },
+    {.symbol = "fmsub", .size = 5, .type = TOKEN_INSTRUCTION, .subtype = TI_FMSUB },
 
     {.symbol = "ldp", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_LDP },
     {.symbol = "ld", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_LD },
@@ -347,6 +349,9 @@ SymbolInfo symbols[] =
     {.symbol = "cbz", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_CBZ },
     {.symbol = "cbnz", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_CBNZ },
 
+    {.symbol = "madd", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_MADD },
+    {.symbol = "msub", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_MSUB },
+    {.symbol = "mneg", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_MNEG },
     {.symbol = "mul", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MUL },
     {.symbol = "div", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_DIV },
     {.symbol = "udiv", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_UDIV },
@@ -389,11 +394,12 @@ SymbolInfo symbols[] =
     advance();\
 }
 
-void AsmLexer::set(const std::string& source_file, u8* ctn, u32 s)
+void AsmLexer::set(StringID source_file, u8* ctn, u32 s)
 {
+    file_path = source_file;
+
     content = ctn;
     size = s;
-    file_path = source_file;
     index = 0;
     line = 1;
     current = content[index];
@@ -545,7 +551,7 @@ Token AsmLexer::get_next()
         }
         else
         {
-            ErrorManager::error(file_path.c_str(), line, "invalid token '%c'", current);
+            ErrorManager::error(get_file_path().data(), line, "invalid token '%c'", current);
             advance();
         }
         break;
@@ -598,7 +604,9 @@ Token AsmLexer::get_symbol_or_label()
     {
         advance();
     }
-    tk.str = std::string_view((char*)content + start, index - start);
+
+    std::string_view view{ (char*)content + start, index - start };
+    tk.str = StringPool::get_or_insert(view);
 
     if (current == ':')
     {
@@ -613,11 +621,11 @@ Token AsmLexer::get_symbol_or_label()
 
     for (auto& sym : symbols)
     {
-        if (sym.size == tk.str.size())
+        if (sym.size == view.size())
         {
             for (u8 i = 0; i < sym.size; i++)
             {
-                if (sym.symbol[i] != std::tolower(tk.str[i]))
+                if (sym.symbol[i] != std::tolower(view[i]))
                 {
                     goto next;
                 }
@@ -657,7 +665,7 @@ Token AsmLexer::get_immediate()
 
             if (!is_hex(current))
             {
-                ErrorManager::error(file_path.c_str(), line, "invalid constant", current);
+                ErrorManager::error(get_file_path().data(), line, "invalid constant", current);
                 return tk;
             }
         }
@@ -669,7 +677,7 @@ Token AsmLexer::get_immediate()
 
             if (!is_bin(current))
             {
-                ErrorManager::error(file_path.c_str(), line, "invalid constant", current);
+                ErrorManager::error(get_file_path().data(), line, "invalid constant", current);
                 return tk;
             }
         }
@@ -685,7 +693,7 @@ Token AsmLexer::get_immediate()
 
     if (i >= 32)
     {
-        ErrorManager::error(file_path.c_str(), line, "constant number too long", current);
+        ErrorManager::error(get_file_path().data(), line, "constant number too long", current);
     }
 
     if (current == '.')
@@ -693,9 +701,7 @@ Token AsmLexer::get_immediate()
         advance(); // Skip '.'
 
         while (is_num(current))
-        {
             advance();
-        }
 
         tk.d = std::strtod((char*)content + start, nullptr);
     }
@@ -752,16 +758,17 @@ Token AsmLexer::get_string()
     {
         if (current == '\'' || current == '"')
         {
-            ErrorManager::error(file_path.c_str(), line, "inconsist string");
+            ErrorManager::error(get_file_path().data(), line, "inconsist string");
             return tk;
         }
         advance();
     }
-    tk.str = std::string_view((char*)content + start, index - start);
+    std::string_view view{ (char*)content + start, index - start };
+    tk.str = StringPool::get_or_insert(view);
 
     if (current == '\0')
     {
-        ErrorManager::error(file_path.c_str(), line, "bad string");
+        ErrorManager::error(get_file_path().data(), line, "bad string");
     }
     else
     {

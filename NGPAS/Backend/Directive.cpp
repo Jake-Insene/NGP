@@ -11,18 +11,9 @@
 #include <fstream>
 
 
-#define ADD_RESOLVE_DIRECTIVE(IDX, PIDX) \
-    {\
-        ToResolveItem& tr = to_resolve.emplace_back();\
-        tr.type = ResolveDirective;\
-        tr.address = PIDX;\
-        tr.index = IDX;\
-        advance_to_next_line();\
-    }
-
 #define HANDLE_NON_VALID_IMM(TK, IMM_LIMIT, IDX, PIDX) \
     if (context.undefined_label == true && context.is_in_resolve == false)\
-        ADD_RESOLVE_DIRECTIVE(IDX, PIDX)\
+        ADD_RESOLVE(ResolveDirective, IDX, PIDX)\
     else if (context.undefined_label == true && context.is_in_resolve == true)\
         return;\
     else if (TK.u > IMM_LIMIT)\
@@ -30,7 +21,7 @@
 
 #define HANDLE_NON_VALID_IMM_FP(TK, IDX, PIDX) \
     if (context.undefined_label == true && context.is_in_resolve == false)\
-        ADD_RESOLVE_DIRECTIVE(IDX, PIDX)\
+        ADD_RESOLVE(ResolveDirective, IDX, PIDX)\
     else if (context.undefined_label == true && context.is_in_resolve == true)\
         return;\
 
@@ -67,7 +58,7 @@ void Assembler::assemble_directive()
                 MAKE_ERROR((*current), return, "a file extension was expected");
             }
 
-            extension = next->str;
+            extension = next->get_str();
             advance(); // as
             advance(); // str
         }
@@ -96,11 +87,12 @@ void Assembler::assemble_directive()
         if (!expected(TOKEN_STRING, "a file path was expected"))
             return;
 
-        std::string file_path{};
-        file_path.resize(last->str.size());
-        encode_string((u8*)file_path.data(), last->str);
+        std::string file_path_tmp{};
+        file_path_tmp.resize(last->get_str().size());
+        encode_string((u8*)file_path_tmp.data(), last->str);
+        StringID file_path_tmp_id = StringPool::get_or_insert(file_path_tmp);
 
-        file_path = AsmUtility::path_relative_to(last->source_file, file_path);
+        std::string file_path = AsmUtility::path_relative_to(last->source_file, file_path_tmp_id);
 
         std::ifstream input{ file_path, std::ios::binary | std::ios::ate };
         if (!input.is_open())

@@ -31,6 +31,10 @@ static inline IODevice get_default_io_device(VirtualAddress base_address)
     {
         .base_address = base_address,
 
+        .initialize = []() {},
+        .shutdown = []() {},
+        .dispatch = []() {},
+
         .read_byte = [](VirtualAddress va) -> u8 { Bus::invalid_read(va); return 0; },
         .read_half = [](VirtualAddress va) -> u16 { Bus::invalid_read(va); return 0; },
         .read_word = [](VirtualAddress va) -> Word { Bus::invalid_read(va); return 0; },
@@ -47,42 +51,53 @@ static inline IODevice get_default_io_device(VirtualAddress base_address)
 
 void initialize()
 {
-    for (usize i = IO_BASE;;)
+    for (usize io_page = 0; io_page < LAST_SEGMENT; io_page++)
     {
-        const VirtualAddress io_page = (i & 0x0FFF'F000) >> 12;
         switch (io_page)
         {
         case IRQ_SEGMENT:
-            io_devices.emplace_back(IRQ::irq_get_io_device());
+            io_devices.emplace_back(IRQ::get_io_device());
             break;
         case DMA_SEGMENT:
-            io_devices.emplace_back(DMA::dma_get_io_device());
+            io_devices.emplace_back(DMA::get_io_device());
             break;
         case PAD_SEGMENT:
-            io_devices.emplace_back(Pad::pad_get_io_device());
+            io_devices.emplace_back(Pad::get_io_device());
             break;
         case DISPLAY_SEGMENT:
-            io_devices.emplace_back(Display::display_get_io_device());
+            io_devices.emplace_back(Display::get_io_device());
             break;
         case GU_SEGMENT:
-            io_devices.emplace_back(GUDevice::gu_get_io_device());
+            io_devices.emplace_back(GUDevice::get_io_device());
             break;
         default:
-            io_devices.emplace_back(get_default_io_device(i));
+            io_devices.emplace_back(get_default_io_device(IO_BASE | (io_page << SegmentBits)));
             break;
         }
-
-        i += 0x1000;
-        if (io_page == LAST_SEGMENT)
-            break;
     }
 
-    Pad::pad_reset();
+    for (auto& device : io_devices)
+    {
+        device.initialize();
+    }
 }
 
 void shutdown()
 {
+    for (auto& device : io_devices)
+    {
+        device.shutdown();
+    }
+
     io_devices.clear();
+}
+
+void dispatch()
+{
+    for (auto& device : io_devices)
+    {
+        device.dispatch();
+    }
 }
 
 u8 read_io_byte(VirtualAddress address)

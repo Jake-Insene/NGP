@@ -239,6 +239,7 @@ void Emulator::loop()
         auto start = Time::get_time();
 
         Window::update();
+        IO::dispatch();
         GU::present(true);
         fps++;
         auto dt = Time::get_time() - start;

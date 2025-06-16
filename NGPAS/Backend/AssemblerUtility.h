@@ -5,7 +5,7 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #pragma once
-#include "Frontend/Token.h"
+#include "StringPool.h"
 #include "FileFormat/ISA.h"
 
 #include <string_view>
@@ -153,8 +153,10 @@
     return u32(NGP_IMMEDIATE | (opcode << 6) | (dest << 11) | (immediate << 16));
 }
 
-inline u32 get_real_string_len(std::string_view str)
+inline u32 get_real_string_len(StringID str_id)
 {
+    std::string_view str = StringPool::get(str_id);
+
     u32 i = 0;
     u32 len = 0;
     while (i < str.size())
@@ -186,8 +188,10 @@ inline u32 get_real_string_len(std::string_view str)
 }
 
 // String
-inline void encode_string(u8* mem, std::string_view str)
+inline void encode_string(u8* mem, StringID str_id)
 {
+    std::string_view str = StringPool::get(str_id);
+
     u32 i = 0;
     u32 memi = 0;
     while (i < str.size())

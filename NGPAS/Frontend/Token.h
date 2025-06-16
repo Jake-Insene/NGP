@@ -5,9 +5,8 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #pragma once
-#include "Core/Header.h"
-#include <string>
-#include <string_view>
+#include "StringPool.h"
+
 
 enum TokenType : u8 {
     TOKEN_ERROR,
@@ -355,6 +354,9 @@ enum TokenInstruction : u8
     TI_FINS,
     TI_FDUP,
 
+    TI_FMADD,
+    TI_FMSUB,
+
     TI_LDP,
     TI_LD,
     TI_LDH,
@@ -375,6 +377,7 @@ enum TokenInstruction : u8
 
     TI_MADD,
     TI_MSUB,
+    TI_MNEG,
     TI_MUL,
     TI_DIV,
     TI_UDIV,
@@ -413,12 +416,12 @@ enum FPType
 
 struct Token
 {
-    std::string source_file;
+    StringID source_file;
     u32 line;
     TokenType type;
     u8 subtype;
 
-    std::string_view str;
+    StringID str;
 
     union
     {
@@ -432,6 +435,9 @@ struct Token
         f32 s;
         f64 d;
     };
+
+    [[nodiscard]] std::string_view get_source_file() const { return StringPool::get(source_file); }
+    [[nodiscard]] std::string_view get_str() const { return StringPool::get(str); }
 
     [[nodiscard]] constexpr bool is(TokenType tk) const
     {

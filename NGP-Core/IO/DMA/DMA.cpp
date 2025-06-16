@@ -10,56 +10,36 @@
 #include "Memory/Bus.h"
 
 
-namespace DMA
+static inline void dma_channel_write(DMA::DMAChannel channel, u8 reg, Word value)
 {
-
-enum DMAStatusFlags
-{
-    DMA_STATUS_ENABLE = 0x1,
-};
-
-static inline void dma_channel_write(DMAChannel channel, u8 reg, Word value)
-{
-    DMAChannelInfo& chn = dma_get_registers().channels[channel];
-
-    chn.raw_regs[reg >> 2] = value;
-    if (value & DMA_START)
-    {
-        switch (channel)
-        {
-        case DMA_RAM:
-            break;
-        case DMA_EMD:
-            break;
-        case DMA_SPU:
-            break;
-        case DMA_GU:
-            ::GU::dma_send(chn.regs.dst, chn.regs.src, chn.regs.cnt, value);
-            break;
-        }
-    }
+    DMA::DMAChannelInfo& chn = DMA::get_registers().channels[channel];
+    chn.raw_regs[reg] = value;
 }
 
 static inline void dma_set_irq_mask(Word value)
 {
-    dma_get_registers().irq_mask = value;
+    DMA::get_registers().irq_mask = value;
 }
 
 static inline void dma_set_irq_status(Word value)
 {
-    dma_get_registers().irq_status = value;
+    DMA::get_registers().irq_status = value;
 }
 
 static inline void dma_wait_on(Word value)
 {
-    dma_get_registers().wait_on_mask = value;
+    DMA::get_registers().wait_on_mask = value;
 }
 
-IO::IODevice dma_get_io_device()
+IO::IODevice DMA::get_io_device()
 {
     return IO::IODevice
     {
         .base_address = IO::DMA_BASE,
+
+        .initialize = &DMA::initialize,
+        .shutdown = &DMA::shutdown,
+        .dispatch = &DMA::dispatch,
 
         .read_byte = [](VirtualAddress) -> u8 { return 0; },
         .read_half = [](VirtualAddress) -> u16 { return 0; },
@@ -69,26 +49,48 @@ IO::IODevice dma_get_io_device()
 
         .write_byte = [](VirtualAddress, u8) {},
         .write_half = [](VirtualAddress, u16) {},
-        .write_word = &dma_handle_write_word,
+        .write_word = &DMA::handle_write_word,
         .write_dword = [](VirtualAddress, DWord) {},
         .write_qword = [](VirtualAddress, QWord) {},
     };
 }
 
-DMARegisters& dma_get_registers()
+void DMA::initialize()
+{}
+
+void DMA::shutdown()
+{}
+
+void DMA::dispatch()
 {
-    return *(DMARegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IO::DMA_BASE);
+    std::lock_guard<std::mutex> dma_mutex_guard{ dma_mutex };
+    for (DMAChannel ch = DMA_CHANNEL_RAM; ch < DMA_CHANNELS_MAX; ((int&)ch)++)
+    {
+        DMAChannelInfo& channel = get_registers().channels[ch];
+        if (channel.ctr & DMA_BUSY)
+        {
+            switch (ch)
+            {
+            case DMA_CHANNEL_GU:
+                GU::dma_send(channel.dst, channel.src, channel.cnt, channel.ctr);
+                break;
+            default:
+                break;
+            }
+        }
+    }
 }
 
-void dma_handle_write_word(VirtualAddress address, Word value)
+void DMA::handle_write_word(VirtualAddress local_address, Word value)
 {
-    if (address >= DMA_CHANNELS_START && address < DMA_CHANNELS_END)
+    std::lock_guard<std::mutex> dma_mutex_guard{ dma_mutex };
+    if (local_address >= DMA_CHANNELS_START && local_address < DMA_CHANNELS_END)
     {
-        dma_channel_write(DMAChannel((address & 0xF0) >> 4), (address & 0xF) >> 2, value);
+        dma_channel_write(DMAChannel((local_address & 0xF0) >> 4), (local_address & 0xF) >> 2, value);
         return;
     }
 
-    switch (address)
+    switch (local_address)
     {
     case DMA_IRQ_MASK:
         dma_set_irq_mask(value);
@@ -100,7 +102,5 @@ void dma_handle_write_word(VirtualAddress address, Word value)
         dma_wait_on(value);
         break;
     }
-}
-
 }
 

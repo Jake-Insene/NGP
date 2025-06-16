@@ -9,8 +9,17 @@
             "name": "NGP Launch",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/ngp",
-            "args": ["-ram", "1024", "-bios", "BIOS/BIOS.BIN"],
+            "program": "${workspaceFolder}/build/NGP/ngp",
+            "args": ["-ram", "32", "-vram", "16",  "-bios", "BIOS/BIOS.BIN"],
+            "cwd": "${workspaceFolder}",
+        },
+        {
+            "preLaunchTask": "NGP Build",
+            "name": "NGPAS Launch",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/NGPAS/ngpas",
+            "args": ["BIOS/BIOS.asm"],
             "cwd": "${workspaceFolder}",
         }
     ]

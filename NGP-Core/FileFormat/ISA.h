@@ -246,10 +246,27 @@ enum NGPFPOp
     // FSMOV Rd, Rfs.d2[Src1 & 0x1]
     NGP_FUMOV_W_V_S4 = 0x19,
 
+    // FDUP Rd, Rfs.s4[Src1 & 0x3]
     NGP_FDUP_S_V_S4 = 0x1A,
+    // FDUP Rd, Rfs.s4[Src1 & 0x1]
     NGP_FDUP_D_V_D2 = 0x1B,
+    // FDUP Rd.s4, Rfs.s4[Src1 & 0x3]
     NGP_FDUP_V_V_S4 = 0x1C,
+    // FDUP Rd.d2, Rfs.d2[Src1 & 0x1]
     NGP_FDUP_V_V_D2 = 0x1D,
+
+    NGP_FADD_V_S4 = 0x1E,
+    NGP_FSUB_V_S4 = 0x1F,
+    NGP_FMUL_V_S4 = 0x20,
+    NGP_FDIV_V_S4 = 0x21,
+
+    NGP_FADD_V_D2 = 0x22,
+    NGP_FSUB_V_D2 = 0x23,
+    NGP_FMUL_V_D2 = 0x24,
+    NGP_FDIV_V_D2 = 0x25,
+
+    NGP_FNEG_V_S4 = 0x26,
+    NGP_FNEG_V_D2 = 0x27,
 };
 
 // Memory (Immediate)

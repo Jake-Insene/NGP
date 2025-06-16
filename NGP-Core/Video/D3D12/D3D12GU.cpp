@@ -8,8 +8,7 @@
 
 #include "Video/D3D12/DX.h"
 #include "Video/Window.h"
-#include "Memory/Bus.h"
-#include "Platform/OS.h"
+
 
 #define D3D12_LOGGER(...) { printf("Video/D3D12: "); printf(__VA_ARGS__); putchar('\n'); }
 

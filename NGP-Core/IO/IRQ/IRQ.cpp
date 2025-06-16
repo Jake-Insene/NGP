@@ -8,14 +8,16 @@
 
 #include "Memory/Bus.h"
 
-namespace IRQ
-{
 
-IO::IODevice irq_get_io_device()
+IO::IODevice IRQ::get_io_device()
 {
 	return IO::IODevice
 	{
 		.base_address = IO::IRQ_BASE,
+
+		.initialize = &IRQ::initialize,
+		.shutdown = &IRQ::shutdown,
+		.dispatch = []() {},
 
 		.read_byte = [](VirtualAddress) -> u8 { return 0; },
 		.read_half = [](VirtualAddress) -> u16 { return 0; },
@@ -25,28 +27,28 @@ IO::IODevice irq_get_io_device()
 
 		.write_byte = [](VirtualAddress, u8) {},
 		.write_half = [](VirtualAddress, u16) {},
-		.write_word = &irq_handle_write_word,
+		.write_word = &IRQ::handle_write_word,
 		.write_dword = [](VirtualAddress, DWord) {},
 		.write_qword = [](VirtualAddress, QWord) {},
 	};
 }
 
-IRQRegisters& irq_get_registers()
-{
-	return *(IRQRegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IO::IRQ_BASE);
-}
+void IRQ::initialize()
+{}
 
-void irq_handle_write_word(VirtualAddress address, Word value)
+void IRQ::shutdown()
+{}
+
+void IRQ::handle_write_word(VirtualAddress local_address, Word value)
 {
-	switch (address)
+	switch (local_address)
 	{
 	case IRQ_MASK:
-		irq_get_registers().irq_mask = value;
+		get_registers().irq_mask = value;
 		break;
 	case IRQ_STATUS:
-		irq_get_registers().irq_status = value;
+		get_registers().irq_status = value;
 		break;
 	}
 }
 
-}

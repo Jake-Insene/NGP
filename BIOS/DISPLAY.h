@@ -8,7 +8,7 @@ DISPLAY_FORMAT_RGB565 = 0x2
 DISPLAY_FORMAT_RGBA4 = 0x3
 
 
-MACRO DISPLAY_FORMAT_CREATE Width, Height, Fmt{ (Width) | (Height << 14) | (Fmt << 28) }
+MACRO DISPLAY_FORMAT_CREATE Width, Height, Fmt{ (Width & 0x3FFF) | ((Height & 0x3FFF) << 14) | ((Fmt & 0x1F) << 28) }
 
 EnableDisplay:
 	IMM32 R0, DISPLAY_CTR
@@ -16,9 +16,8 @@ EnableDisplay:
 	ST R1, [R0]
 	RET
 
-
 ; R0 Buffer Address
-; R1 Display Format : W | H | FMT
+; R1 Display Format, see DISPLAY_FORMAT_CREATE
 SetDisplayBuffer:
 	IMM32 R2, DISPLAY_FORMAT
 	ST R1, [R2]

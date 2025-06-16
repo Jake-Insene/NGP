@@ -11,26 +11,27 @@
 #include "Video/GU.h"
 
 
-namespace GUDevice
-{
-
-static void gu_irq_mask(VirtualAddress value)
+static inline void gu_irq_mask(VirtualAddress value)
 {
 }
 
-static void gu_set_status(VirtualAddress value)
+static inline void gu_set_status(VirtualAddress value)
 {
 }
 
-static void gu_set_ctr(VirtualAddress value)
+static inline void gu_set_ctr(VirtualAddress value)
 {
 }
 
-IO::IODevice gu_get_io_device()
+IO::IODevice GUDevice::get_io_device()
 {
     return IO::IODevice
     {
         .base_address = IO::GU_BASE,
+
+        .initialize = &GUDevice::initialize,
+        .shutdown = &GUDevice::shutdown,
+        .dispatch = &GUDevice::dispatch,
 
         .read_byte = [](VirtualAddress) -> u8 { return 0; },
         .read_half = [](VirtualAddress) -> u16 { return 0; },
@@ -40,20 +41,28 @@ IO::IODevice gu_get_io_device()
 
         .write_byte = [](VirtualAddress, u8) {},
         .write_half = [](VirtualAddress, u16) {},
-        .write_word = &gu_handle_write_word,
+        .write_word = &GUDevice::handle_write_word,
         .write_dword = [](VirtualAddress, DWord) {},
         .write_qword = [](VirtualAddress, QWord) {},
     };
 }
 
-GURegisters& gu_get_registers()
+void GUDevice::initialize()
 {
-    return *(GURegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IO::GU_BASE);
+    get_registers().id = GU_1;
 }
 
-void gu_handle_write_word(VirtualAddress address, Word value)
+void GUDevice::shutdown()
+{}
+
+void GUDevice::dispatch()
 {
-    switch (address)
+    GU::queue_dispatch();
+}
+
+void GUDevice::handle_write_word(VirtualAddress local_address, Word value)
+{
+    switch (local_address)
     {
     case GU_IRQ_MASK:
         gu_irq_mask(value);
@@ -73,21 +82,19 @@ void gu_handle_write_word(VirtualAddress address, Word value)
             u8 queue_priority = value & 0x3;
             u8 queue = (value >> 2) & 0x3;
             ::GU::queue_execute(
-                queue, queue_priority, gu_get_registers().queue_addr,
-                gu_get_registers().queue_len
+                queue, queue_priority, get_registers().queue_addr,
+                get_registers().queue_len
             );
         }
         break;
     case GU_QUEUE_STATE:
         break;
     case GU_QUEUE_ADDR:
-        gu_get_registers().queue_addr = value;
+        get_registers().queue_addr = value;
         break;
     case GU_QUEUE_LEN:
-        gu_get_registers().queue_len = value;
+        get_registers().queue_len = value;
         break;
     }
 }
 
-
-}

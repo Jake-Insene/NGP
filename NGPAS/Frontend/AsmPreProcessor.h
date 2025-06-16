@@ -6,19 +6,18 @@
 /******************************************************/
 #pragma once
 #include "Frontend/AsmLexer.h"
+#include "StringPool.h"
 #include <unordered_map>
-#include <string>
+
 
 struct SourceFile
 {
     SourceFile() {}
-
-    SourceFile(SourceFile&&) = default;
-    SourceFile& operator=(SourceFile&&) = default;
-
     ~SourceFile() {}
 
-    std::string file_path;
+    [[nodiscard]] std::string_view get_file_path() const { return StringPool::get(file_path); }
+
+    StringID file_path;
     u8* source_code = nullptr;
     u32 source_len = 0;
     u32 index = 0;
@@ -28,7 +27,7 @@ using SourceFileList = std::vector<SourceFile>;
 
 struct MacroDefinition
 {
-    std::vector<std::string> args_name;
+    std::vector<StringID> args_name;
 
     TokenList tokens;
 };
@@ -55,5 +54,5 @@ struct AsmPreProcessor
 
     SourceFileList sources;
     TokenList tokens;
-    std::unordered_map<std::string, MacroDefinition> macros;
+    std::unordered_map<StringID, MacroDefinition> macros;
 };

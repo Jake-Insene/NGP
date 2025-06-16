@@ -158,7 +158,7 @@ void Assembler::phase1()
                 if (context.unknown_label)
                     break;
 
-                make_symbol(*name, value.u, name->source_file.c_str(), name->line);
+                make_symbol(*name, value.u, name->source_file, name->line);
             }
             else
             {
@@ -174,18 +174,11 @@ void Assembler::phase1()
             u32 line = current->line;
             while (line == current->line && !current->is(TOKEN_END_OF_FILE))
             {
-                if (current->is(TOKEN_SYMBOL) && current->str[0] == '.')
+                if (current->is(TOKEN_SYMBOL) && current->get_str()[0] == '.')
                 {
-                    std::string composed = std::string(last_label) + std::string(current->str);
-                    auto it = find_label(composed);
-                    if (it != symbols.end())
-                    {
-                        current->str = it->second.symbol;
-                    }
-                    else
-                    {
-                        MAKE_ERROR((*current), {}, "undefined reference to '%.*s'", current->str.length(), current->str.data());
-                    }
+                    std::string composed = std::string(StringPool::get(last_label)) + std::string(current->get_str());
+                    StringID composed_id = StringPool::get_or_insert(composed);
+                    current->str = composed_id;
                 }
 
                 advance();
@@ -194,7 +187,7 @@ void Assembler::phase1()
         break;
         case TOKEN_LABEL:
         {
-            Symbol& symbol = make_label(*current, u64(-1), current->source_file.c_str(), current->line);
+            Symbol& symbol = make_label(*current, u64(-1), current->source_file, current->line);
             symbol.is_defined = false;
             current->str = symbol.symbol;
             advance();
@@ -207,21 +200,22 @@ void Assembler::phase1()
     }
 }
 
-Symbol& Assembler::make_label(const Token& label, u64 address, const char* source_file, u32 line)
+Symbol& Assembler::make_label(const Token& label, u64 address, StringID source_file, u32 line)
 {
     std::string composed = {};
 
-    if (label.str[0] == '.')
+    if (label.get_str()[0] == '.')
     {
-        composed = std::string(last_label) + std::string(label.str);
+        composed = std::string(StringPool::get(last_label)) + std::string(label.get_str());
     }
     else
     {
-        composed = label.str;
+        composed = label.get_str();
         last_label = label.str;
     }
 
-    auto it = symbols.find(composed);
+    StringID composed_id = StringPool::get_or_insert(composed);
+    auto it = symbols.find(composed_id);
     if (it != symbols.end())
     {
         if (address != u64(-1))
@@ -231,16 +225,16 @@ Symbol& Assembler::make_label(const Token& label, u64 address, const char* sourc
         }
         else
         {
-            MAKE_ERROR(label, return it->second, "'%.*s' is already defined", label.str.length(), label.str.data());
+            MAKE_ERROR(label, return it->second, "'%.*s' is already defined", label.get_str().length(), label.get_str().data());
         }
     }
 
     auto& l = symbols.emplace(
-        composed,
+        composed_id,
         Symbol()
     ).first->second;
 
-    l.symbol = std::move(composed);
+    l.symbol = composed_id;
     l.uvalue = address;
     l.source_file = source_file;
     l.line = line;
@@ -248,10 +242,10 @@ Symbol& Assembler::make_label(const Token& label, u64 address, const char* sourc
     return l;
 }
 
-Symbol& Assembler::make_symbol(const Token& label, u64 value, const char* source_file, u32 line)
+Symbol& Assembler::make_symbol(const Token& label, u64 value, StringID source_file, u32 line)
 {
-    std::string str_name = std::string(label.str);
-    auto it = symbols.find(str_name);
+    std::string str_name = std::string(label.get_str());
+    auto it = symbols.find(label.str);
     if (it != symbols.end())
     {
         auto& symbol = it->second;
@@ -259,11 +253,11 @@ Symbol& Assembler::make_symbol(const Token& label, u64 value, const char* source
     }
 
     auto& symbol = symbols.emplace(
-        str_name, Symbol()
+        label.str, Symbol()
     ).first->second;
 
     symbol.uvalue = value;
-    symbol.symbol = str_name;
+    symbol.symbol = label.str;
     symbol.source_file = source_file;
     symbol.line = line;
     return symbol;
@@ -316,7 +310,7 @@ void Assembler::phase2()
                     break;
                 }
 
-                make_symbol(*name, value.u, name->source_file.c_str(), name->line);
+                make_symbol(*name, value.u, name->source_file, name->line);
             }
             else
             {
@@ -341,7 +335,7 @@ void Assembler::phase2()
             assemble_instruction();
             break;
         default:
-            ErrorManager::error(current->source_file.c_str(), current->line, "invalid token");
+            ErrorManager::error(current->get_source_file().data(), current->line, "invalid token");
             return;
         }
     }
@@ -422,12 +416,39 @@ bool Assembler::expected(TokenType tk, const char* format, ...)
     {
         va_list args;
         va_start(args, format);
-        ErrorManager::errorV(last->source_file.c_str(), last->line, format, args);
+        ErrorManager::errorV(last->get_source_file().data(), last->line, format, args);
         va_end(args);
         return false;
     }
 
     return true;
+}
+
+bool Assembler::expectedv(TokenType tk, const char* format, va_list va)
+{
+    advance();
+    if (last->type != tk)
+    {
+        ErrorManager::errorV(last->get_source_file().data(), last->line, format, va);
+        return false;
+    }
+
+    return true;
+}
+
+bool Assembler::expected_comma()
+{
+    return expected(TOKEN_COMMA, "',' was expected");
+}
+
+bool Assembler::expected_left_key()
+{
+    return expected(TOKEN_LEFT_KEY, "'[' was expected");
+}
+
+bool Assembler::expected_right_key()
+{
+    return expected(TOKEN_RIGHT_KEY, "']' was expected");
 }
 
 void Assembler::goto_next_line()
@@ -462,6 +483,109 @@ u8 Assembler::get_register(Token tk)
         return u8(tk.subtype - TOKEN_V0_D2);
 
     MAKE_ERROR(tk, return u8(-1), "invalid register name");
+}
+
+bool Assembler::try_get_register(u8& reg, RegisterType reg_type, const char* format, ...)
+{
+    va_list va;
+    va_start(va, format);
+    if (!expectedv(TOKEN_REGISTER, format, va))
+    {
+        va_end(va);
+        return false;
+    }
+    va_end(va);
+
+    if (reg_type == RegisterGP && !last->is_gp_reg())
+    {
+        if (last->is_fp_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a gp register but a fp register was given");
+        }
+        else if (last->is_vector_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a gp register but a vector register was given");
+        }
+    }
+    
+    if (reg_type == RegisterFP && !last->is_fp_reg())
+    {
+        if (last->is_gp_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a fp register but a gp register was given");
+        }
+        else if (last->is_vector_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a fp register but a vector register was given");
+        }
+    }
+    
+    if (reg_type == RegisterVector && !last->is_vector_reg())
+    {
+        if (last->is_gp_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a vector register but a gp register was given");
+        }
+        else if (last->is_fp_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a vector register but a fp register was given");
+        }
+    }
+
+    if (reg_type == RegisterFPOrVector && last->is_gp_reg())
+    {
+        MAKE_ERROR((*last), return false, "expected a fp or vector register but a gp register was given");
+    }
+
+    reg = get_register(*last);
+    return true;
+}
+
+bool Assembler::try_get_register_tk(Token tk, u8& reg, RegisterType reg_type)
+{
+    if (reg_type == RegisterGP && !tk.is_gp_reg())
+    {
+        if (tk.is_fp_reg())
+        {
+            MAKE_ERROR(tk, return false, "expected a gp register but a fp register was given");
+        }
+        else if (tk.is_vector_reg())
+        {
+            MAKE_ERROR(tk, return false, "expected a gp register but a vector register was given");
+        }
+    }
+
+    if (reg_type == RegisterFP && !tk.is_fp_reg())
+    {
+        if (tk.is_gp_reg())
+        {
+            MAKE_ERROR(tk, return false, "expected a fp register but a gp register was given");
+        }
+        else if (tk.is_vector_reg())
+        {
+            MAKE_ERROR(tk, return false, "expected a fp register but a vector register was given");
+        }
+    }
+
+    if (reg_type == RegisterVector && !tk.is_vector_reg())
+    {
+        if (tk.is_gp_reg())
+        {
+            MAKE_ERROR(tk, return false, "expected a vector register but a gp register was given");
+        }
+        else if (tk.is_fp_reg())
+        {
+            MAKE_ERROR(tk, return false, "expected a vector register but a fp register was given");
+        }
+    }
+
+    if (reg_type == RegisterFPOrVector && tk.is_gp_reg())
+    {
+        MAKE_ERROR(tk, return false, "expected a fp or vector register but a gp register was given");
+    }
+
+    reg = get_register(tk);
+    return true;
 }
 
 u32& Assembler::new_word()
@@ -506,9 +630,9 @@ void Assembler::check_capacity(u32 count)
     }
 }
 
-std::unordered_map<std::string, Symbol>::iterator Assembler::find_label(const std::string_view label)
+std::unordered_map<StringID, Symbol>::iterator Assembler::find_label(StringID label)
 {
-    auto it = symbols.find(std::string(label));
+    auto it = symbols.find(label);
     if (it == symbols.end())
     {
         return symbols.end();

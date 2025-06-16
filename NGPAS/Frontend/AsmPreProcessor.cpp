@@ -19,12 +19,12 @@ void AsmPreProcessor::process(const char* file_path)
     std::ifstream input{ file_path, std::ios::binary | std::ios::ate };
     if (!input.is_open())
     {
-        printf("error: couldt'n load the file '%s'\n", file_path);
+        printf("error: couldn't load the file '%s'\n", file_path);
         exit(-1);
     }
 
     auto& source = sources.emplace_back();
-    source.file_path = file_path;
+    source.file_path = StringPool::get_or_insert(file_path);
     source.index = u32(sources.size() - 1);
 
     u32 size = (u32)input.tellg();
@@ -35,7 +35,7 @@ void AsmPreProcessor::process(const char* file_path)
     source.source_code[size] = '\0';
     input.close();
 
-    lexer.set(file_path, (u8*)source.source_code, source.source_len);
+    lexer.set(source.file_path, (u8*)source.source_code, source.source_len);
 
     advance();
     advance();
@@ -58,8 +58,7 @@ void AsmPreProcessor::process_source()
         default:
             if (current.is(TOKEN_SYMBOL))
             {
-                std::string s = std::string(current.str);
-                auto it = macros.find(s);
+                auto it = macros.find(current.str);
                 if (it != macros.end())
                 {
                     advance();
@@ -91,17 +90,19 @@ void AsmPreProcessor::process_directive()
         Token last_current = current;
         Token last_next = next;
 
-        std::string file_path{};
-        file_path.resize(last.str.size());
-        encode_string((u8*)file_path.data(), last.str);
+        std::string file_path_tmp{};
+        file_path_tmp.resize(last.get_str().size());
+        encode_string((u8*)file_path_tmp.data(), last.str);
+        StringID file_path_tmp_id = StringPool::get_or_insert(file_path_tmp);
 
-        file_path = AsmUtility::path_relative_to(last.source_file, file_path);
+        std::string file_path = AsmUtility::path_relative_to(last.source_file, file_path_tmp_id);
+        StringID file_path_id = StringPool::get_or_insert(file_path);
 
         std::ifstream input{ file_path, std::ios::binary | std::ios::ate };
         if (!input.is_open())
         {
             ErrorManager::error(
-                last.source_file.c_str(), last.line,
+                last.get_source_file().data(), last.line,
                 "the file '%s' was not founded", file_path.c_str()
             );
             return;
@@ -109,7 +110,7 @@ void AsmPreProcessor::process_directive()
 
         for (auto& source : sources)
         {
-            if (source.file_path == file_path)
+            if (source.get_file_path() == file_path)
             {
                 lexer = last_lexer;
                 current = last_current;
@@ -120,7 +121,7 @@ void AsmPreProcessor::process_directive()
 
         auto& new_source = sources.emplace_back();
         new_source.index = u32(sources.size() - 1);
-        new_source.file_path = file_path;
+        new_source.file_path = file_path_id;
 
         u32 size = (u32)input.tellg();
         input.seekg(0);
@@ -154,14 +155,14 @@ void AsmPreProcessor::process_directive()
             return;
         }
 
-        if(macros.find(std::string(last.str)) != macros.end())
+        if(macros.find(last.str) != macros.end())
         {
-            ErrorManager::error(last.source_file.c_str(), last.line, "the macro '%.*s' was already defined", last.str.length(), last.str.data());
+            ErrorManager::error(last.get_source_file().data(), last.line, "the macro '%.*s' was already defined", last.get_str().length(), last.get_str().data());
             break;
         }
 
         MacroDefinition& macro = macros.emplace(
-            std::string(last.str),
+            last.str,
             MacroDefinition()
         ).first->second;
 
@@ -206,24 +207,24 @@ void AsmPreProcessor::process_directive()
 
 void AsmPreProcessor::expand_macro(const MacroDefinition& macro)
 {
-    const std::string& source_file = last.source_file;
+    StringID source_file = last.source_file;
     const u32 line = last.line;
 
     // Get arguments
     const usize argument_count = macro.args_name.size();
     usize arg_index = 0;
 
-    std::unordered_map<std::string, Token> argument_values = {};
+    std::unordered_map<StringID, Token> argument_values = {};
 
     while (!current.is(TOKEN_NEW_LINE) && !current.is(TOKEN_END_OF_FILE))
     {
         if (arg_index >= argument_count)
         {
-            ErrorManager::error(current.source_file.c_str(), current.line, "too much macro arguments");
+            ErrorManager::error(current.get_source_file().data(), current.line, "too much macro arguments");
             return;
         }
 
-        const std::string& arg_name = macro.args_name[arg_index];
+        StringID arg_name = macro.args_name[arg_index];
 
         argument_values.emplace(arg_name, current);
         arg_index++;
@@ -237,7 +238,7 @@ void AsmPreProcessor::expand_macro(const MacroDefinition& macro)
 
     if (arg_index < argument_count)
     {
-        ErrorManager::error(current.source_file.c_str(), current.line, "too few macro arguments");
+        ErrorManager::error(current.get_source_file().data(), current.line, "too few macro arguments");
         return;
     }
 
@@ -252,7 +253,7 @@ void AsmPreProcessor::expand_macro(const MacroDefinition& macro)
     {
         if (tk.is(TOKEN_SYMBOL))
         {
-            std::string s = std::string(tk.str);
+            StringID s = tk.str;
             auto it = argument_values.find(s);
             if (it != argument_values.end())
             {
@@ -286,7 +287,7 @@ bool AsmPreProcessor::expected(TokenType type, const char* format, ...)
     {
         va_list args;
         va_start(args, format);
-        ErrorManager::errorV(last.source_file.c_str(), last.line, format, args);
+        ErrorManager::errorV(last.get_source_file().data(), last.line, format, args);
         va_end(args);
         return false;
     }

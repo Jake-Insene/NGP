@@ -8,11 +8,15 @@ B $ ; Not Used
 
 INCLUDE "DEBUG.h"
 INCLUDE "DISPLAY.h"
+INCLUDE "DMA.h"
 INCLUDE "GU.h"
 INCLUDE "MACROS.h"
 INCLUDE "MEMORY.h"
 
 COMMAND_LIST_SIZE = 0x1000
+DISPLAY_CONFIG = DISPLAY_FORMAT_CREATE 0x100, 0x100, DISPLAY_FORMAT_RGBA8
+DISPLAY_BUFFER_ADDR = 0
+IMAGE_UPLOAD_ADDR = DISPLAY_BUFFER_ADDR + (0x100 * 0x100 * 4)
 
 main:	
 	; Setting Up SP
@@ -22,12 +26,17 @@ main:
 	BL EnableDisplay
 
 	MOV R0, 0 ; VRAM 0x00000000
-	LD R1, CONFIG
+	IMM32 R1, DISPLAY_CONFIG
 	BL SetDisplayBuffer
 
+	IMM32 R0, IMAGE_UPLOAD_ADDR
+	ADR R1, my_image
+	MOV R2, 64
+	BL DMASendGU
+
 .loop:
-	ADR R0, CommandList
-	MOV R1, COMMAND_LIST_SIZE/4
+	ADR R0, CommandListBegin
+	MOV R1, (CommandListEnd - CommandListBegin) >> 2
 	MOV R2, GU_QUEUE_INDEX0
 	MOV R3, GU_QUEUE_PRIORITY_NORMAL
 	BL GUSendCommandList
@@ -36,16 +45,16 @@ main:
 	B .loop
 	HALT
 
-CONFIG:
-	.word DISPLAY_FORMAT_CREATE 0x100, 0x100, DISPLAY_FORMAT_RGBA8
-
-CommandList:
-	.word 0x010000FF
+CommandListBegin:
+	.word 0x01000000
 	.word 0x00000000
-	.word 0x00100010
-	.zero COMMAND_LIST_SIZE
+	.word 0x01000100
+	.word 0x02000000 | IMAGE_UPLOAD_ADDR >> 8
+	.word 0x00000000
+	.word 0x00060006
+CommandListEnd:
 
-.align 256
+.align 4
 my_image:
 	INCBIN "my_image.bin"
 

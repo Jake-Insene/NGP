@@ -6,31 +6,8 @@
 /******************************************************/
 #include "Backend/Assembler.h"
 #include "ErrorManager.h"
-
-#define EXPECTED_COMMA(BREAKER) \
-    if (!expected(TOKEN_COMMA, "',' was expected"))\
-    {\
-        BREAKER;\
-    }
-
-#define EXPECTED_KEY_LEFT(BREAKER) \
-    if (!expected(TOKEN_LEFT_KEY, "'[' was expected"))\
-    {\
-        BREAKER;\
-    }
-
-#define EXPECTED_KEY_RIGHT(BREAKER) \
-    if (!expected(TOKEN_RIGHT_KEY, "']' was expected"))\
-    {\
-        BREAKER;\
-    }
-
-#define GET_REG(VAR, MESSAGE, BREAKER) \
-    if(!expected(TOKEN_REGISTER, MESSAGE))\
-    {\
-        BREAKER;\
-    }\
-    u8 VAR = get_register(*last)
+#include "FileFormat/ISA.h"
+#include "Frontend/Token.h"
 
 #define GET_VINDEX_REG(VAR, VAR_TK, VAR_IDX, MESSAGE, BREAKER) \
     if(!expected(TOKEN_REGISTER, MESSAGE))\
@@ -38,36 +15,23 @@
         BREAKER;\
     }\
     Token* VAR_TK = last;\
-    u8 VAR = get_register((*last));\
-    INVALIDATE_GP((*last), BREAKER);\
+    u8 VAR;\
+    if(!try_get_register_tk(*last, VAR, RegisterVector)) { BREAKER ; }\
     if(last->get_fp_subfix() == FPSubfixNone)\
     {\
         MAKE_ERROR((*last), BREAKER, "expected a vector subfixed register");\
     }\
-    EXPECTED_KEY_LEFT(BREAKER);\
+    if(!expected_left_key()) { BREAKER; };\
     Token VAR_IDX = parse_expression(ParsePrecedence::Start);\
     if(!VAR_IDX.is(TOKEN_IMMEDIATE))\
     {\
         MAKE_ERROR(VAR_IDX, BREAKER, "expected a constant index");\
     }\
-    EXPECTED_KEY_RIGHT(BREAKER);
+    if(!expected_right_key()) { BREAKER; };
     
-
-#define INVALIDATE_FP(TOKEN, BREAKER) \
-    if (TOKEN.is_fp_reg())\
-    {\
-        MAKE_ERROR(TOKEN, BREAKER, "expected a gp register but a fp register was given");\
-    }
-
-#define INVALIDATE_GP(TOKEN, BREAKER) \
-    if (TOKEN.is_gp_reg())\
-    {\
-        MAKE_ERROR(TOKEN, BREAKER, "expected a fp register but a gp register was given");\
-    }
 
 #define BCOND(TYPE_INST, TI)\
     {\
-    u32 index = token_index - 3;\
     auto target = parse_expression(ParsePrecedence::Start);\
     if (context.undefined_label == false)\
     {\
@@ -85,7 +49,6 @@
 
 #define RELATIVE(TYPE_INST, TI) \
     {\
-    u32 index = token_index - 3;\
     auto target = parse_expression(ParsePrecedence::Start);\
     if (context.undefined_label == false)\
     {\
@@ -107,10 +70,11 @@ void Assembler::assemble_instruction()
     advance(); // inst
 
     if (align_up(u32(program_index), 4) != program_index && !ErrorManager::is_panic_mode)
-    {
         MAKE_ERROR((*last), {}, "bad file alignment");
-    }
+
+    u32 prog_index = program_index;
     u32& inst = new_word();
+    u32 index = token_index - 3;
 
     switch (last->subtype)
     {
@@ -127,10 +91,11 @@ void Assembler::assemble_instruction()
         break;
     case TI_ADR:
     {
-        u32 index = token_index - 3;
-        GET_REG(dest, "a register was expected!", break);
-        INVALIDATE_FP((*last), break);
-        EXPECTED_COMMA(break);
+        u8 dest;
+        if (!try_get_register(dest, RegisterGP, "expected destination register"))
+            break;
+        if(!expected_comma())
+            break;
 
         Token symbol = parse_expression(ParsePrecedence::Start);
         if (context.undefined_label == false)
@@ -265,13 +230,13 @@ void Assembler::assemble_instruction()
         assemble_binary(inst, NGP_BICS_SHL, 0, u16(-1), 0, true);
         break;
     case TI_CMP:
-        assemble_comparision(inst, NGP_SUBS_SHL, NGP_SUBS_IMMEDIATE, 0xFFFF);
+        assemble_comparison(inst, NGP_SUBS_SHL, NGP_SUBS_IMMEDIATE, 0xFFFF);
         break;
     case TI_CMN:
-        assemble_comparision(inst, NGP_ADDS_SHL, NGP_ADDS_IMMEDIATE, 0xFFFF);
+        assemble_comparison(inst, NGP_ADDS_SHL, NGP_ADDS_IMMEDIATE, 0xFFFF);
         break;
     case TI_TST:
-        assemble_comparision(inst, NGP_ANDS_SHL, NGP_ANDS_IMMEDIATE, 0xFFFF);
+        assemble_comparison(inst, NGP_ANDS_SHL, NGP_ANDS_IMMEDIATE, 0xFFFF);
         break;
     case TI_NOT:
         assemble_one_operand(inst, [](u8 dest, u8 src)
@@ -296,21 +261,26 @@ void Assembler::assemble_instruction()
         break;
     case TI_FMOV:
     {
-        GET_REG(dest, "expected destination register", break);
+        u8 dest;
+        if (!try_get_register(dest, RegisterAny, "expected destination register"))
+            break;
         Token* dest_tk = last;
         Token dest_index;
         if (dest_tk->get_fp_subfix() != FPSubfixNone)
         {
-            EXPECTED_KEY_LEFT(break);
+            if(!expected_left_key())
+                break;
             dest_index = parse_expression(ParsePrecedence::Start);
             if (!dest_index.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(dest_index, break, "expected a constant index");
             }
-            EXPECTED_KEY_RIGHT(break);
+            if (!expected_right_key())
+                break;
         }
         
-        EXPECTED_COMMA(break);
+        if (!expected_comma())
+            break;
 
         Token operand = parse_expression(ParsePrecedence::Start);
 
@@ -324,7 +294,7 @@ void Assembler::assemble_instruction()
             {
                 MAKE_ERROR((*dest_tk), break, "invalid register operands");
             }
-            else if ((!dest_tk->is_single_reg() && dest_tk->get_fp_subfix() != FPSubfixS4) && operand.is_gp_reg()
+            else if ((!dest_tk->is_single_reg() && dest_tk->get_fp_subfix() != FPSubfixS4 && operand.is_gp_reg())
                 || (dest_tk->is_gp_reg() && !operand.is_single_reg() && operand.get_fp_subfix() != FPSubfixS4))
             {
                 MAKE_ERROR((*dest_tk), break, "register width mismatch");
@@ -342,16 +312,23 @@ void Assembler::assemble_instruction()
             {
                 MAKE_ERROR((*dest_tk), break, "register type mismatch");
             }
+            else if(dest_tk->is_vector_reg() && dest_tk->get_fp_subfix() == FPSubfixS4 
+                && operand.is_fp_reg() && operand.get_fp_subfix() == FPSubfixNone)
+            {
+                MAKE_ERROR((*dest_tk), break, "register type mismatch");
+            }
 
             if (!dest_tk->is_vector_reg() && operand.get_fp_subfix() != FPSubfixNone)
             {
-                EXPECTED_KEY_LEFT(break);
+                if(!expected_left_key())
+                    break;
                 Token src_index = parse_expression(ParsePrecedence::Start);
                 if (!src_index.is(TOKEN_IMMEDIATE))
                 {
                     MAKE_ERROR(src_index, break, "expected a constant index");
                 }
-                EXPECTED_KEY_RIGHT(break);
+                if (!expected_right_key())
+                    break;
 
                 if (dest_tk->is_single_reg())
                 {
@@ -368,13 +345,15 @@ void Assembler::assemble_instruction()
             }
             else if (dest_tk->is_vector_reg() && operand.get_fp_subfix() != FPSubfixNone)
             {
-                EXPECTED_KEY_LEFT(break);
+                if (!expected_left_key())
+                    break;
                 Token src_index = parse_expression(ParsePrecedence::Start);
                 if (!src_index.is(TOKEN_IMMEDIATE))
                 {
                     MAKE_ERROR(src_index, break, "expected a constant index");
                 }
-                EXPECTED_KEY_RIGHT(break);
+                if (!expected_right_key())
+                    break;
 
                 if (operand.get_fp_subfix() == FPSubfixS4)
                 {
@@ -422,9 +401,12 @@ void Assembler::assemble_instruction()
         break;
     case TI_FSMOV:
     {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_FP((*last), break);
-        EXPECTED_COMMA(break);
+        u8 dest;
+
+        if(!try_get_register(dest, RegisterGP, "expected destination register"))
+            break;
+        if(!expected_comma())
+            break;
 
         GET_VINDEX_REG(src, src_tk, src_index, "expected source vector register", break);
         if (src_tk->get_fp_subfix() == FPSubfixS4)
@@ -439,9 +421,11 @@ void Assembler::assemble_instruction()
         break;
     case TI_FUMOV:
     {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_FP((*last), break);
-        EXPECTED_COMMA(break);
+        u8 dest;
+        if (!try_get_register(dest, RegisterGP, "expected destination register"))
+            break;
+        if(!expected_comma())
+            break;
 
         GET_VINDEX_REG(src, src_tk, src_index, "expected source vector register", break);
         if (src_tk->get_fp_subfix() == FPSubfixS4)
@@ -456,13 +440,16 @@ void Assembler::assemble_instruction()
         break;
     case TI_FCVT:
     {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_GP((*last), break);
+        u8 dest;
+        if (!try_get_register(dest, RegisterFP, "expected destination register"))
+            break;
         Token* dest_tk = last;
-        EXPECTED_COMMA(break);
+        if (!expected_comma())
+            break;
 
-        GET_REG(src, "expected source register", break);
-        INVALIDATE_GP((*last), break);
+        u8 src;
+        if(!try_get_register(src, RegisterFP, "expected source register"))
+            break;
         Token* src_tk = last;
 
         if (dest_tk->is_single_reg() && src_tk->is_double_reg())
@@ -477,13 +464,17 @@ void Assembler::assemble_instruction()
         break;
     case TI_SCVTF:
     {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_GP((*last), break);
-        Token* dest_tk = last;
-        EXPECTED_COMMA(break);
+        u8 dest;
+        if (!try_get_register(dest, RegisterFP, "expected destination register"))
+            break;
 
-        GET_REG(src, "expected source register", break);
-        INVALIDATE_FP((*last), break);
+        Token* dest_tk = last;
+        if (!expected_comma())
+            break;
+
+        u8 src;
+        if (!try_get_register(src, RegisterGP, "expected source register"))
+            break;
         Token* src_tk = last;
 
         if (dest_tk->is_single_reg())
@@ -498,13 +489,16 @@ void Assembler::assemble_instruction()
         break;
     case TI_UCVTF:
     {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_GP((*last), break);
+        u8 dest;
+        if (!try_get_register(dest, RegisterFP, "expected destination register"))
+            break;
         Token* dest_tk = last;
-        EXPECTED_COMMA(break);
+        if (!expected_comma())
+            break;
 
-        GET_REG(src, "expected source register", break);
-        INVALIDATE_FP((*last), break);
+        u8 src;
+        if (!try_get_register(src, RegisterGP, "expected source register"))
+            break;
         Token* src_tk = last;
 
         if (dest_tk->is_single_reg())
@@ -518,29 +512,34 @@ void Assembler::assemble_instruction()
     }
         break;
     case TI_FADD:
-        assemble_fbinary(inst, NGP_FADD_S, NGP_FADD_D, 0);
+        assemble_fbinary(inst, NGP_FADD_S, NGP_FADD_D, NGP_FADD_V_S4, NGP_FADD_V_D2);
         break;
     case TI_FSUB:
-        assemble_fbinary(inst, NGP_FSUB_S, NGP_FSUB_D, 0);
+        assemble_fbinary(inst, NGP_FSUB_S, NGP_FSUB_D, NGP_FSUB_V_S4, NGP_FSUB_V_D2);
         break;
     case TI_FMUL:
-        assemble_fbinary(inst, NGP_FMUL_S, NGP_FMUL_D, 0);
+        assemble_fbinary(inst, NGP_FMUL_S, NGP_FMUL_D, NGP_FMUL_V_S4, NGP_FMUL_V_D2);
         break;
     case TI_FDIV:
-        assemble_fbinary(inst, NGP_FDIV_S, NGP_FDIV_D, 0);
+        assemble_fbinary(inst, NGP_FDIV_S, NGP_FDIV_D, NGP_FDIV_V_S4, NGP_FDIV_V_D2);
         break;
     case TI_FNEG:
     {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_GP((*last), break);
-        Token* dest_tk = last;
-        EXPECTED_COMMA(break);
+        u8 dest;
+        if (!try_get_register(dest, RegisterFPOrVector, "expected destination register"))
+            break;
 
-        GET_REG(src, "expected source register", break);
-        INVALIDATE_GP((*last), break);
+        Token* dest_tk = last;
+        if (!expected_comma())
+            break;
+
+        u8 src;
+        if (!try_get_register(src, RegisterFPOrVector, "expected source register"))
+            break;
         Token* src_tk = last;
 
-        if (dest_tk->get_fp_type() != src_tk->get_fp_type())
+        if (dest_tk->get_fp_type() != src_tk->get_fp_type() 
+            || dest_tk->get_fp_subfix() != src_tk->get_fp_subfix())
         {
             MAKE_ERROR((*dest_tk), break, "register width mismatch");
         }
@@ -553,17 +552,28 @@ void Assembler::assemble_instruction()
         {
             inst = fbinary(NGP_FNEG_D, dest, src, 0);
         }
+        else if (dest_tk->get_fp_subfix() == FPSubfixS4)
+        {
+            inst = fbinary(NGP_FNEG_V_S4, dest, src, 0);
+        }
+        else if (dest_tk->get_fp_subfix() == FPSubfixD2)
+        {
+            inst = fbinary(NGP_FNEG_V_D2, dest, src, 0);
+        }
     }
         break;
     case TI_FABS:
     {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_GP((*last), break);
+        u8 dest;
+        if (!try_get_register(dest, RegisterFP, "expected destination register"))
+            break;
         Token* dest_tk = last;
-        EXPECTED_COMMA(break);
+        if (!expected_comma())
+            break;
 
-        GET_REG(src, "expected source register", break);
-        INVALIDATE_GP((*last), break);
+        u8 src;
+        if (!try_get_register(src, RegisterFP, "expected source register"))
+            break;
         Token* src_tk = last;
 
         if (dest_tk->get_fp_type() != src_tk->get_fp_type())
@@ -584,7 +594,8 @@ void Assembler::assemble_instruction()
     case TI_FINS:
     {
         GET_VINDEX_REG(dest, dest_tk, dest_index, "expected destination register", break);
-        EXPECTED_COMMA(break);
+        if(!expected_comma())
+            break;
 
         Token operand = parse_expression(ParsePrecedence::Start);
         if (!operand.is(TOKEN_REGISTER))
@@ -604,13 +615,16 @@ void Assembler::assemble_instruction()
         }
         else
         {
-            EXPECTED_KEY_LEFT(break);
+            if(!expected_left_key())
+                break;
             Token src_index = parse_expression(ParsePrecedence::Start);
             if (!src_index.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(src_index, break, "expected a constant index");
             }
-            EXPECTED_KEY_RIGHT(break);
+            if (!expected_right_key())
+                break;
+
             if (dest_tk->get_fp_subfix() == FPSubfixS4 && operand.get_fp_subfix() == FPSubfixS4)
             {
                 inst = fp_4op(NGP_FINS_V_S4, dest, dest_index.u & 0x3, src_index.u, operand.u & 0x3);
@@ -624,10 +638,12 @@ void Assembler::assemble_instruction()
         break;
     case TI_FDUP:
     {
-        GET_REG(dest, "expected destination register", break);
+        u8 dest;
+        if(!try_get_register(dest, RegisterFP, "expected destination register"))
+            break;
         Token* dest_tk = last;
-        INVALIDATE_GP((*last), break);
-        EXPECTED_COMMA(break);
+        if(!expected_comma())
+            break;
 
         GET_VINDEX_REG(src, src_tk, src_index, "expected source register", break);
 
@@ -640,15 +656,47 @@ void Assembler::assemble_instruction()
             MAKE_ERROR((*dest_tk), break, "register width mismatch")
         }
 
-        if (dest_tk->get_fp_subfix() == FPSingle)
+        if (dest_tk->get_fp_type() == FPSingle)
         {
             inst = fbinary(NGP_FDUP_S_V_S4, dest, src, src_index.u & 0x3);
         }
-        else if(dest_tk->get_fp_subfix() == FPDouble)
+        else if(dest_tk->get_fp_type() == FPDouble)
         {
             inst = fbinary(NGP_FDUP_D_V_D2, dest, src, src_index.u & 0x1);
         }
     }
+        break;
+    case TI_FMADD:
+        assemble_fp_three_operands(inst, [](u8 dest, u8 src1, u8 src2, u8 src3, FPType fp_type)
+            {
+                if (fp_type == FPSingle)
+                {
+                    return fp_4op(NGP_FMADD_S, dest, src1, src2, src3);
+                }
+                else if (fp_type == FPDouble)
+                {
+                    return fp_4op(NGP_FMADD_D, dest, src1, src2, src3);
+                }
+
+                return 0U;
+            }
+        );
+        break;
+    case TI_FMSUB:
+        assemble_fp_three_operands(inst, [](u8 dest, u8 src1, u8 src2, u8 src3, FPType fp_type)
+            {
+                if (fp_type == FPSingle)
+                {
+                    return fp_4op(NGP_FMSUB_S, dest, src1, src2, src3);
+                }
+                else if (fp_type == FPDouble)
+                {
+                    return fp_4op(NGP_FMSUB_D, dest, src1, src2, src3);
+                }
+
+                return 0U;
+            }
+        );
         break;
     case TI_LDP:
         break;
@@ -690,6 +738,13 @@ void Assembler::assemble_instruction()
             }
         );
         break;
+    case TI_MNEG:
+        assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2)
+            {
+                return extendedalu(NGP_MSUB, dest, src1, src2, ZeroRegister);
+            }
+        );
+        break;
     case TI_MUL:
         assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2)
             {
@@ -713,15 +768,21 @@ void Assembler::assemble_instruction()
         break;
     case TI_MOV:
     {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_FP((*last), break);
-        EXPECTED_COMMA(break);
+        u8 dest;
+        if(!try_get_register(dest, RegisterGP, "expected destination register"))
+            break;
+        if(!expected_comma())
+            break;
 
         Token operand = parse_expression(ParsePrecedence::Start);
+        HANDLE_NOT_DEFINED_VALUE(ResolveInstruction, break, index, prog_index);
+
         if (operand.is(TOKEN_REGISTER))
         {
-            INVALIDATE_FP(operand, break);
-            inst = alu(NGP_OR_SHL, dest, ZeroRegister, get_register(operand), 0);
+            u8 op_reg;
+            if (!try_get_register_tk(operand, op_reg, RegisterGP))
+                return;
+            inst = alu(NGP_OR_SHL, dest, ZeroRegister, op_reg, 0);
         }
         else if (operand.is(TOKEN_IMMEDIATE))
         {
@@ -743,9 +804,11 @@ void Assembler::assemble_instruction()
     break;
     case TI_MOVT:
     {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_FP((*last), break);
-        EXPECTED_COMMA(break);
+        u8 dest;
+        if (!try_get_register(dest, RegisterGP, "expected destination register"))
+            break;
+        if (!expected_comma())
+            break;
 
         Token operand = parse_expression(ParsePrecedence::Start);
         if (operand.is(TOKEN_IMMEDIATE))
@@ -768,9 +831,11 @@ void Assembler::assemble_instruction()
     break;
     case TI_MVN:
     {
-        GET_REG(dest, "expected destination register", break);
-        INVALIDATE_FP((*last), break);
-        EXPECTED_COMMA(break);
+        u8 dest;
+        if (!try_get_register(dest, RegisterGP, "expected destination register"))
+            break;
+        if(!expected_comma())
+            break;
         
         Token operand = parse_expression(ParsePrecedence::Start);
         if (operand.is(TOKEN_IMMEDIATE))
@@ -798,13 +863,15 @@ void Assembler::assemble_instruction()
         break;
     case TI_BLR:
     {
-        GET_REG(reg, "a target branch register was expected", break);
+        u8 reg;
+        if (!try_get_register(reg, RegisterGP, "a target branch register was expected"))
         inst = non_binary(NGP_BLR, 0, reg, 0);
     }
         break;
     case TI_BR:
     {
-        GET_REG(reg, "a target branch register was expected", break);
+        u8 reg;
+        if (!try_get_register(reg, RegisterGP, "a target branch register was expected"))
         inst = non_binary(NGP_BLR, 0, reg, 0);
     }
         break;
@@ -880,14 +947,18 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
 {
     u32 index = token_index - 3;
 
-    GET_REG(dest, "expected source register", return);
+    u8 dest;
+
+    if (!try_get_register(dest, RegisterAny, "expected source/destination register"))
+        return;
 
     FPType fp_type = FPNone;
     if (last->is_fp_reg())
     {
         fp_type = last->get_fp_type();
     }
-    EXPECTED_COMMA(return);
+    if(!expected_comma())
+        return;
 
     if (handle_symbol && !current->is(TOKEN_LEFT_KEY))
     {
@@ -922,13 +993,16 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
         }
     }
 
-    EXPECTED_KEY_LEFT(return);
+    if(!expected_left_key())
+        return;
     if (!expected(TOKEN_REGISTER, "expected base register"))
     {
         return;
     }
-    u8 base = get_register(*last);
-    INVALIDATE_FP((*last), return);
+
+    u8 base;
+    if (!try_get_register_tk(*last, base, RegisterGP))
+        return;
 
     if (current->is(TOKEN_RIGHT_KEY))
     {
@@ -1007,12 +1081,13 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             {
                 inst = memoryi(imm_opcode, dest, base, offset / alignment, sub);
             }
-            EXPECTED_KEY_RIGHT(return);
+            if (!expected_right_key())
+                return;
         }
         else if (index_reg.is(TOKEN_REGISTER))
         {
-            u8 reg_index = get_register(index_reg);
-            INVALIDATE_FP(index_reg, return);
+            u8 reg_index;
+            if (!try_get_register_tk(index_reg, reg_index, RegisterGP));
 
             if (fp_type == FPSingle)
             {
@@ -1030,7 +1105,8 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             {
                 inst = memoryr(index_opc, dest, base, reg_index);
             }
-            EXPECTED_KEY_RIGHT(return);
+            if(!expected_right_key())
+                return;
         }
         else if (index_reg.is(TOKEN_NEW_LINE))
         {
@@ -1050,17 +1126,24 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
 void Assembler::assemble_binary(u32& inst, u8 opc,
     u8 opc_imm, u16 immediate_limit, bool is_additional_opc, bool use_amount)
 {
-    GET_REG(dest, "expected destination register", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
-    GET_REG(src1, "expected first source register", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
+    u8 dest;
+    if (!try_get_register(dest, RegisterGP, "expected destination register"))
+        return;
+    if(!expected_comma())
+        return;
+
+    u8 src1;
+    if (!try_get_register(src1, RegisterGP, "expected first source register"))
+        return;
+    if (!expected_comma())
+        return;
 
     Token second_operand = parse_expression(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER))
     {
-        INVALIDATE_FP(second_operand, return);
+        u8 src2 = 0;
+        if (!try_get_register_tk(second_operand, src2, RegisterGP))
+            return;
 
         u8 adder = 0;
         u8 amount = 0;
@@ -1070,12 +1153,13 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
         }
 
         if (is_additional_opc)
-        {// SHL/SHR/AST/ROR
-            inst = extendedalu(opc, dest, src1, get_register(second_operand), 0);
+        {
+            // SHL/SHR/AST/ROR
+            inst = extendedalu(opc, dest, src1, src2, 0);
         }
         else
         {
-            inst = alu(opc, dest, src1, get_register(second_operand), amount);
+            inst = alu(opc, dest, src1, src2, amount);
         }
     }
     else if (second_operand.is(TOKEN_IMMEDIATE) && immediate_limit != 0)
@@ -1104,46 +1188,61 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
     }
 }
 
-void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 q_opc)
+void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 v_d2_opc)
 {
-    GET_REG(dest, "expected destination register", return);
-    INVALIDATE_GP((*last), return);
+    u8 dest;
+    if (!try_get_register(dest, RegisterFPOrVector, "expected destination register"))
+        return;
+
     Token* dest_tk = last;
-    EXPECTED_COMMA(return);
+    if (!expected_comma())
+        return;
 
-    GET_REG(src1, "expected destination register", return);
-    INVALIDATE_GP((*last), return);
+    u8 src1;
+    if (!try_get_register(src1, RegisterFPOrVector, "expected first source register"))
+        return;
+
     Token* src1_tk = last;
-    EXPECTED_COMMA(return);
-    
-    GET_REG(src2, "expected destination register", return);
-    INVALIDATE_GP((*last), return);
-    Token* src2_tk = last;
+    if (!expected_comma())
+        return;
 
+    u8 src2;
+    if (!try_get_register(src2, RegisterFPOrVector, "expected second source register"))
+        return;
+
+    Token* src2_tk = last;
+    if (!expected_comma())
+        return;
+    
     if (dest_tk->get_fp_type() != src1_tk->get_fp_type() 
-        || dest_tk->get_fp_type() != src2_tk->get_fp_type())
+        || dest_tk->get_fp_type() != src2_tk->get_fp_type()
+        || (dest_tk->get_fp_subfix() != src1_tk->get_fp_subfix() || dest_tk->get_fp_subfix() != src2_tk->get_fp_subfix()))
     {
         MAKE_ERROR((*dest_tk), return, "register type mismatch");
     }
 
     u8 final_opc = dest_tk->get_fp_type() == FPSingle ? s_opc 
         : dest_tk->get_fp_type() == FPDouble ? d_opc
-        : q_opc;
+        : dest_tk->get_fp_subfix() == FPSubfixNone ? v_s4_opc
+        : v_d2_opc;
     inst = fbinary(final_opc, dest, src1, src2);
 }
 
-void Assembler::assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit)
+void Assembler::assemble_comparison(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit)
 {
-    GET_REG(src1, "expected first source register", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
+    u8 src1;
+    if (!try_get_register(src1, RegisterGP, "expected first source register"))
+        return;
+    if (!expected_comma())
+        return;
 
     Token second_source = parse_expression(ParsePrecedence::Start);
     if (second_source.is(TOKEN_REGISTER))
     {
-        INVALIDATE_FP(second_source, return);
-        u8 src2 = get_register(second_source);
-
+        u8 src2;
+        if (!try_get_register_tk(second_source, src2, RegisterGP))
+            return;
+        
         u8 adder = 0;
         u8 amount = 0;
         check_for_amount(adder, amount);
@@ -1170,49 +1269,95 @@ void Assembler::assemble_comparision(u32& inst, u8 opc, u8 opc_imm, u16 immediat
 
 void Assembler::assemble_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8))
 {
-    GET_REG(dest, "expected destination register", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
+    u8 dest;
+    if (!try_get_register(dest, RegisterGP, "expected destination register"))
+        return;
+    if (!expected_comma())
+        return;
 
-    GET_REG(src1, "expected first source register", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
+    u8 src1;
+    if (!try_get_register(src1, RegisterGP, "expected first source register"))
+        return;
+    if (!expected_comma())
+        return;
 
-    GET_REG(src2, "expected second source register", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
+    u8 src2;
+    if (!try_get_register(src2, RegisterGP, "expected second source register"))
+        return;
+    if (!expected_comma())
+        return;
 
-    Token third_operand = parse_expression(ParsePrecedence::Start);
-    if (third_operand.is(TOKEN_REGISTER))
+    u8 src3;
+    if (!try_get_register(src3, RegisterGP, "expected third source register"))
+        return;
+
+    inst = fn(dest, src1, src2, src3);
+}
+
+void Assembler::assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, FPType))
+{
+    u8 dest;
+    if (!try_get_register(dest, RegisterFP, "expected destination register"))
+        return;
+
+    Token* dest_tk = last;
+    if (!expected_comma())
+        return;
+
+    u8 src1;
+    if (!try_get_register(src1, RegisterFP, "expected first source register"))
+        return;
+
+    Token* src1_tk = last;
+    if (!expected_comma())
+        return;
+
+    u8 src2;
+    if (!try_get_register(src2, RegisterFP, "expected second source register"))
+        return;
+    
+    Token* src2_tk = last;
+    if (!expected_comma())
+        return;
+
+    u8 src3;
+    if (!try_get_register(src3, RegisterFP, "expected second source register"))
+        return;
+    
+    Token* src3_tk = last;
+
+    if (dest_tk->get_fp_type() != src1_tk->get_fp_type()
+        || dest_tk->get_fp_type() != src2_tk->get_fp_type()
+        || dest_tk->get_fp_type() != src3_tk->get_fp_type())
     {
-        INVALIDATE_FP(third_operand, return);
-        inst = fn(dest, src1, src2, get_register(third_operand));
+        MAKE_ERROR((*dest_tk), return, "register type mismatch");
     }
-    else if (third_operand.is(TOKEN_NEW_LINE))
-    {
-        MAKE_ERROR(third_operand, {}, "expected a third source operand");
-    }
-    else
-    {
-        MAKE_ERROR(third_operand, {}, "invalid operand");
-    }
+
+    inst = fn(dest, src1, src2, src3, dest_tk->get_fp_type());
+
 }
 
 void Assembler::assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8))
 {
-    GET_REG(dest, "expected destination register", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
+    u8 dest;
+    if (!try_get_register(dest, RegisterGP, "expected destination register"))
+        return;
+    if (!expected_comma())
+        return;
 
-    GET_REG(src1, "expected first source register", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
+    u8 src1;
+    if (!try_get_register(src1, RegisterGP, "expected first source register"))
+        return;
+    if (!expected_comma())
+        return;
 
     Token second_operand = parse_expression(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER))
     {
-        INVALIDATE_FP(second_operand, return);
-        inst = fn(dest, src1, get_register(second_operand));
+        u8 src2;
+        if (!try_get_register_tk(second_operand, src2, RegisterGP))
+            return;
+        inst = fn(dest, src1, src2);
     }
     else if (second_operand.is(TOKEN_NEW_LINE))
     {
@@ -1226,15 +1371,19 @@ void Assembler::assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8))
 
 void Assembler::assemble_one_operand(u32& inst, u32(*fn)(u8, u8))
 {
-    GET_REG(dest, "expected destination register", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
+    u8 dest;
+    if (!try_get_register(dest, RegisterGP, "expected destination register"))
+        return;
+    if (!expected_comma())
+        return;
 
     Token operand = parse_expression(ParsePrecedence::Start);
     if (operand.is(TOKEN_REGISTER))
     {
-        INVALIDATE_FP(operand, return);
-        inst = fn(dest, get_register(operand));
+        u8 src;
+        if (!try_get_register_tk(operand, src, RegisterGP))
+            return;
+        inst = fn(dest, src);
     }
     else if (operand.is(TOKEN_NEW_LINE))
     {
@@ -1248,37 +1397,43 @@ void Assembler::assemble_one_operand(u32& inst, u32(*fn)(u8, u8))
 
 void Assembler::assemble_shift(u32& inst, u8 opcode)
 {
-    GET_REG(dest, "expected destination register", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
+    u8 dest;
+    if (!try_get_register(dest, RegisterGP, "expected destination register"))
+        return;
+    if (!expected_comma())
+        return;
 
-    GET_REG(src1, "expected first source operand", return);
-    INVALIDATE_FP((*last), return);
-    EXPECTED_COMMA(return);
+    u8 src1;
+    if (!try_get_register(src1, RegisterGP, "expected first source register"))
+        return;
+    if (!expected_comma())
+        return;
 
-    Token third_operand = parse_expression(ParsePrecedence::Start);
-    if (third_operand.is(TOKEN_REGISTER))
+    Token second_operand = parse_expression(ParsePrecedence::Start);
+    if (second_operand.is(TOKEN_REGISTER))
     {
-        INVALIDATE_FP(third_operand, return);
-        inst = alu(opcode, dest, src1, get_register(third_operand), 0);
+        u8 src2;
+        if (!try_get_register_tk(second_operand, src2, RegisterGP))
+            return;
+        inst = alu(opcode, dest, src1, src2, 0);
     }
-    else if (third_operand.is(TOKEN_IMMEDIATE))
+    else if (second_operand.is(TOKEN_IMMEDIATE))
     {
-        if (third_operand.u > 0x1F)
+        if (second_operand.u > 0x1F)
         {
-            MAKE_ERROR(third_operand, return, "shift amount too long");
+            MAKE_ERROR(second_operand, return, "shift amount too long");
         }
 
         u8 logopc = opcode - NGP_SHL;
-        inst = alu(NGP_OR_SHL + logopc, dest, ZeroRegister, src1, third_operand.byte[0]);
+        inst = alu(NGP_OR_SHL + logopc, dest, ZeroRegister, src1, second_operand.byte[0]);
     }
-    else if (third_operand.is(TOKEN_NEW_LINE))
+    else if (second_operand.is(TOKEN_NEW_LINE))
     {
-        MAKE_ERROR(third_operand, {}, "expected a source operand");
+        MAKE_ERROR(second_operand, {}, "expected a source operand");
     }
     else
     {
-        MAKE_ERROR(third_operand, {}, "invalid operand");
+        MAKE_ERROR(second_operand, {}, "invalid operand");
     }
 }
 
@@ -1310,7 +1465,7 @@ void Assembler::check_for_amount(u8& adder, u8& amount)
             break;
         default:
             ErrorManager::error(
-                current->source_file.c_str(), current->line,
+                current->get_source_file().data(), current->line,
                 "invalid shift type, try shl/shr/asr/ror"
             );
             return;
@@ -1324,7 +1479,7 @@ void Assembler::check_for_amount(u8& adder, u8& amount)
         if (last->u > ZeroRegister)
         {
             ErrorManager::error(
-                current->source_file.c_str(), current->line,
+                current->get_source_file().data(), current->line,
                 "shift amount too long, must to be #0-31"
             );
             return;

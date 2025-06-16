@@ -1,19 +1,20 @@
 #pragma once
-#include "Core/Header.h"
-#include <string>
+#include "StringPool.h"
 
 
 namespace AsmUtility
 {
-	
-inline std::string path_relative_to(const std::string& rel, const std::string& path)
+
+inline std::string path_relative_to(StringID rel, StringID path)
 {
-    std::string new_path = path;
-    std::string source_folder = rel;
+    std::string_view rel_str = StringPool::get(rel);
+
+    std::string new_path{ StringPool::get(path) };
+    std::string source_folder{ StringPool::get(rel) };
 
 #if defined(_WIN32)
-    u64 pos1 = rel.find_last_of('\\');
-    u64 pos2 = rel.find_last_of('/');
+    u64 pos1 = rel_str.find_last_of('\\');
+    u64 pos2 = rel_str.find_last_of('/');
     u64 pos = std::string::npos;
     if (pos1 != pos2)
     {

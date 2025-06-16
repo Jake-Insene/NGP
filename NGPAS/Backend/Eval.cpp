@@ -108,7 +108,7 @@ Token Assembler::parse_symbol(Token, Token)
 
     if(context.is_in_resolve)
     {
-        MAKE_ERROR((*last), {}, "undefined reference to %.*s", last->str.size(), last->str.data());
+        MAKE_ERROR((*last), {}, "undefined reference to %.*s", last->get_str().size(), last->get_str().data());
     }
     context.undefined_label = true;
     context.unknown_label = true;
@@ -242,7 +242,7 @@ Token Assembler::parse_expression(ParsePrecedence precedence)
     Token result = *current;
     if (rule.prefix)
     {
-        result = (this->*rule.prefix)(Token{}, Token{});
+        result = (this->*rule.prefix)(Token(), Token());
     }
     else
     {

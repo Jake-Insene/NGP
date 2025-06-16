@@ -9,26 +9,15 @@
 #include "Memory/Bus.h"
 
 
-namespace Pad
-{
-
-struct PadInfo
-{
-    u32 buttons;
-    i8 la_x;
-    i8 la_y;
-    i8 ra_x;
-    i8 ra_y;
-
-    u32 status;
-    u32 port;
-} pads[MaxPadPort];
-
-IO::IODevice pad_get_io_device()
+IO::IODevice Pad::get_io_device()
 {
     return IO::IODevice
     {
         .base_address = IO::PAD_BASE,
+
+        .initialize = &initialize,
+        .shutdown = &shutdown,
+        .dispatch = []() {},
 
         .read_byte = [](VirtualAddress) -> u8 { return 0; },
         .read_half = [](VirtualAddress) -> u16 { return 0; },
@@ -38,18 +27,13 @@ IO::IODevice pad_get_io_device()
 
         .write_byte = [](VirtualAddress, u8) {},
         .write_half = [](VirtualAddress, u16) {},
-        .write_word = &pad_handle_write_word,
+        .write_word = &handle_write_word,
         .write_dword = [](VirtualAddress, DWord) {},
         .write_qword = [](VirtualAddress, QWord) {},
     };
 }
 
-MainPad& pad_get_main_pad()
-{
-    return *(MainPad*)(Bus::MAPPED_BUS_ADDRESS_START + IO::PAD_BASE);
-}
-
-void pad_reset()
+void Pad::initialize()
 {
     for (u32 i = 0; i < MaxPadPort; i++)
     {
@@ -63,7 +47,10 @@ void pad_reset()
     }
 }
 
-void pad_update(u32 port, PadButton button, bool down)
+void Pad::shutdown()
+{}
+
+void Pad::update(u32 port, PadButton button, bool down)
 {
     PadInfo& pad = pads[port];
     if (down)
@@ -73,7 +60,7 @@ void pad_update(u32 port, PadButton button, bool down)
             // Masking the button bit
             if(port == 0) 
             {
-                pad_get_main_pad().buttons |= (1 << button);
+                get_main_pad().buttons |= (1 << button);
             }
             pad.buttons |= (1 << button);
         }
@@ -89,7 +76,7 @@ void pad_update(u32 port, PadButton button, bool down)
             // Unmasking the button bit
             if (port == 0)
             {
-                pad_get_main_pad().buttons &= ~(1 << button);
+                get_main_pad().buttons &= ~(1 << button);
             }
             pad.buttons &= ~(1 << button);
         }
@@ -97,8 +84,7 @@ void pad_update(u32 port, PadButton button, bool down)
 }
 
 
-void pad_handle_write_word(VirtualAddress address, Word value)
+void Pad::handle_write_word(VirtualAddress local_address, Word value)
 {
 }
 
-}

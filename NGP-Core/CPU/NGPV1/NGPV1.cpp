@@ -554,6 +554,7 @@ static FORCE_INLINE void fp_op(NGPV1& core, u32 inst)
         if (core.simd[src2].s == 0)
         {
             core.make_exception(NGPV1::DivideByZeroException, 0, 0);
+            break;
         }
         core.simd[dest].s = core.simd[src1].s / core.simd[src2].s;
         break;
@@ -570,6 +571,7 @@ static FORCE_INLINE void fp_op(NGPV1& core, u32 inst)
         if (core.simd[src2].d == 0)
         {
             core.make_exception(NGPV1::DivideByZeroException, 0, 0);
+            break;
         }
         core.simd[dest].d = core.simd[src1].d / core.simd[src2].d;
         break;
@@ -622,6 +624,104 @@ static FORCE_INLINE void fp_op(NGPV1& core, u32 inst)
         core.simd[dest].vec.d2[1] = vec.d2[src2 & 0x1];
     }
         break;
+    case NGP_FADD_V_S4:
+    {
+        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        core.simd[dest].vec.s4[0] = op1.s4[0] + op2.s4[0];
+        core.simd[dest].vec.s4[1] = op1.s4[1] + op2.s4[1];
+        core.simd[dest].vec.s4[2] = op1.s4[2] + op2.s4[2];
+        core.simd[dest].vec.s4[3] = op1.s4[3] + op2.s4[3];
+    }
+    break;
+    case NGP_FSUB_V_S4:
+    {
+        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        core.simd[dest].vec.s4[0] = op1.s4[0] - op2.s4[0];
+        core.simd[dest].vec.s4[1] = op1.s4[1] - op2.s4[1];
+        core.simd[dest].vec.s4[2] = op1.s4[2] - op2.s4[2];
+        core.simd[dest].vec.s4[3] = op1.s4[3] - op2.s4[3];
+    }
+        break;
+    case NGP_FMUL_V_S4:
+    {
+        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        core.simd[dest].vec.s4[0] = op1.s4[0] * op2.s4[0];
+        core.simd[dest].vec.s4[1] = op1.s4[1] * op2.s4[1];
+        core.simd[dest].vec.s4[2] = op1.s4[2] * op2.s4[2];
+        core.simd[dest].vec.s4[3] = op1.s4[3] * op2.s4[3];
+    }
+        break;
+    case NGP_FDIV_V_S4:
+    {
+        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        if (op2.s4[0] == 0 || op2.s4[1] == 0 || op2.s4[2] == 0 || op2.s4[3] == 0)
+        {
+            core.make_exception(NGPV1::DivideByZeroException, 0, 0);
+            break;
+        }
+        core.simd[dest].vec.s4[0] = op1.s4[0] / op2.s4[0];
+        core.simd[dest].vec.s4[1] = op1.s4[1] / op2.s4[1];
+        core.simd[dest].vec.s4[2] = op1.s4[2] / op2.s4[2];
+        core.simd[dest].vec.s4[3] = op1.s4[3] / op2.s4[3];
+    }
+        break;
+    case NGP_FADD_V_D2:
+    {
+        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        core.simd[dest].vec.d2[0] = op1.d2[0] + op2.d2[0];
+        core.simd[dest].vec.d2[1] = op1.d2[1] + op2.d2[1];
+    }
+    break;
+    case NGP_FSUB_V_D2:
+    {
+        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        core.simd[dest].vec.d2[0] = op1.s4[0] - op2.d2[0];
+        core.simd[dest].vec.d2[1] = op1.s4[1] - op2.d2[1];
+    }
+        break;
+    case NGP_FMUL_V_D2:
+    {
+        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        core.simd[dest].vec.d2[0] = op1.d2[0] * op2.d2[0];
+        core.simd[dest].vec.d2[1] = op1.d2[1] * op2.d2[1];
+    }
+        break;
+    case NGP_FDIV_V_D2:
+    {
+        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        if (op2.d2[0] == 0 || op2.d2[1] == 0)
+        {
+            core.make_exception(NGPV1::DivideByZeroException, 0, 0);
+            break;
+        }
+        core.simd[dest].vec.d2[0] = op1.d2[0] / op2.d2[0];
+        core.simd[dest].vec.d2[1] = op1.d2[1] / op2.d2[1];
+    }
+        break;
+    case NGP_FNEG_V_S4:
+    {
+        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        core.simd[dest].vec.s4[0] = -op1.s4[0];
+        core.simd[dest].vec.s4[1] = -op1.s4[1];
+        core.simd[dest].vec.s4[2] = -op1.s4[2];
+        core.simd[dest].vec.s4[3] = -op1.s4[3];
+    }
+        break;
+    case NGP_FNEG_V_D2:
+    {
+        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        core.simd[dest].vec.d2[0] = -op1.d2[0];
+        core.simd[dest].vec.d2[1] = -op1.d2[1];
+    }
+    break;
     }
 }
 
@@ -887,16 +987,16 @@ static FORCE_INLINE void fp_4op(NGPV1& core, u32 inst)
     switch (fpopc)
     {
     case NGP_FMADD_S:
-        core.simd[dest].s = (core.simd[src1].s * core.simd[src2].s) + core.simd[src3].s;
+        core.simd[dest].s = core.simd[src3].s + (core.simd[src1].s * core.simd[src2].s);
         break;
     case NGP_FMADD_D:
-        core.simd[dest].d = (core.simd[src1].d * core.simd[src2].d) + core.simd[src3].d;
+        core.simd[dest].d = core.simd[src3].d + (core.simd[src1].d * core.simd[src2].d);
         break;
     case NGP_FMSUB_S:
-        core.simd[dest].s = (core.simd[src1].s * core.simd[src2].s) - core.simd[src3].s;
+        core.simd[dest].s = core.simd[src3].s - (core.simd[src1].s * core.simd[src2].s);
         break;
     case NGP_FMSUB_D:
-        core.simd[dest].d = (core.simd[src1].d * core.simd[src2].d) - core.simd[src3].d;
+        core.simd[dest].d = core.simd[src3].d - (core.simd[src1].d * core.simd[src2].d);
         break;
     case NGP_FINS_V_S4:
         core.simd[dest].vec.s4[src1 & 0x3] = core.simd[src2].vec.s4[src3 & 0x3];

@@ -9,14 +9,15 @@
 #include "Video/GU.h"
 
 
-namespace Display
-{
-
-IO::IODevice display_get_io_device()
+IO::IODevice Display::get_io_device()
 {
 	return IO::IODevice
 	{
 		.base_address = IO::DISPLAY_BASE,
+
+		.initialize = &Display::initialize,
+		.shutdown = &Display::shutdown,
+		.dispatch = []() {},
 
 		.read_byte = [](VirtualAddress) -> u8 { return 0; },
 		.read_half = [](VirtualAddress) -> u16 { return 0; },
@@ -26,44 +27,47 @@ IO::IODevice display_get_io_device()
 
 		.write_byte = [](VirtualAddress, u8) {},
 		.write_half = [](VirtualAddress, u16) {},
-		.write_word = &display_handle_write_word,
+		.write_word = &Display::handle_write_word,
 		.write_dword = [](VirtualAddress, DWord) {},
 		.write_qword = [](VirtualAddress, QWord) {},
 	};
 }
 
-DisplayRegisters& display_get_registers()
+void Display::initialize()
 {
-	return *(DisplayRegisters*)(Bus::MAPPED_BUS_ADDRESS_START + IO::DISPLAY_BASE);
+	get_registers().id = DISPLAY_1;
 }
 
+void Display::shutdown()
+{}
 
-void display_handle_write_word(VirtualAddress address, Word value)
+
+void Display::handle_write_word(VirtualAddress local_address, Word value)
 {
-	switch (address)
+	switch (local_address)
 	{
 	case DISPLAY_CTR:
-		display_get_registers().ctr = value;
+		get_registers().ctr = value;
 		break;
 	case DISPLAY_BUFFER_ADDR:
-		if (display_get_registers().ctr & DISPLAY_ENABLE)
+		if (get_registers().ctr & DISPLAY_ENABLE)
 		{
 			GU::display_set_address(value);
-			display_get_registers().buffer_addr = value;
+			get_registers().buffer_addr = value;
 		}
 		break;
 	case DISPLAY_FORMAT:
-		if (display_get_registers().ctr & DISPLAY_ENABLE)
+		if (get_registers().ctr & DISPLAY_ENABLE)
 		{
 			GU::display_set_config(
 				value & 0x3FFF, (value >> 14) & 0x3FFF, 
 				(Display::DisplayFormat)(value >> 28)
 			);
-			display_get_registers().format = value;
+			get_registers().format = value;
 		}
 		break;
 	case DISPLAY_PRESENT:
-		if (display_get_registers().ctr & DISPLAY_ENABLE)
+		if (get_registers().ctr & DISPLAY_ENABLE)
 		{
 			GU::request_present();
 		}
@@ -73,4 +77,3 @@ void display_handle_write_word(VirtualAddress address, Word value)
 	}
 }
 
-}

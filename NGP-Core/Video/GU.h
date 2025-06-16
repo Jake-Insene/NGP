@@ -30,6 +30,7 @@ struct GU
         void(*display_set_address)(VirtualAddress);
 
         void(*queue_execute)(u8, u8, VirtualAddress, Word);
+        void(*queue_dispatch)();
 
         void(*dma_send)(VirtualAddress, VirtualAddress, Word, Word);
 
@@ -68,6 +69,7 @@ struct GU
     VTFUNCDEFARG3(display_set_config, i32, i32, Display::DisplayFormat);
     VTFUNCDEFARG1(display_set_address, VirtualAddress);
 
+    VTFUNCDEF(queue_dispatch);
     VTFUNCDEFARG4(queue_execute, u8, u8, VirtualAddress, Word);
 
     VTFUNCDEFARG4(dma_send, VirtualAddress, VirtualAddress, Word, Word);

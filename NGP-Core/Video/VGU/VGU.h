@@ -14,7 +14,7 @@
 
 struct VGU
 {
-    static constexpr PhysicalAddress VRamAddress = 0x2'0000'0000;
+    static constexpr PhysicalAddress VRamAddress = 0x3'0000'0000;
 
     enum QueueSignal
     {
@@ -37,10 +37,14 @@ struct VGU
     struct TMU
     {
         VirtualAddress texture_address;
+        PhysicalAddress cache_texture_address;
+
+        u8 flags;
+        u8 texture_format;
+        u16 width;
+        u16 height;
         u8 min_filter;
         u8 mag_filter;
-
-        PhysicalAddress cache_texture_address;
     };
 
     struct GUState
@@ -56,6 +60,7 @@ struct VGU
         PhysicalAddress fb;
 
         Queue queues[GUDevice::GU_QUEUE_INDEX_MAX];
+        TMU texture_units[16];
         std::mutex sync_mutex;
         std::mutex queue_mutex;
 

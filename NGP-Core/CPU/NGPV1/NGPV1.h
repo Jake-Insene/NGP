@@ -11,6 +11,12 @@
 
 struct alignas(64) NGPV1 : CPUCore
 {
+    enum FetchType
+    {
+        FetchAlignCheck = 0,
+        FetchAlignNoCheck = 0,
+    };
+
     union
     {
         GPRegisters gpr;
@@ -23,32 +29,38 @@ struct alignas(64) NGPV1 : CPUCore
     // System registers
     ProgramStateRegister psr;
 
-    // Level 0 has no save registers.
-    // Saved Program State Register IRQ
-    ProgramStateRegister spsr_irq;
-    // Saved Program State Register
-    SPSR_EL spsr;
-    // Exception Return Register
-    ELR_EL elr;
-    // Exception Code Register
-    ECR_EL ecr;
-    // Vector Base Address Register
-    // Composition
-    // 0x00 -> Reset Handler
-    // 0x04 -> IRQ Handler
-    // 0x08 -> Exception Handler
-    // 0x0C -> Unused
-    VBAR_EL vbar;
+    struct
+    {
+        // Saved Program State Registers
+        SPSR_EL spsr;
+        // Exception Description Registers
+        EDR_EL edr;
+        // Exception Return Registers
+        ELR_EL elr;
+        // Vector Base Address Register
+        // Composition
+        // VBAR + 0x00 -> Reset Handler
+        // VBAR + 0x04 -> Exception Handler
+        // VBAR + 0x08 -> IRQ Handler
+        // VBAR + 0x0C -> Unused
+        VBAR_EL vbar;
+
+        FAR_EL far;
+    } system_regs;
 
     // PC registers
     VirtualAddress pc;
-    Word* mem_pc;
 
     // Object fields
     u64 clock_speed;
 
     // Jitter
     JIT::X86JIT jitter;
+
+    // instruction cache
+    Word pc_page_index;
+    Word pc_page_offset;
+    const Word* pc_page_addr;
 
     virtual void initialize() override;
     virtual void shutdown() override;
@@ -65,12 +77,12 @@ struct alignas(64) NGPV1 : CPUCore
     virtual void set_clock_speed(usize new_clock_speed) override;
     virtual usize get_clock_speed() override;
 
-    virtual void handle_exception(ExceptionCode, VirtualAddress addr) override;
+    virtual void external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr) override;
 
     usize run(usize num_cycles);
 
     void handle_pc_change();
-    Word fetch_inst();
+    Word fetch_next_inst();
 
     void make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 comment);
     void return_exception();

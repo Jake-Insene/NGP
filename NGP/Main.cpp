@@ -59,7 +59,7 @@ void handle_arguments(int argc, char** argv)
                     printf("error: -ram require a number\n");
                     exit(1);
                 }
-                Bus::set_ram_size(std::atoi(argv[index++]));
+                Bus::set_ram_size(MB(std::atoi(argv[index++])));
             }
             else if (arg == "vram")
             {
@@ -68,7 +68,7 @@ void handle_arguments(int argc, char** argv)
                     printf("error: -vram require a number\n");
                     exit(1);
                 }
-                Bus::set_vram_size(std::atoi(argv[index++]));
+                Bus::set_vram_size(MB(std::atoi(argv[index++])));
             }
             else if (arg == "cores")
             {

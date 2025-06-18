@@ -711,7 +711,5 @@ void D3D12GU::update_framebuffer(PhysicalAddress fb, void* va)
     // Signal fence
     HRESULT result = state.queue_graphics->Signal(frame.fence, ++frame.fence_value);
     state.queue_graphics->Wait(frame.fence, frame.fence_value);
-
-    D3D12_LOGGER("Framebuffer 0x%016llX updated from address: 0x%016llX", vfb.srv.ptr, (u64)va);
 }
 

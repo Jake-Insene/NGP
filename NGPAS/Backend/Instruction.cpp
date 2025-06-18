@@ -858,21 +858,21 @@ void Assembler::assemble_instruction()
     break;
     case TI_RET:
     {
-        inst = non_binary(NGP_RET, 0, 30, 0);
+        inst = non_binary(NGP_RET, 30, 0, 0);
     }
         break;
     case TI_BLR:
     {
         u8 reg;
         if (!try_get_register(reg, RegisterGP, "a target branch register was expected"))
-        inst = non_binary(NGP_BLR, 0, reg, 0);
+        inst = non_binary(NGP_BLR, reg, 0, 0);
     }
         break;
     case TI_BR:
     {
         u8 reg;
         if (!try_get_register(reg, RegisterGP, "a target branch register was expected"))
-        inst = non_binary(NGP_BLR, 0, reg, 0);
+        inst = non_binary(NGP_BLR, reg, 0, 0);
     }
         break;
     case TI_ERET:
@@ -1087,7 +1087,8 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
         else if (index_reg.is(TOKEN_REGISTER))
         {
             u8 reg_index;
-            if (!try_get_register_tk(index_reg, reg_index, RegisterGP));
+            if (!try_get_register_tk(index_reg, reg_index, RegisterGP))
+                return;
 
             if (fp_type == FPSingle)
             {

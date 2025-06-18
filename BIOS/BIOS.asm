@@ -1,10 +1,10 @@
 FORMAT RAW AS 'BIN'
 ORG 0x00000000
-vector_address_table:
-B main ; Reset Address/Entry point
-B $ ; IRQ Handler
-B $ ; Exception Handler
-B $ ; Not Used
+vector_address_table_el0:
+	B main ; Reset Address/Entry point
+	B $ ; Exception Handler
+	B $ ; IRQ Handler
+	B $ ; Not Used
 
 INCLUDE "DEBUG.h"
 INCLUDE "DISPLAY.h"
@@ -29,10 +29,11 @@ main:
 	IMM32 R1, DISPLAY_CONFIG
 	BL SetDisplayBuffer
 
-	IMM32 R0, IMAGE_UPLOAD_ADDR
-	ADR R1, my_image
-	MOV R2, 64
-	BL DMASendGU
+	MOV R0, DMA_GU
+	IMM32 R1, IMAGE_UPLOAD_ADDR
+	ADR R2, my_image
+	MOV R3, 64
+	BL DMASend
 
 .loop:
 	ADR R0, CommandListBegin
@@ -50,8 +51,7 @@ CommandListBegin:
 	.word 0x00000000
 	.word 0x01000100
 	.word 0x02000000 | IMAGE_UPLOAD_ADDR >> 8
-	.word 0x00000000
-	.word 0x00060006
+	.word 0x00008008
 CommandListEnd:
 
 .align 4

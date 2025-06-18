@@ -54,7 +54,7 @@ void thread_core_callback(void* arg)
             {
 #if DEBUGGING
                 printf(
-                    "Core: %d, MIPS: %llu, CPS: %llu, Elapsed: %f\n",
+                    "Core: %d, MHZS: %llu, CPS: %llu, Elapsed: %f\n",
                     core_index, thread.inst_counter / 1'000'000,
                     thread.cycle_counter, thread.elapsed
                 );
@@ -81,8 +81,6 @@ void thread_core_callback(void* arg)
 
             switch (thread.signal)
             {
-            case Emulator::NONE:
-                break;
             case Emulator::RUN:
             {
                 auto start = Time::get_time();
@@ -99,7 +97,9 @@ void thread_core_callback(void* arg)
             }
             break;
             case Emulator::END:
-            return;
+                return;
+            default:
+                break;
             }
         }
     }

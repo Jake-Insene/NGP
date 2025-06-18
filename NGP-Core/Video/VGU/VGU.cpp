@@ -113,6 +113,7 @@ void VGU::shutdown()
     state.internal_driver.shutdown();
 }
 
+
 void VGU::present(bool vsync)
 {
     state.sync_mutex.lock();
@@ -126,8 +127,6 @@ void VGU::present(bool vsync)
     state.internal_driver.present_framebuffer(state.fb, vsync);
 
     set_present_requested(false);
-
-    VGPU_LOGGER("Present: FB=0x%016llX", state.fb);
 }
 
 void VGU::request_present()
@@ -190,7 +189,7 @@ void VGU::dma_send(VirtualAddress dest, VirtualAddress src, Word len, Word flags
     PhysicalAddress dest_mem = 0;
     PhysicalAddress src_mem = 0;
 
-    DMA::DMADirection dir = DMA::DMADirection((flags >> 4) & 0x7);
+    DMA::DMADirection dir = DMA::DMADirection((flags >> 3) & 0x3);
     DMA::DMAStep step = DMA::DMAStep((flags >> 5) & 0x7);
 
     if (dir == DMA::DMA_RAM_TO_DEVICE)
@@ -315,35 +314,22 @@ void VGU::queue_execute_cmd(Queue* queue)
         {
             if (!cmd_len) break;
             VirtualAddress tex_address = cmd_w & 0xFF'FFFF;
-
-            u16 x, y, w, h;
-            cmd_w = cmd_list[0];
-            cmd_list++;
-            cmd_len--;
-            if (!cmd_len) break;
-
-            x = cmd_w & 0xFFFF;
-            y = (cmd_w >> 16);
+            tex_address <<= 8;
 
             cmd_w = cmd_list[0];
             cmd_list++;
             cmd_len--;
 
-            w = (cmd_w) & 0xFFFF;
-            h = (cmd_w >> 16);
+            u16 w = (cmd_w) & 0xFFF;
+            u16 h = (cmd_w >> 12) & 0xFFF;
+            GUDevice::GUTextureFormat tex_fmt = GUDevice::GUTextureFormat((cmd_w >> 24) & 0xF);
+            u8 tex_unit = cmd_w >> 28;
 
-            PhysicalAddress texture = VRamAddress + tex_address;
-
-            for (i32 y1 = y, ty = 0; y1 < y + h; y1++, ty++)
-            {
-                for (i32 x1 = x, tx = 0; x1 < x + w; x1++, tx++)
-                {
-                    PhysicalAddress offset = ((ty * w) + tx) * 4;
-                    Color c;
-                    c.rgba = *(Word*)(texture + offset);
-                    set_pixel(x1, y1, c);
-                }
-            }
+            state.texture_units[tex_unit].texture_address = tex_address;
+            state.texture_units[tex_unit].cache_texture_address = VRamAddress + tex_address;
+            state.texture_units[tex_unit].width = w;
+            state.texture_units[tex_unit].height = h;
+            state.texture_units[tex_unit].texture_format = tex_fmt;
         }
             break;
         default:

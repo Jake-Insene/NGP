@@ -30,17 +30,17 @@ struct DMA
     };
 
     // DMA Channel Control Register
-    // [0] IRQ Enable
-    // [1] Start / Busy
-    // [2 - 3] Priority
-    // [4 - 5] Transfer direction:
+    // [0] Start / Busy
+    // [1 - 2] Priority
+    // [3 - 4] Transfer direction:
     //         0(RAM -> DEVICE), 1(DEVICE -> RAM), 2(DEVICE -> DEVICE)
     // [5 - 7] Transfer Step:
     //         0(4 bytes/1 Word), 1(2 bytes/1 Half), 2(1 byte), 3(8 bytes/1 DWord),
     //         4(16 bytes/1 QWord)
     //
-    // [31] Fill Mode: 0(Normal fill mode, same as a copy from dest -> src),
+    // [30] Fill Mode: 0(Normal fill mode, same as a copy from dest -> src),
     //                 1(Fill dest memory range with the value in the src register)
+    // [31] IRQ Enable
 
     enum DMAChannel
     {
@@ -86,11 +86,11 @@ struct DMA
 
     enum DMAControlChannelBit
     {
-        DMA_IRQ = 0x1,
-        DMA_START = 0x2,
-        DMA_BUSY = 0x2,
+        DMA_START = 0x1,
+        DMA_BUSY = 0x1,
 
-        DMA_FILL_MODE_U32 = 0x8000'0000,
+        DMA_FILL_MODE_U32 = 0x4000'0000,
+        DMA_IRQ = 0x8000'0000,
     };
 
     union DMAChannelInfo

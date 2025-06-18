@@ -40,7 +40,7 @@ struct Emulator
 
     static inline std::vector<ThreadCore> cores;
     static inline u32 number_of_cores = 1;
-    static inline u64 clock_cycles = MHZ(100);
+    static inline u64 clock_cycles = MHZ(90);
     static inline const char* bios_file = DefaultBIOSPath;
     static inline bool allow_continue = false;
     static inline bool pending_restart = false;

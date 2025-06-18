@@ -22,11 +22,12 @@ GU_QUEUE_EXEC_STATE_BUSY = 0x1
 ; AA, BB, CC: 8 bits arguments.
 
 ; 0x00XXXXXX
-; Terminates the command execution
+; Terminates the command list execution
 ; XXXXXX: Is ignored.
 GU_CMD_END = 0x0
 
 
+; Send a command list to the specific queue with the given priority and stack execution
 ; R0 Command Base Buffer Address
 ; R1 Buffer Length
 ; R2 Queue Index

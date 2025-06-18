@@ -61,19 +61,19 @@ u32 OS::exception_handler(void* ptr)
     {
         PhysicalAddress address = exception_info->ExceptionRecord->ExceptionInformation[1];
 
-        if((address & 0xFFFF'FFFF'0000'0000) == 0x1'0000'0000)
+        if((address & 0xFFFF'FFFF'0000'0000) == Bus::MAPPED_BUS_ADDRESS_START)
         {
             printf(
-                "error: trying to write to inaccessible memory address: %016llX\n"
+                "error: trying to read/write to inaccessible memory address: %016llX\n"
                 "\tvirtual address: %08X\n",
                 address, VirtualAddress(address)
             );
-            local_core->core->handle_exception(CPUCore::AccessViolation, VirtualAddress(address));
+            local_core->core->external_handle_exception(CPUCore::AccessViolationException, CPUCore::CommentNone, VirtualAddress(address));
         }
         else
         {
             printf(
-                "error: emulator crash while reading/writing to address: %016llX\n",
+                "error: emulator crash while read/write to address: %016llX\n",
                 address
             );
         }

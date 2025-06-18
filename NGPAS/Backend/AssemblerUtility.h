@@ -71,14 +71,23 @@
     );
 }
 
-[[nodiscard]] static constexpr u32 non_binary(u16 opcode, u8 op, u8 src1, u8 src2)
+[[nodiscard]] static constexpr u32 non_binary(u8 opcode, u8 dest_src, u8 src2, u16 op)
 {
     return u32(
         NGP_NON_BINARY
         | (opcode << 6)
-        | (op << 16)
-        | (src1 << 22)
-        | (src2 << 27)
+        | (dest_src << 12)
+        | (src2 << 17)
+        | (op << 22)
+    );
+}
+
+[[nodiscard]] static constexpr u32 non_binary_exception(u8 opcode, u32 comment)
+{
+    return u32(
+        NGP_NON_BINARY
+        | (opcode << 6)
+        | (comment << 12)
     );
 }
 

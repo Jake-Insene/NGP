@@ -80,6 +80,11 @@ struct GUDevice
         GU_QUEUE_START =            0x8000'0000,
     };
 
+    enum GUTextureFormat
+    {
+        GU_FORMAT_RGBA8 = 0x0,
+    };
+
     // GU Command Layout
     // [0 - 23] Command arguments.
     // [24 - 31] Command ID.
@@ -95,8 +100,6 @@ struct GUDevice
         // 0x02AAAAAA | Texture address in command arguments, aligned in 256 bytes.
         // 0xTFHHHWWW | W, H size of the texture, F for texture format,
         //              T is for the texture unit
-        // 0xYYYYXXXX | X, Y top left coordinates of the rectangle.
-        // 0xHHHHWWWW | W, H size of the rectangle.
         GU_COMMAND_TEXTURE_SET,
     };
 

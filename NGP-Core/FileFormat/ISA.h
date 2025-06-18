@@ -403,33 +403,70 @@ enum NGPExtendedALU
     NGP_DIV = 0x3,
 };
 
+enum NGPSystemRegister
+{
+    // [0] -> Zero Flag
+    // [1] -> Carry Flag
+    // [2] -> Negative Flag
+    // [3] -> Overflow Flag
+    // [4] -> halt Flag
+    NGP_PSTATE = 0x0,
+
+    NGP_CURRENT_EL = 0x1,
+
+    NGP_SPSR_EL1 = 0x2,
+    NGP_SPSR_EL2 = 0x3,
+    NGP_SPSR_EL3 = 0x4,
+    NGP_SPSR_IRQ = 0x5,
+
+    NGP_EDR_EL1 = 0x6,
+    NGP_EDR_EL2 = 0x7,
+    NGP_EDR_EL3 = 0x8,
+
+    NGP_ELR_EL1 = 0x9,
+    NGP_ELR_EL2 = 0xA,
+    NGP_ELR_EL3 = 0xB,
+
+    NGP_VBAR_EL1 = 0xC,
+    NGP_VBAR_EL2 = 0xD,
+    NGP_VBAR_EL3 = 0xE,
+
+    NGP_CLCK_FREQ = 0xF,
+    NGP_CLCK_MAX_FREQ = 0x10,
+
+    NGP_FAR_EL1 = 0x11,
+    NGP_FAR_EL2 = 0x12,
+    NGP_FAR_EL3 = 0x13,
+};
+
 // Non Binary Opcode
-// [6 - 15] -> Opcode
-// [16 - 21] -> Op
-// [22 - 26] -> Src1
-// [27 - 31] -> Src2
+// [6 - 11] -> Opcode
+// [12 - 16] -> Dest/Src
+// [17 - 21] -> Src2
+// [22 - 31] -> Op
 enum NGPNonBinary
 {
-    NGP_RET = 0x00,
+    NGP_RET = 0x0,
     // BR/BLR R[Src1]
-    NGP_BR = 0x01,
+    NGP_BR = 0x1,
     NGP_BLR = 0x2,
 
     // BRK/SVC/EVC/SMC #imm16
-    NGP_BRK = 0x03,
-    NGP_SVC = 0x04,
-    NGP_EVC = 0x05,
-    NGP_SMC = 0x06,
+    NGP_BRK = 0x3,
+    NGP_SVC = 0x4,
+    NGP_EVC = 0x5,
+    NGP_SMC = 0x6,
     
-    NGP_ERET = 0x07,
-    NGP_WFI = 0x08,
+    NGP_ERET = 0x7,
+    NGP_WFI = 0x8,
+    NGP_WFE = 0x9,
 
-    NGP_MSR = 0x09,
-    NGP_MRS = 0x0A,
+    NGP_MSR = 0xA,
+    NGP_MRS = 0xB,
 
-    NGP_HALT = 0x0B,
+    NGP_HALT = 0xC,
 
-    NGP_NOP = 0x3FF,
+    NGP_NOP = 0x3F,
 };
 
 // Immediate

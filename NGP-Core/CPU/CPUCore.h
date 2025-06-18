@@ -21,12 +21,15 @@ struct alignas(64) CPUCore
         V1,
     };
 
-    static constexpr u32 ZeroRegister = 31;
-    static constexpr u32 LinkRegister = 30;
-    static constexpr u32 StackPointerRegister = 29;
-    static constexpr u32 MaxExceptionLevel = 3;
-    static constexpr u32 MaxExceptionLevelCount = 4;
-    static constexpr u32 VBASize = sizeof(VirtualAddress) * 4;
+    static constexpr Word ZeroRegister = 31;
+    static constexpr Word LinkRegister = 30;
+    static constexpr Word StackPointerRegister = 29;
+    static constexpr Word MaxExceptionLevel = 3;
+    static constexpr Word MaxExceptionLevelCount = 4;
+    static constexpr Word VBASize = sizeof(VirtualAddress) * 4;
+    static constexpr Word ResetVBOffset = 0;
+    static constexpr Word ExceptionVBOffset = 4;
+    static constexpr Word IRQVBOffset = 8;
 
     enum PrivilegeLevel
     {
@@ -47,12 +50,21 @@ struct alignas(64) CPUCore
         ExtendedSupervisorException = 0x1,
         SecureMachineControllerException = 0x2,
 
-        Breakpoint = 0x4,
-        InvalidRead = 0x5,
-        InvalidWrite = 0x6,
-        AccessViolation = 0x7,
+        BreakpointException = 0x4,
+        AccessViolationException = 0x5,
+        DivideByZeroException = 0x6,
+        BadSystemRegAlignment = 0x7,
+        BadPCAlignment = 0x8,
+        BadMemAlignment = 0x9,
+    };
 
-        DivideByZeroException = 0x8,
+    enum ExceptionComment
+    {
+        CommentNone = 0,
+        // On AccessViolation
+        CannotExecute = 1,
+        CannotRead = 2,
+        CannotWrite = 3,
     };
 
     union ProgramStateRegister
@@ -78,8 +90,23 @@ struct alignas(64) CPUCore
             ProgramStateRegister el1;
             ProgramStateRegister el2;
             ProgramStateRegister el3;
+            ProgramStateRegister irq;
         };
-        ProgramStateRegister spsr[MaxExceptionLevel];
+        ProgramStateRegister spsr[4];
+    };
+
+    struct EDR
+    {
+        Word comment : 20;
+        Word exception_code : 12;
+    };
+
+    struct EDR_EL
+    {
+        Word el1;
+        Word el2;
+        Word el3;
+        Word edr_el[3];
     };
 
     struct ELR_EL
@@ -90,7 +117,7 @@ struct alignas(64) CPUCore
             VirtualAddress el2;
             VirtualAddress el3;
         };
-        VirtualAddress elr_el[MaxExceptionLevel];
+        VirtualAddress elr_el[3];
     };
 
     struct VBAR_EL
@@ -104,12 +131,12 @@ struct alignas(64) CPUCore
         VirtualAddress vbar_el[MaxExceptionLevel];
     };
 
-    struct ECR_EL
+    struct FAR_EL
     {
-        Word el1;
-        Word el2;
-        Word el3;
-        Word ecr_el[MaxExceptionLevel];
+        Word far_el1;
+        Word far_el2;
+        Word far_el3;
+        Word far_el[3];
     };
 
     struct GPRegisters
@@ -166,6 +193,6 @@ struct alignas(64) CPUCore
     virtual void set_clock_speed(usize new_clock_speed) = 0;
     virtual usize get_clock_speed() = 0;
 
-    virtual void handle_exception(ExceptionCode, VirtualAddress addr) = 0;
+    virtual void external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr) = 0;
 };
 

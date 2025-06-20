@@ -8,11 +8,11 @@
 #include "Core/Header.h"
 
 #include "IO/Display/Display.h"
-#include "IO/GUDevice/GUDevice.h"
+#include "IO/GU/GU.h"
 #include "Memory/Bus.h"
 
 
-struct GU
+struct GUDevice
 {
     static constexpr i32 MaxDeviceScreenWidth = 256;
     static constexpr i32 MaxDeviceScreenHeight = 144;

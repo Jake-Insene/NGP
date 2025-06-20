@@ -7,14 +7,14 @@
 #include "Backend/Assembler.h"
 #include "ErrorManager.h"
 #include "FileFormat/ISA.h"
-#include "Frontend/Token.h"
+#include "Frontend/AsmToken.h"
 
 #define GET_VINDEX_REG(VAR, VAR_TK, VAR_IDX, MESSAGE, BREAKER) \
     if(!expected(TOKEN_REGISTER, MESSAGE))\
     {\
         BREAKER;\
     }\
-    Token* VAR_TK = last;\
+    AsmToken* VAR_TK = last;\
     u8 VAR;\
     if(!try_get_register_tk(*last, VAR, RegisterVector)) { BREAKER ; }\
     if(last->get_fp_subfix() == FPSubfixNone)\
@@ -22,7 +22,7 @@
         MAKE_ERROR((*last), BREAKER, "expected a vector subfixed register");\
     }\
     if(!expected_left_key()) { BREAKER; };\
-    Token VAR_IDX = parse_expression(ParsePrecedence::Start);\
+    AsmToken VAR_IDX = parse_expression(ParsePrecedence::Start);\
     if(!VAR_IDX.is(TOKEN_IMMEDIATE))\
     {\
         MAKE_ERROR(VAR_IDX, BREAKER, "expected a constant index");\
@@ -97,7 +97,7 @@ void Assembler::assemble_instruction()
         if(!expected_comma())
             break;
 
-        Token symbol = parse_expression(ParsePrecedence::Start);
+        AsmToken symbol = parse_expression(ParsePrecedence::Start);
         if (context.undefined_label == false)
         {
             inst = pcrel(NGP_ADR_PC, dest, i32(symbol.u - program_index) / 4);
@@ -264,8 +264,8 @@ void Assembler::assemble_instruction()
         u8 dest;
         if (!try_get_register(dest, RegisterAny, "expected destination register"))
             break;
-        Token* dest_tk = last;
-        Token dest_index;
+        AsmToken* dest_tk = last;
+        AsmToken dest_index;
         if (dest_tk->get_fp_subfix() != FPSubfixNone)
         {
             if(!expected_left_key())
@@ -282,7 +282,7 @@ void Assembler::assemble_instruction()
         if (!expected_comma())
             break;
 
-        Token operand = parse_expression(ParsePrecedence::Start);
+        AsmToken operand = parse_expression(ParsePrecedence::Start);
 
         if (operand.is(TOKEN_IMMEDIATE))
         {
@@ -322,7 +322,7 @@ void Assembler::assemble_instruction()
             {
                 if(!expected_left_key())
                     break;
-                Token src_index = parse_expression(ParsePrecedence::Start);
+                AsmToken src_index = parse_expression(ParsePrecedence::Start);
                 if (!src_index.is(TOKEN_IMMEDIATE))
                 {
                     MAKE_ERROR(src_index, break, "expected a constant index");
@@ -347,7 +347,7 @@ void Assembler::assemble_instruction()
             {
                 if (!expected_left_key())
                     break;
-                Token src_index = parse_expression(ParsePrecedence::Start);
+                AsmToken src_index = parse_expression(ParsePrecedence::Start);
                 if (!src_index.is(TOKEN_IMMEDIATE))
                 {
                     MAKE_ERROR(src_index, break, "expected a constant index");
@@ -443,14 +443,14 @@ void Assembler::assemble_instruction()
         u8 dest;
         if (!try_get_register(dest, RegisterFP, "expected destination register"))
             break;
-        Token* dest_tk = last;
+        AsmToken* dest_tk = last;
         if (!expected_comma())
             break;
 
         u8 src;
         if(!try_get_register(src, RegisterFP, "expected source register"))
             break;
-        Token* src_tk = last;
+        AsmToken* src_tk = last;
 
         if (dest_tk->is_single_reg() && src_tk->is_double_reg())
         {
@@ -468,14 +468,14 @@ void Assembler::assemble_instruction()
         if (!try_get_register(dest, RegisterFP, "expected destination register"))
             break;
 
-        Token* dest_tk = last;
+        AsmToken* dest_tk = last;
         if (!expected_comma())
             break;
 
         u8 src;
         if (!try_get_register(src, RegisterGP, "expected source register"))
             break;
-        Token* src_tk = last;
+        AsmToken* src_tk = last;
 
         if (dest_tk->is_single_reg())
         {
@@ -492,14 +492,14 @@ void Assembler::assemble_instruction()
         u8 dest;
         if (!try_get_register(dest, RegisterFP, "expected destination register"))
             break;
-        Token* dest_tk = last;
+        AsmToken* dest_tk = last;
         if (!expected_comma())
             break;
 
         u8 src;
         if (!try_get_register(src, RegisterGP, "expected source register"))
             break;
-        Token* src_tk = last;
+        AsmToken* src_tk = last;
 
         if (dest_tk->is_single_reg())
         {
@@ -529,14 +529,14 @@ void Assembler::assemble_instruction()
         if (!try_get_register(dest, RegisterFPOrVector, "expected destination register"))
             break;
 
-        Token* dest_tk = last;
+        AsmToken* dest_tk = last;
         if (!expected_comma())
             break;
 
         u8 src;
         if (!try_get_register(src, RegisterFPOrVector, "expected source register"))
             break;
-        Token* src_tk = last;
+        AsmToken* src_tk = last;
 
         if (dest_tk->get_fp_type() != src_tk->get_fp_type() 
             || dest_tk->get_fp_subfix() != src_tk->get_fp_subfix())
@@ -567,14 +567,14 @@ void Assembler::assemble_instruction()
         u8 dest;
         if (!try_get_register(dest, RegisterFP, "expected destination register"))
             break;
-        Token* dest_tk = last;
+        AsmToken* dest_tk = last;
         if (!expected_comma())
             break;
 
         u8 src;
         if (!try_get_register(src, RegisterFP, "expected source register"))
             break;
-        Token* src_tk = last;
+        AsmToken* src_tk = last;
 
         if (dest_tk->get_fp_type() != src_tk->get_fp_type())
         {
@@ -597,7 +597,7 @@ void Assembler::assemble_instruction()
         if(!expected_comma())
             break;
 
-        Token operand = parse_expression(ParsePrecedence::Start);
+        AsmToken operand = parse_expression(ParsePrecedence::Start);
         if (!operand.is(TOKEN_REGISTER))
         {
             MAKE_ERROR(operand, break, "expected source register");
@@ -617,7 +617,7 @@ void Assembler::assemble_instruction()
         {
             if(!expected_left_key())
                 break;
-            Token src_index = parse_expression(ParsePrecedence::Start);
+            AsmToken src_index = parse_expression(ParsePrecedence::Start);
             if (!src_index.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(src_index, break, "expected a constant index");
@@ -641,7 +641,7 @@ void Assembler::assemble_instruction()
         u8 dest;
         if(!try_get_register(dest, RegisterFP, "expected destination register"))
             break;
-        Token* dest_tk = last;
+        AsmToken* dest_tk = last;
         if(!expected_comma())
             break;
 
@@ -774,7 +774,7 @@ void Assembler::assemble_instruction()
         if(!expected_comma())
             break;
 
-        Token operand = parse_expression(ParsePrecedence::Start);
+        AsmToken operand = parse_expression(ParsePrecedence::Start);
         HANDLE_NOT_DEFINED_VALUE(ResolveInstruction, break, index, prog_index);
 
         if (operand.is(TOKEN_REGISTER))
@@ -810,7 +810,7 @@ void Assembler::assemble_instruction()
         if (!expected_comma())
             break;
 
-        Token operand = parse_expression(ParsePrecedence::Start);
+        AsmToken operand = parse_expression(ParsePrecedence::Start);
         if (operand.is(TOKEN_IMMEDIATE))
         {
             if (operand.u > 0xFFFF)
@@ -837,7 +837,7 @@ void Assembler::assemble_instruction()
         if(!expected_comma())
             break;
         
-        Token operand = parse_expression(ParsePrecedence::Start);
+        AsmToken operand = parse_expression(ParsePrecedence::Start);
         if (operand.is(TOKEN_IMMEDIATE))
         {
             if (operand.u > 0xFFFF)
@@ -962,7 +962,7 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
 
     if (handle_symbol && !current->is(TOKEN_LEFT_KEY))
     {
-        Token symbol = parse_expression(ParsePrecedence::Start);
+        AsmToken symbol = parse_expression(ParsePrecedence::Start);
         if (context.undefined_label == false)
         {
             if (fp_type == FPSingle)
@@ -1031,7 +1031,7 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
     {
         expected(TOKEN_COMMA, "',' was expected");
         
-        Token index_reg = parse_expression(ParsePrecedence::Start);
+        AsmToken index_reg = parse_expression(ParsePrecedence::Start);
         if (index_reg.is(TOKEN_IMMEDIATE))
         {
             if (index_reg.iword >= 0)
@@ -1139,7 +1139,7 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
     if (!expected_comma())
         return;
 
-    Token second_operand = parse_expression(ParsePrecedence::Start);
+    AsmToken second_operand = parse_expression(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER))
     {
         u8 src2 = 0;
@@ -1160,7 +1160,7 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
         }
         else
         {
-            inst = alu(opc, dest, src1, src2, amount);
+            inst = alu(opc + adder, dest, src1, src2, amount);
         }
     }
     else if (second_operand.is(TOKEN_IMMEDIATE) && immediate_limit != 0)
@@ -1195,7 +1195,7 @@ void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 
     if (!try_get_register(dest, RegisterFPOrVector, "expected destination register"))
         return;
 
-    Token* dest_tk = last;
+    AsmToken* dest_tk = last;
     if (!expected_comma())
         return;
 
@@ -1203,7 +1203,7 @@ void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 
     if (!try_get_register(src1, RegisterFPOrVector, "expected first source register"))
         return;
 
-    Token* src1_tk = last;
+    AsmToken* src1_tk = last;
     if (!expected_comma())
         return;
 
@@ -1211,7 +1211,7 @@ void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 
     if (!try_get_register(src2, RegisterFPOrVector, "expected second source register"))
         return;
 
-    Token* src2_tk = last;
+    AsmToken* src2_tk = last;
     if (!expected_comma())
         return;
     
@@ -1237,7 +1237,7 @@ void Assembler::assemble_comparison(u32& inst, u8 opc, u8 opc_imm, u16 immediate
     if (!expected_comma())
         return;
 
-    Token second_source = parse_expression(ParsePrecedence::Start);
+    AsmToken second_source = parse_expression(ParsePrecedence::Start);
     if (second_source.is(TOKEN_REGISTER))
     {
         u8 src2;
@@ -1301,7 +1301,7 @@ void Assembler::assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, F
     if (!try_get_register(dest, RegisterFP, "expected destination register"))
         return;
 
-    Token* dest_tk = last;
+    AsmToken* dest_tk = last;
     if (!expected_comma())
         return;
 
@@ -1309,7 +1309,7 @@ void Assembler::assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, F
     if (!try_get_register(src1, RegisterFP, "expected first source register"))
         return;
 
-    Token* src1_tk = last;
+    AsmToken* src1_tk = last;
     if (!expected_comma())
         return;
 
@@ -1317,7 +1317,7 @@ void Assembler::assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, F
     if (!try_get_register(src2, RegisterFP, "expected second source register"))
         return;
     
-    Token* src2_tk = last;
+    AsmToken* src2_tk = last;
     if (!expected_comma())
         return;
 
@@ -1325,7 +1325,7 @@ void Assembler::assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, F
     if (!try_get_register(src3, RegisterFP, "expected second source register"))
         return;
     
-    Token* src3_tk = last;
+    AsmToken* src3_tk = last;
 
     if (dest_tk->get_fp_type() != src1_tk->get_fp_type()
         || dest_tk->get_fp_type() != src2_tk->get_fp_type()
@@ -1352,7 +1352,7 @@ void Assembler::assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8))
     if (!expected_comma())
         return;
 
-    Token second_operand = parse_expression(ParsePrecedence::Start);
+    AsmToken second_operand = parse_expression(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER))
     {
         u8 src2;
@@ -1378,7 +1378,7 @@ void Assembler::assemble_one_operand(u32& inst, u32(*fn)(u8, u8))
     if (!expected_comma())
         return;
 
-    Token operand = parse_expression(ParsePrecedence::Start);
+    AsmToken operand = parse_expression(ParsePrecedence::Start);
     if (operand.is(TOKEN_REGISTER))
     {
         u8 src;
@@ -1410,7 +1410,7 @@ void Assembler::assemble_shift(u32& inst, u8 opcode)
     if (!expected_comma())
         return;
 
-    Token second_operand = parse_expression(ParsePrecedence::Start);
+    AsmToken second_operand = parse_expression(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER))
     {
         u8 src2;

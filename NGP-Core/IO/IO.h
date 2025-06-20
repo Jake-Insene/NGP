@@ -19,7 +19,7 @@ static constexpr VirtualAddress IO_BASE = 0x1000'0000;
 static constexpr VirtualAddress IRQ_BASE =      IO_BASE | 0x0000'0000;
 static constexpr VirtualAddress DMA_BASE =      IO_BASE | 0x0000'1000;
 static constexpr VirtualAddress PAD_BASE =      IO_BASE | 0x0000'2000;
-static constexpr VirtualAddress EMD_BASE =      IO_BASE | 0x0000'3000;
+static constexpr VirtualAddress USI_BASE =      IO_BASE | 0x0000'3000;
 static constexpr VirtualAddress DISPLAY_BASE =  IO_BASE | 0x0000'4000;
 
 static constexpr VirtualAddress GU_BASE = IO_BASE | 0x0001'0000;
@@ -33,7 +33,7 @@ enum IOSegments
     IRQ_SEGMENT = 0x0,
     DMA_SEGMENT = 0x1,
     PAD_SEGMENT = 0x2,
-    EMD_SEGMENT = 0x3,
+    USI_SEGMENT = 0x3,
     DISPLAY_SEGMENT = 0x4,
 
     GU_SEGMENT = 0x10,
@@ -49,16 +49,16 @@ struct IODevice
     void(*shutdown)();
     void(*dispatch)();
 
-    u8(*read_byte)(VirtualAddress addr);
-    u16(*read_half)(VirtualAddress addr);
-    Word(*read_word)(VirtualAddress addr);
-    DWord(*read_dword)(VirtualAddress addr);
-    QWord(*read_qword)(VirtualAddress addr);
-    void(*write_byte)(VirtualAddress addr, u8);
-    void(*write_half)(VirtualAddress addr, u16);
-    void(*write_word)(VirtualAddress addr, Word);
-    void(*write_dword)(VirtualAddress addr, DWord);
-    void(*write_qword)(VirtualAddress addr, QWord);
+    u8(*read_byte)(VirtualAddress);
+    u16(*read_half)(VirtualAddress);
+    Word(*read_word)(VirtualAddress);
+    DWord(*read_dword)(VirtualAddress);
+    QWord(*read_qword)(VirtualAddress);
+    void(*write_byte)(VirtualAddress, u8);
+    void(*write_half)(VirtualAddress, u16);
+    void(*write_word)(VirtualAddress, Word);
+    void(*write_dword)(VirtualAddress, DWord);
+    void(*write_qword)(VirtualAddress, QWord);
 };
 
 void initialize();

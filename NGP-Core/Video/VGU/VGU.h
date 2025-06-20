@@ -6,33 +6,16 @@
 /******************************************************/
 #pragma once
 #include "Core/JobQueue.h"
-#include "Video/GU.h"
-#include "Video/Math.h"
+#include "Video/VGU/VGUQueue.h"
 
 #include <mutex>
+#include <vector>
 
 
 struct VGU
 {
     static constexpr PhysicalAddress VRamAddress = 0x3'0000'0000;
-
-    enum QueueSignal
-    {
-        QUEUE_SIGNAL_IDLE = 0,
-        QUEUE_SIGNAL_RUN = 1,
-    };
-
-    struct Queue
-    {
-        u8 id;
-        u8 priority;
-        VirtualAddress cmd_list;
-        // In words
-        Word cmd_len;
-
-        // Implementation data
-        QueueSignal signal;
-    };
+    static constexpr i32 InvalidFB = -1;
 
     struct TMU
     {
@@ -47,19 +30,25 @@ struct VGU
         u8 mag_filter;
     };
 
+    struct VFramebuffer
+    {
+        i32 width;
+        i32 height;
+        Display::DisplayFormat display_format;
+        PhysicalAddress framebuffer;
+    };
+
     struct GUState
     {
-        GU::GUDriver internal_driver;
+        GUDevice::GUDriver internal_driver;
 
         Word* vram;
         Word* display_address;
 
-        i32 width;
-        i32 height;
-        Display::DisplayFormat display_format;
-        PhysicalAddress fb;
+        std::vector<VFramebuffer> cached_framebuffers;
+        i32 current_fb;
 
-        Queue queues[GUDevice::GU_QUEUE_INDEX_MAX];
+        VGUQueue queues[GU::QUEUE_INDEX_MAX];
         TMU texture_units[16];
         std::mutex sync_mutex;
         std::mutex queue_mutex;
@@ -70,7 +59,13 @@ struct VGU
 
     static inline GUState state;
 
-    static GU::GUDriver get_driver();
+    [[nodiscard]] static GUState& get_state() { return state; }
+    [[nodiscard]] static VFramebuffer& get_current_framebuffer()
+    {
+        return state.cached_framebuffers[state.current_fb];
+    }
+
+    static GUDevice::GUDriver get_driver();
 
     static void initialize();
     static void shutdown();
@@ -89,15 +84,6 @@ struct VGU
     static Bus::CheckAddressResult check_vram_address(VirtualAddress vva);
 
     // Internal functions
+    static PhysicalAddress get_physical_vram_address(VirtualAddress vaddress);
     static void set_present_requested(bool requested);
-
-    static void set_pixel(i32 x, i32 y, Color color);
-
-    // DMA
-
-    // Queue
-    static void queue_execute_cmd(Queue* queue);
-
-    // Drawing
-    static void fill_rectangle(Color color, i32 x, i32 y, i32 w, i32 h);
 };

@@ -6,7 +6,7 @@
 /******************************************************/
 #pragma once
 #include "Platform/Header.h"
-#include "Video/GU.h"
+#include "Video/GUDevice.h"
 #include "Video/Math.h"
 
 #include <unordered_map>
@@ -50,7 +50,7 @@ struct D3D11GU
 
     static inline GPUState state;
 
-    static GU::GUDriver get_driver();
+    static GUDevice::GUDriver get_driver();
 
     static void initialize();
     static void shutdown();

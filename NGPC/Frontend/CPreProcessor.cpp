@@ -4,15 +4,14 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "Frontend/AsmPreProcessor.h"
-
-#include "EncodingUtility.h"
+#include "Frontend/CPreProcessor.h"
 #include "ErrorManager.h"
-#include "Frontend/AsmToken.h"
 #include "StringUtility.h"
+#include "EncodingUtility.h"
 #include <fstream>
 
-void AsmPreProcessor::process(const char* file_path)
+
+void CPreProcessor::process(const char* file_path)
 {
     sources.clear();
 
@@ -42,11 +41,11 @@ void AsmPreProcessor::process(const char* file_path)
 
     process_source();
 
-    AsmToken end_of_file{ .type = TOKEN_END_OF_FILE };
+    CToken end_of_file{ .type = TOKEN_END_OF_FILE };
     tokens.emplace_back(end_of_file);
 }
 
-void AsmPreProcessor::process_source()
+void CPreProcessor::process_source()
 {
     while (!current.is(TOKEN_END_OF_FILE))
     {
@@ -56,7 +55,7 @@ void AsmPreProcessor::process_source()
             process_directive();
             break;
         default:
-            if (current.is(TOKEN_SYMBOL))
+            if (current.is(TOKEN_IDENTIFIER))
             {
                 auto it = macros.find(current.str);
                 if (it != macros.end())
@@ -73,7 +72,7 @@ void AsmPreProcessor::process_source()
     }
 }
 
-void AsmPreProcessor::process_directive()
+void CPreProcessor::process_directive()
 {
     advance();
 
@@ -86,9 +85,9 @@ void AsmPreProcessor::process_directive()
             break;
         }
 
-        AsmLexer last_lexer = lexer;
-        AsmToken last_current = current;
-        AsmToken last_next = next;
+        CLexer last_lexer = lexer;
+        CToken last_current = current;
+        CToken last_next = next;
 
         std::string file_path_tmp{};
         file_path_tmp.resize(last.get_str().size());
@@ -148,14 +147,14 @@ void AsmPreProcessor::process_directive()
         next = last_next;
     }
     break;
-    case TD_MACRO:
+    case TD_DEFINE:
     {
-        if(!expected(TOKEN_SYMBOL, "an macro name was expected"))
+        if (!expected(TOKEN_IDENTIFIER, "an macro name was expected"))
         {
             return;
         }
 
-        if(macros.find(last.str) != macros.end())
+        if (macros.find(last.str) != macros.end())
         {
             ErrorManager::error(last.get_source_file().data(), last.line, "the macro '%.*s' was already defined", last.get_str().length(), last.get_str().data());
             break;
@@ -166,9 +165,9 @@ void AsmPreProcessor::process_directive()
             MacroDefinition()
         ).first->second;
 
-        while(!current.is(TOKEN_LEFT_BRACE) && !current.is(TOKEN_END_OF_FILE))
+        while (!current.is(TOKEN_LEFT_BRACE) && !current.is(TOKEN_END_OF_FILE))
         {
-            if (current.is(TOKEN_SYMBOL))
+            if (current.is(TOKEN_IDENTIFIER))
             {
                 macro.args_name.emplace_back(current.str);
                 advance();
@@ -205,82 +204,19 @@ void AsmPreProcessor::process_directive()
     }
 }
 
-void AsmPreProcessor::expand_macro(const MacroDefinition& macro)
+void CPreProcessor::expand_macro(const MacroDefinition& macro)
 {
-    StringID source_file = last.source_file;
-    const u32 line = last.line;
 
-    // Get arguments
-    const usize argument_count = macro.args_name.size();
-    usize arg_index = 0;
-
-    std::unordered_map<StringID, AsmToken> argument_values = {};
-
-    while (!current.is(TOKEN_NEW_LINE) && !current.is(TOKEN_END_OF_FILE))
-    {
-        if (arg_index >= argument_count)
-        {
-            ErrorManager::error(current.get_source_file().data(), current.line, "too much macro arguments");
-            return;
-        }
-
-        StringID arg_name = macro.args_name[arg_index];
-
-        argument_values.emplace(arg_name, current);
-        arg_index++;
-        advance();
-
-        if (current.is(TOKEN_NEW_LINE) || !expected(TOKEN_COMMA, "a ',' or 'new line' was expected after symbol"))
-        {
-            break;
-        }
-    }
-
-    if (arg_index < argument_count)
-    {
-        ErrorManager::error(current.get_source_file().data(), current.line, "too few macro arguments");
-        return;
-    }
-
-    AsmToken new_line =
-    {
-        .type = TOKEN_NEW_LINE,
-        .source_file = current.source_file,
-        .line = current.line,
-    };
-
-    for (auto& tk : macro.tokens)
-    {
-        if (tk.is(TOKEN_SYMBOL))
-        {
-            StringID s = tk.str;
-            auto it = argument_values.find(s);
-            if (it != argument_values.end())
-            {
-                AsmToken new_token = it->second;
-                new_token.source_file = source_file;
-                new_token.line = line;
-                tokens.emplace_back(new_token);
-            }
-        }
-        else
-        {
-            AsmToken new_token = tk;
-            new_token.source_file = source_file;
-            new_token.line = line;
-            tokens.emplace_back(new_token);
-        }
-    }
 }
 
-void AsmPreProcessor::advance()
+void CPreProcessor::advance()
 {
     last = current;
     current = next;
     next = lexer.get_next();
 }
 
-bool AsmPreProcessor::expected(AsmTokenType type, const char* format, ...)
+bool CPreProcessor::expected(CTokenType type, const char* format, ...)
 {
     advance();
     if (last.type != type)

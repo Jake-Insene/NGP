@@ -8,9 +8,10 @@
 
 #include "Memory/Bus.h"
 #include "IO/DMA/DMA.h"
-#include "IO/GUDevice/GUDevice.h"
+#include "IO/GU/GU.h"
 #include "Platform/OS.h"
 #include "Video/OpenGL/GLGU.h"
+#include "Video/VGU/VRasterizer.h"
 
 #if defined(_WIN32)
 #include "Video/D3D11/D3D11GU.h"
@@ -35,27 +36,27 @@ static void dma_transfer_with_step(PhysicalAddress dest_mem, PhysicalAddress src
 }
 
 
-GU::GUDriver get_internal_driver(GU::DriverApi api)
+GUDevice::GUDriver get_internal_driver(GUDevice::DriverApi api)
 {
     switch (api)
     {
-    case GU::NONE:
+    case GUDevice::NONE:
         return {};
-    case GU::D3D11:
+    case GUDevice::D3D11:
 #if defined(_WIN32)
         return D3D11GU::get_driver();
 #else
         return {};
 #endif
-    case GU::D3D12:
+    case GUDevice::D3D12:
 #if defined(_WIN32)
         return D3D12GU::get_driver();
 #else
         return {};
 #endif
-    case GU::OPENGL:
+    case GUDevice::OPENGL:
         return GLGU::get_driver();
-    case GU::VGU:
+    case GUDevice::VGU:
         return {};
     }
 
@@ -63,19 +64,19 @@ GU::GUDriver get_internal_driver(GU::DriverApi api)
 }
 
 
-GU::GUDriver VGU::get_driver()
+GUDevice::GUDriver VGU::get_driver()
 {
-    return GU::GUDriver
+    return GUDevice::GUDriver
     {
         .initialize = &VGU::initialize,
         .shutdown = &VGU::shutdown,
-        
+
         .present = &VGU::present,
         .request_present = &VGU::request_present,
 
         .display_set_config = &VGU::display_set_config,
         .display_set_address = &VGU::display_set_address,
-        
+
         .queue_execute = &VGU::queue_execute,
         .queue_dispatch = &VGU::queue_dispatch,
 
@@ -94,20 +95,26 @@ void VGU::initialize()
     state.irq_pending = false;
 
     // Internal driver
-    state.internal_driver = get_internal_driver(GU::D3D12);
+    state.internal_driver = get_internal_driver(GUDevice::D3D12);
     state.internal_driver.initialize();
 
-    for (u32 i = 0; i < GUDevice::GU_QUEUE_INDEX_MAX; i++)
+    for (u32 i = 0; i < GU::QUEUE_INDEX_MAX; i++)
     {
-        state.queues[i].id = i;
-        state.queues[i].priority = GUDevice::GU_QUEUE_PRIORITY_LOW;
+        state.queues[i].priority = GU::QUEUE_PRIORITY_LOW;
         state.queues[i].cmd_list = VirtualAddress(0);
         state.queues[i].cmd_len = 0;
     }
+
+    state.cached_framebuffers.clear();
+    state.current_fb = -1;
+
+    VRasterizer::initialize();
 }
 
 void VGU::shutdown()
 {
+    VRasterizer::shutdown();
+
     OS::deallocate_virtual_memory((void*)VRamAddress);
 
     state.internal_driver.shutdown();
@@ -119,12 +126,12 @@ void VGU::present(bool vsync)
     state.sync_mutex.lock();
     bool present_requested = state.present_requested;
     state.sync_mutex.unlock();
-    
-    if (state.display_address == nullptr || state.width == 0 || state.height == 0 || !present_requested)
+
+    if (state.display_address == nullptr || state.current_fb == InvalidFB || !present_requested)
         return;
 
-    state.internal_driver.update_framebuffer(state.fb, state.display_address);
-    state.internal_driver.present_framebuffer(state.fb, vsync);
+    state.internal_driver.update_framebuffer(get_current_framebuffer().framebuffer, state.display_address);
+    state.internal_driver.present_framebuffer(get_current_framebuffer().framebuffer, vsync);
 
     set_present_requested(false);
 }
@@ -136,16 +143,30 @@ void VGU::request_present()
 
 void VGU::display_set_config(i32 width, i32 height, Display::DisplayFormat display_format)
 {
-    state.fb = state.internal_driver.create_framebuffer(width, height);
+    // Internal Framebuffer
+    for (i32 i = 0; i < state.cached_framebuffers.size(); i++)
+    {
+        VFramebuffer& fb = state.cached_framebuffers[i];
+        if (fb.width == width && fb.height == height && fb.display_format == display_format)
+        {
+            state.current_fb = i;
+            return;
+        }
+    }
 
-    state.width = width;
-    state.height = height;
-    state.display_format = display_format;
+    VFramebuffer fb_info;
+    fb_info.framebuffer = state.internal_driver.create_framebuffer(width, height);
+    fb_info.width = width;
+    fb_info.height = height;
+    fb_info.display_format = display_format;
+    state.cached_framebuffers.emplace_back(fb_info);
+    
+    state.current_fb = state.cached_framebuffers.size() - 1;
 }
 
 void VGU::display_set_address(VirtualAddress vva)
 {
-    state.display_address = (Word*)((u8*)state.vram + vva);
+    state.display_address = (Word*)get_physical_vram_address(vva);
 }
 
 void VGU::queue_execute(u8 index, u8 priority, VirtualAddress cmd_list, Word cmd_len)
@@ -159,18 +180,18 @@ void VGU::queue_execute(u8 index, u8 priority, VirtualAddress cmd_list, Word cmd
     if (cmd_len == 0)
         return;
 
-    if (index >= GUDevice::GU_QUEUE_INDEX_MAX)
+    if (index >= GU::QUEUE_INDEX_MAX)
     {
         VGPU_LOGGER("Invalid Queue Index");
         return;
     }
 
     state.queue_mutex.lock();
-    Queue* queue = &state.queues[index];
+    VGUQueue* queue = &state.queues[index];
     queue->priority = priority;
     queue->cmd_list = cmd_list;
     queue->cmd_len = cmd_len;
-    queue->signal = QUEUE_SIGNAL_RUN;
+    queue->set_signal(VGUQueue::QUEUE_SIGNAL_RUN);
     state.queue_mutex.unlock();
 }
 
@@ -179,7 +200,7 @@ void VGU::queue_dispatch()
     state.queue_mutex.lock();
     for (auto& queue : state.queues)
     {
-        queue_execute_cmd(&queue);
+        queue.try_execute();
     }
     state.queue_mutex.unlock();
 }
@@ -241,6 +262,11 @@ Bus::CheckAddressResult VGU::check_vram_address(VirtualAddress vva)
 
 // Implementation
 
+PhysicalAddress VGU::get_physical_vram_address(VirtualAddress vaddress)
+{
+    return VRamAddress + vaddress;
+}
+
 // Internal functions
 void VGU::set_present_requested(bool requested)
 {
@@ -249,106 +275,4 @@ void VGU::set_present_requested(bool requested)
     state.sync_mutex.unlock();
 }
 
-void VGU::set_pixel(i32 x, i32 y, Color color)
-{
-    if (x < 0 || x >= state.width || y < 0 || y >= state.height)
-        return;
-
-    state.display_address[(y * state.width) + x] = color.rgba;
-}
-
-// DMA
-
-
-// Queue
-
-void VGU::queue_execute_cmd(Queue* queue)
-{
-    if (queue->signal == QUEUE_SIGNAL_IDLE)
-        return;
-
-    Word* cmd_list = (Word*)Bus::get_physical_addr(queue->cmd_list);
-    Word cmd_len = queue->cmd_len;
-
-    while (cmd_len)
-    {
-        Word cmd_w = cmd_list[0];
-        cmd_list++;
-        cmd_len--;
-
-        GUDevice::GUCommand cmd = GUDevice::GUCommand(cmd_w >> 24);
-
-        switch (cmd)
-        {
-        case GUDevice::GU_COMMAND_END:
-            cmd_len = 0;
-            break;
-        case GUDevice::GU_COMMAND_RECT:
-        {
-            if (!cmd_len) break;
-
-            Color rgb = {};
-            *((Word*)&rgb) = cmd_w & 0xFF'FFFF;
-            rgb.a = 0xFF;
-
-            u16 x, y, w, h;
-            cmd_w = cmd_list[0];
-            cmd_list++;
-            cmd_len--;
-            if (!cmd_len) break;
-
-            x = cmd_w & 0xFFFF;
-            y = (cmd_w >> 16);
-
-            cmd_w = cmd_list[0];
-            cmd_list++;
-            cmd_len--;
-
-            w = (cmd_w) & 0xFFFF;
-            h = (cmd_w >> 16);
-
-            fill_rectangle(rgb, x, y, w, h);
-        }
-            break;
-        case GUDevice::GU_COMMAND_TEXTURE_SET:
-        {
-            if (!cmd_len) break;
-            VirtualAddress tex_address = cmd_w & 0xFF'FFFF;
-            tex_address <<= 8;
-
-            cmd_w = cmd_list[0];
-            cmd_list++;
-            cmd_len--;
-
-            u16 w = (cmd_w) & 0xFFF;
-            u16 h = (cmd_w >> 12) & 0xFFF;
-            GUDevice::GUTextureFormat tex_fmt = GUDevice::GUTextureFormat((cmd_w >> 24) & 0xF);
-            u8 tex_unit = cmd_w >> 28;
-
-            state.texture_units[tex_unit].texture_address = tex_address;
-            state.texture_units[tex_unit].cache_texture_address = VRamAddress + tex_address;
-            state.texture_units[tex_unit].width = w;
-            state.texture_units[tex_unit].height = h;
-            state.texture_units[tex_unit].texture_format = tex_fmt;
-        }
-            break;
-        default:
-            break;
-        }
-    }
-
-    queue->signal = QUEUE_SIGNAL_IDLE;
-}
-
-// Drawing
-void VGU::fill_rectangle(Color color, i32 x, i32 y, i32 w, i32 h)
-{
-    for (i32 y1 = y; y1 < y + h; y1++)
-    {
-        for (i32 x1 = x; x1 < x + w; x1++)
-        {
-            state.display_address[(y1 * state.height) + x1] = color.rgba;
-        }
-    }
-}
 

@@ -18,7 +18,7 @@ struct IRQ
         // [0] DMA
         // [1] TIMER
         // [2] SPU
-        // [3] EMD
+        // [3] USI
         // [4] GU
         // [5] Display
         // [31] PAD
@@ -31,7 +31,7 @@ struct IRQ
         IRQ_MASK_DMA = 0x1,
         IRQ_MASK_TIMER = 0x2,
         IRQ_MASK_SPU = 0x4,
-        IRQ_MASK_EMD = 0x8,
+        IRQ_MASK_USI = 0x8,
         IRQ_MASK_GU = 0x10,
 
         IRQ_MASK_PAD = 0x800'0000,

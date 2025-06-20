@@ -10,75 +10,6 @@
 #include <fstream>
 
 
-const char* token_to_string(TokenType type)
-{
-    switch (type)
-    {
-    case TOKEN_ERROR:
-        return "[error] ";
-    case TOKEN_END_OF_FILE:
-        return "[eof]\n";
-    case TOKEN_IMMEDIATE:
-        return "[imm] ";
-    case TOKEN_STRING:
-        return "[string] ";
-    case TOKEN_DIRECTIVE:
-        return "[directive] ";
-    case TOKEN_INSTRUCTION:
-        return "[inst] ";
-    case TOKEN_LABEL:
-        return "[label]: ";
-    case TOKEN_SYMBOL:
-        return "[symbol] ";
-    case TOKEN_NEW_LINE:
-        return "\n";
-    case TOKEN_LEFT_PARENT:
-        return "( ";
-    case TOKEN_RIGHT_PARENT:
-        return ") ";
-    case TOKEN_EQUAL:
-        return "= ";
-    case TOKEN_DOLLAR:
-        return "$ ";
-    case TOKEN_COMMA:
-        return ", ";
-    case TOKEN_LEFT_KEY:
-        return "[ ";
-    case TOKEN_RIGHT_KEY:
-        return "] ";
-    case TOKEN_PLUS:
-        return "+ ";
-    case TOKEN_MINUS:
-        return "- ";
-    case TOKEN_STAR:
-        return "* ";
-    case TOKEN_SLASH:
-        return "/ ";
-    case TOKEN_XOR:
-        return "^ ";
-    case TOKEN_NOT:
-        return "~ ";
-    case TOKEN_AND:
-        return "& ";
-    case TOKEN_OR:
-        return "| ";
-    case TOKEN_SHL:
-        return "<< ";
-    case TOKEN_SHR:
-        return ">> ";
-    case TOKEN_ROR:
-        return "ROR ";
-    case TOKEN_ASR:
-        return "ASR ";
-    case TOKEN_REGISTER:
-        return "R[N] ";
-    default:
-        break;
-    }
-
-    return "";
-}
-
 bool Assembler::assemble_file(const char* file_path, const char* output_path)
 {
     origin_address = 0;
@@ -147,14 +78,14 @@ void Assembler::phase1()
         {
         case TOKEN_SYMBOL:
         {
-            Token* name = current;
+            AsmToken* name = current;
             advance();
 
             if (current->is(TOKEN_EQUAL))
             {
                 advance();
 
-                Token value = parse_expression(ParsePrecedence::Start);
+                AsmToken value = parse_expression(ParsePrecedence::Start);
                 if (context.unknown_label)
                     break;
 
@@ -200,7 +131,7 @@ void Assembler::phase1()
     }
 }
 
-Symbol& Assembler::make_label(const Token& label, u64 address, StringID source_file, u32 line)
+Symbol& Assembler::make_label(const AsmToken& label, u64 address, StringID source_file, u32 line)
 {
     std::string composed = {};
 
@@ -242,7 +173,7 @@ Symbol& Assembler::make_label(const Token& label, u64 address, StringID source_f
     return l;
 }
 
-Symbol& Assembler::make_symbol(const Token& label, u64 value, StringID source_file, u32 line)
+Symbol& Assembler::make_symbol(const AsmToken& label, u64 value, StringID source_file, u32 line)
 {
     std::string str_name = std::string(label.get_str());
     auto it = symbols.find(label.str);
@@ -288,7 +219,7 @@ void Assembler::phase2()
         {
         case TOKEN_SYMBOL:
         {
-            Token* name = current;
+            AsmToken* name = current;
             advance();
 
             auto it = find_label(name->str);
@@ -304,7 +235,7 @@ void Assembler::phase2()
             {
                 advance();
 
-                Token value = parse_expression(ParsePrecedence::Start);
+                AsmToken value = parse_expression(ParsePrecedence::Start);
                 if (context.unknown_label)
                 {
                     break;
@@ -409,7 +340,7 @@ void Assembler::synchronize()
     }
 }
 
-bool Assembler::expected(TokenType tk, const char* format, ...)
+bool Assembler::expected(AsmTokenType tk, const char* format, ...)
 {
     advance();
     if (last->type != tk)
@@ -424,7 +355,7 @@ bool Assembler::expected(TokenType tk, const char* format, ...)
     return true;
 }
 
-bool Assembler::expectedv(TokenType tk, const char* format, va_list va)
+bool Assembler::expectedv(AsmTokenType tk, const char* format, va_list va)
 {
     advance();
     if (last->type != tk)
@@ -467,7 +398,7 @@ void Assembler::advance_to_next_line()
     }
 }
 
-u8 Assembler::get_register(Token tk)
+u8 Assembler::get_register(AsmToken tk)
 {
     if (tk.subtype >= TOKEN_R0 && tk.subtype <= TOKEN_R31)
         return u8(tk.subtype);
@@ -541,7 +472,7 @@ bool Assembler::try_get_register(u8& reg, RegisterType reg_type, const char* for
     return true;
 }
 
-bool Assembler::try_get_register_tk(Token tk, u8& reg, RegisterType reg_type)
+bool Assembler::try_get_register_tk(AsmToken tk, u8& reg, RegisterType reg_type)
 {
     if (reg_type == RegisterGP && !tk.is_gp_reg())
     {

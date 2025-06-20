@@ -10,8 +10,8 @@
 
 struct ParseFn
 {
-    Token(Assembler::* prefix)(Token, Token);
-    Token(Assembler::* infix)(Token, Token);
+    AsmToken(Assembler::* prefix)(AsmToken, AsmToken);
+    AsmToken(Assembler::* infix)(AsmToken, AsmToken);
 
     ParsePrecedence precedence;
 };
@@ -61,33 +61,33 @@ static inline ParseFn rules[TOKEN_COUNT] =
     {&Assembler::parse_register, nullptr, ParsePrecedence::None},
 };
 
-static inline ParseFn get_rule(TokenType type)
+static inline ParseFn get_rule(AsmTokenType type)
 {
     return rules[type];
 }
 
 // Prefix
 
-Token Assembler::parse_minus(Token, Token)
+AsmToken Assembler::parse_minus(AsmToken, AsmToken)
 {
-    Token tk = parse_expression(ParsePrecedence::Unary);
+    AsmToken tk = parse_expression(ParsePrecedence::Unary);
     tk.i = -tk.i;
     return tk;
 }
 
-Token Assembler::parse_not(Token, Token)
+AsmToken Assembler::parse_not(AsmToken, AsmToken)
 {
-    Token tk = parse_expression(ParsePrecedence::Unary);
+    AsmToken tk = parse_expression(ParsePrecedence::Unary);
     tk.u = ~tk.u;
     return tk;
 }
 
-Token Assembler::parse_immediate(Token, Token)
+AsmToken Assembler::parse_immediate(AsmToken, AsmToken)
 {
     return *last;
 }
 
-Token Assembler::parse_symbol(Token, Token)
+AsmToken Assembler::parse_symbol(AsmToken, AsmToken)
 {
     auto it = find_label(last->str);
     if (it != symbols.end())
@@ -97,11 +97,11 @@ Token Assembler::parse_symbol(Token, Token)
             context.undefined_label = true;
         }
 
-        return Token
+        return AsmToken
         {
+            .type = TOKEN_IMMEDIATE,
             .source_file = last->source_file,
             .line = last->line,
-            .type = TOKEN_IMMEDIATE,
             .u = it->second.uvalue,
         };
     }
@@ -112,35 +112,35 @@ Token Assembler::parse_symbol(Token, Token)
     }
     context.undefined_label = true;
     context.unknown_label = true;
-    return Token
+    return AsmToken
     {
+        TOKEN_ERROR,
         current->source_file,
         current->line,
-        TOKEN_ERROR,
     };
 }
 
-Token Assembler::parse_register(Token, Token)
+AsmToken Assembler::parse_register(AsmToken, AsmToken)
 {
     return *last;
 }
 
-Token Assembler::parse_group(Token, Token)
+AsmToken Assembler::parse_group(AsmToken, AsmToken)
 {
-    Token result = parse_expression(ParsePrecedence::Start);
+    AsmToken result = parse_expression(ParsePrecedence::Start);
     expected(TOKEN_RIGHT_PARENT, "')' was expected");
     return result;
 }
 
-Token Assembler::parse_dollar(Token, Token)
+AsmToken Assembler::parse_dollar(AsmToken, AsmToken)
 {
-    return Token{
+    return AsmToken{
         .type = TOKEN_IMMEDIATE,
         .u = program_index
     };
 }
 
-Token Assembler::parse_string(Token, Token)
+AsmToken Assembler::parse_string(AsmToken, AsmToken)
 {
     return *last;
 }
@@ -165,84 +165,84 @@ Token Assembler::parse_string(Token, Token)
 #define OP_IN_CASE_BIN(field, OP) \
         lhs.field = lhs.field OP rhs.field;\
 
-Token Assembler::parse_add(Token lhs, Token rhs)
+AsmToken Assembler::parse_add(AsmToken lhs, AsmToken rhs)
 {
     CHECK_INFIX();
     OP_IN_CASE(+);
     return lhs;
 }
 
-Token Assembler::parse_sub(Token lhs, Token rhs)
+AsmToken Assembler::parse_sub(AsmToken lhs, AsmToken rhs)
 {
     CHECK_INFIX();
     OP_IN_CASE(-);
     return lhs;
 }
 
-Token Assembler::parse_and(Token lhs, Token rhs)
+AsmToken Assembler::parse_and(AsmToken lhs, AsmToken rhs)
 {
     CHECK_INFIX();
     OP_IN_CASE_BIN(u, &);
     return lhs;
 }
 
-Token Assembler::parse_or(Token lhs, Token rhs)
+AsmToken Assembler::parse_or(AsmToken lhs, AsmToken rhs)
 {
     CHECK_INFIX();
     OP_IN_CASE_BIN(u, | );
     return lhs;
 }
 
-Token Assembler::parse_xor(Token lhs, Token rhs)
+AsmToken Assembler::parse_xor(AsmToken lhs, AsmToken rhs)
 {
     CHECK_INFIX();
     OP_IN_CASE_BIN(u, ^);
     return lhs;
 }
 
-Token Assembler::parse_shl(Token lhs, Token rhs) {
+AsmToken Assembler::parse_shl(AsmToken lhs, AsmToken rhs) {
     CHECK_INFIX();
     OP_IN_CASE_BIN(u, <<);
     return lhs;
 }
 
-Token Assembler::parse_shr(Token lhs, Token rhs)
+AsmToken Assembler::parse_shr(AsmToken lhs, AsmToken rhs)
 {
     CHECK_INFIX();
     OP_IN_CASE_BIN(u, >> );
     return lhs;
 }
 
-Token Assembler::parse_asr(Token lhs, Token rhs)
+AsmToken Assembler::parse_asr(AsmToken lhs, AsmToken rhs)
 {
     CHECK_INFIX();
     OP_IN_CASE_BIN(i, >> );
     return lhs;
 }
 
-Token Assembler::parse_mul(Token lhs, Token rhs)
+AsmToken Assembler::parse_mul(AsmToken lhs, AsmToken rhs)
 {
     CHECK_INFIX();
     OP_IN_CASE(*);
     return lhs;
 }
 
-Token Assembler::parse_div(Token lhs, Token rhs)
+AsmToken Assembler::parse_div(AsmToken lhs, AsmToken rhs)
 {
     CHECK_INFIX();
     OP_IN_CASE(/ );
     return lhs;
 }
 
-Token Assembler::parse_expression(ParsePrecedence precedence)
+AsmToken Assembler::parse_expression(ParsePrecedence precedence)
 {
     ParseFn rule = get_rule(current->type);
     advance();
 
-    Token result = *current;
+    AsmToken result = *current;
     if (rule.prefix)
     {
-        result = (this->*rule.prefix)(Token(), Token());
+        result = (this->*rule.prefix)(AsmToken(), AsmToken());
     }
     else
     {

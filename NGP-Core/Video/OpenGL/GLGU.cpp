@@ -7,9 +7,9 @@
 #include "Video/OpenGL/GLGU.h"
 
 
-GU::GUDriver GLGU::get_driver()
+GUDevice::GUDriver GLGU::get_driver()
 {
-    return GU::GUDriver
+    return GUDevice::GUDriver
     {
         .initialize = &GLGU::initialize,
         .shutdown = &GLGU::shutdown,

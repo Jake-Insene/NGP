@@ -44,9 +44,10 @@ const Vertex vertices[] =
     Vertex(-1.f, 1.f, 0, 0),
 };
 
-GU::GUDriver D3D12GU::get_driver()
+GUDevice::GUDriver D3D12GU::get_driver()
 {
-    return GU::GUDriver{
+    return GUDevice::GUDriver
+    {
         .initialize = &D3D12GU::initialize,
         .shutdown = &D3D12GU::shutdown,
 

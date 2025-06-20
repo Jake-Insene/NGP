@@ -3,12 +3,12 @@ INCLUDE "MACROS.h"
 
 ; Channels:
 ;	0: RAM Channel
-;	1: EMD Channel
+;	1: USI Channel
 ;	2: SPU Channel
 ;	3: GU Channel
 
 DMA_RAM = 0x0
-DMA_EMD = 0x1
+DMA_USI = 0x1
 DMA_SPU = 0x2
 DMA_GU = 0x3
 

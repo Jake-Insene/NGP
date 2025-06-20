@@ -10,19 +10,18 @@
 
 struct CPUCore;
 
-struct GUDevice
+struct GU
 {
 
     enum Register
     {
-        // DMA Channel Mask
-        // [0] Transfer
-        // [1] Queue
+        // GU Interrupt Mask
+        // [0] Queue
         GU_IRQ_MASK =   0x0000,
         GU_IRQ_STATUS = 0x0004,
 
         // GU Control
-        // [0] Restart
+        // [0] Reset
         GU_CTR =        0x0008,
         GU_ID =         0x000C,
     
@@ -32,10 +31,10 @@ struct GUDevice
         // [31] -> Start execution
         GU_QUEUE_CTR =      0x0010,
         // Command Queue State
-        // [0 - 1] Queue State 0
-        // [2 - 3] Queue State 1
-        // [4 - 5] Queue State 2
-        // [6 - 7] Queue State 3
+        // [0 - 7]   Queue State 0
+        // [8 - 15]  Queue State 1
+        // [16 - 23] Queue State 2
+        // [24 - 31] Queue State 3
         GU_QUEUE_STATE =    0x0014,
         // Command List Address
         // [0 - 31] Command List Base Address.
@@ -46,14 +45,14 @@ struct GUDevice
     };
 
 
-    enum GUIRQMask
+    enum IRQMask
     {
-        GU_IRQ_MASK_QUEUE = 0x1,
+        IRQ_MASK_QUEUE = 0x1,
     };
 
     enum GUControlBit
     {
-        GU_RESTART_FLAG = 0x1,
+        RESET = 0x1,
     };
 
     enum GUID
@@ -61,46 +60,69 @@ struct GUDevice
         GU_1 = 0,
     };
 
-    enum GUQueueIndex
+    enum QueueIndex
     {
-        GU_QUEUE_INDEX0 = 0x0,
-        GU_QUEUE_INDEX1 = 0x1,
-        GU_QUEUE_INDEX2 = 0x2,
-        GU_QUEUE_INDEX3 = 0x3,
+        QUEUE_INDEX0 = 0x0,
+        QUEUE_INDEX1 = 0x1,
+        QUEUE_INDEX2 = 0x2,
+        QUEUE_INDEX3 = 0x3,
 
-        GU_QUEUE_INDEX_MAX = 0x4,
+        QUEUE_INDEX_MAX = 0x4,
     };
 
-    enum GUQueueControlBit
+    enum QueueControlBit
     {
-        GU_QUEUE_PRIORITY_LOW =     0x0,
-        GU_QUEUE_PRIORITY_NORMAL =  0x1,
-        GU_QUEUE_PRIORITY_HIGH =    0x2,
+        QUEUE_PRIORITY_LOW =     0x0,
+        QUEUE_PRIORITY_NORMAL =  0x1,
+        QUEUE_PRIORITY_HIGH =    0x2,
 
-        GU_QUEUE_START =            0x8000'0000,
+        QUEUE_START =            0x8000'0000,
     };
 
-    enum GUTextureFormat
+    enum QueueState
     {
-        GU_FORMAT_RGBA8 = 0x0,
+        QUEUE_FREE = 0x0,
+        QUEUE_BUSY = 0x1,
+        QUEUE_ERROR_BAD_ADDRESS = 0x2,
+        QUEUE_ERROR_BAD_LEN = 0x3,
+    };
+
+    enum TextureFormat
+    {
+        TEXTURE_FORMAT_RGBA8 = 0x0,
+        TEXTURE_FORMAT_RGB8 = 0x1,
+        TEXTURE_FORMAT_RGBA4 = 0x2,
+        TEXTURE_FORMAT_RGB565 = 0x3,
+        TEXTURE_FORMAT_RGBA5551 = 0x4,
     };
 
     // GU Command Layout
     // [0 - 23] Command arguments.
     // [24 - 31] Command ID.
-    enum GUCommand
+    enum Command
     {
-        GU_COMMAND_END = 0x0,
+        CMD_END = 0x0,
 
-        // 0x01BBGGRR | RGB color in command arguments, 8 bits each component.
-        // 0xYYYYXXXX | X, Y top left coordinates of the rectangle.
-        // 0xHHHHWWWW | W, H size of the rectangle.
-        GU_COMMAND_RECT = 0x1,
-
+        // 0x01AAAAAA | Draw Buffer Address in command arguments, aligned in 256 bytes
+        // 0x0FHHHWWW | W, H size of the framebuffer, F for draw buffer texture format,
+        // 0xYYYYXXXX | X, Y offset.
+        CMD_DRAW_BUFFER = 0x1,
+        
         // 0x02AAAAAA | Texture address in command arguments, aligned in 256 bytes.
         // 0xTFHHHWWW | W, H size of the texture, F for texture format,
-        //              T is for the texture unit
-        GU_COMMAND_TEXTURE_SET,
+        //              T is for the texture unit.
+        CMD_TEXTURE_SET = 0x2,
+
+        // 0x20BBGGRR | RGB color in command arguments, 8 bits each component.
+        // 0xYYYYXXXX | X, Y top left coordinates of the rectangle.
+        // 0xHHHHWWWW | W, H size of the rectangle.
+        CMD_RECT = 0x20,
+
+        // 0x21BBGGRR | RGB color in command arguments, 8 bits each component.
+        // 0xYYYYXXXX | X, Y top left coordinates of the first vertex of the triangle.
+        // 0xYYYYXXXX | X, Y top left coordinates of the second vertex of the triangle.
+        // 0xYYYYXXXX | X, Y top left coordinates of the third vertex of the triangle.
+        CMD_TRIANGLE = 0x21,
     };
 
     struct GURegisters

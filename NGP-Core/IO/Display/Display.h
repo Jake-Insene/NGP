@@ -31,12 +31,12 @@ struct Display
 
     enum DisplayIRQMask
     {
-        DISPLAY_IRQ_MASK_HBLANK = 0x1,
+        IRQ_MASK_HBLANK = 0x1,
     };
 
     enum DisplayControlBit
     {
-        DISPLAY_ENABLE = 0x1,
+        ENABLE = 0x1,
     };
 
     enum DisplayID
@@ -46,10 +46,11 @@ struct Display
 
     enum DisplayFormat
     {
-        DISPLAY_FORMAT_RGB8 = 0,
-        DISPLAY_FORMAT_RGBA8 = 1,
-        DISPLAY_FORMAT_RGB565 = 2,
-        DISPLAY_FORMAT_RGBA4 = 3,
+        FORMAT_RGBA8 = 0x0,
+        FORMAT_RGB8 = 0x1,
+        FORMAT_RGBA4 = 0x2,
+        FORMAT_RGB565 = 0x3,
+        FORMAT_RGBA5551 = 0x4,
     };
 
     struct DisplayRegisters

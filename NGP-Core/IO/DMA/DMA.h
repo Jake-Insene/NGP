@@ -21,7 +21,7 @@ struct DMA
 
         // DMA Channel Mask
         // [0] RAM
-        // [1] EMD
+        // [1] USI
         // [2] SPU
         // [3] GU
         DMA_IRQ_MASK = 0x100,
@@ -34,7 +34,7 @@ struct DMA
     // [1 - 2] Priority
     // [3 - 4] Transfer direction:
     //         0(RAM -> DEVICE), 1(DEVICE -> RAM), 2(DEVICE -> DEVICE)
-    // [5 - 7] Transfer Step:
+    // [5 - 7] Transfer Step: Ignored in DMA USI Channel
     //         0(4 bytes/1 Word), 1(2 bytes/1 Half), 2(1 byte), 3(8 bytes/1 DWord),
     //         4(16 bytes/1 QWord)
     //
@@ -45,7 +45,7 @@ struct DMA
     enum DMAChannel
     {
         DMA_CHANNEL_RAM = 0,
-        DMA_CHANNEL_EMD = 1,
+        DMA_CHANNEL_USI = 1,
         DMA_CHANNEL_SPU = 2,
         DMA_CHANNEL_GU = 3,
 
@@ -55,7 +55,7 @@ struct DMA
     enum DMAIRQMask
     {
         DMA_IRQ_MASK_RAM = 0x1,
-        DMA_IRQ_MASK_EMD = 0x2,
+        DMA_IRQ_MASK_USI = 0x2,
         DMA_IRQ_MASK_SPU = 0x4,
         DMA_IRQ_MASK_GU = 0x4,
     };

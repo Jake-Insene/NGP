@@ -7,7 +7,7 @@
 #include "Backend/Assembler.h"
 
 #include "ErrorManager.h"
-#include "Frontend/AsmUtility.h"
+#include "StringUtility.h"
 #include <fstream>
 
 
@@ -37,7 +37,7 @@ void Assembler::assemble_directive()
         {
             if (current->subtype == TD_FORMAT_RAW || current->subtype == TD_FORMAT_ROM)
             {
-                file_format = TokenDirective(current->subtype);
+                file_format = AsmTokenDirective(current->subtype);
 
                 advance(); // file_format
             }
@@ -67,7 +67,7 @@ void Assembler::assemble_directive()
     break;
     case TD_ORG:
     {
-        Token result = parse_expression(ParsePrecedence::Start);
+        AsmToken result = parse_expression(ParsePrecedence::Start);
         if (!result.is(TOKEN_IMMEDIATE))
         {
             MAKE_ERROR(result, return, "a immediate value was expected");
@@ -110,7 +110,7 @@ void Assembler::assemble_directive()
         break;
     case TD_STRING:
     {
-        Token string = parse_expression(ParsePrecedence::Start);
+        AsmToken string = parse_expression(ParsePrecedence::Start);
 
         if (!string.is(TOKEN_STRING))
         {
@@ -140,7 +140,7 @@ void Assembler::assemble_directive()
                 advance(); // ,
             }
 
-            Token byte = parse_expression(ParsePrecedence::Start);
+            AsmToken byte = parse_expression(ParsePrecedence::Start);
             if (!byte.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(byte, return, "a immediate value was expected");
@@ -167,7 +167,7 @@ void Assembler::assemble_directive()
                 advance(); // ,
             }
 
-            Token half = parse_expression(ParsePrecedence::Start);
+            AsmToken half = parse_expression(ParsePrecedence::Start);
             if (!half.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(half, break, "a immediate value was expected");
@@ -194,7 +194,7 @@ void Assembler::assemble_directive()
                 advance(); // ,
             }
             
-            Token word = parse_expression(ParsePrecedence::Start);
+            AsmToken word = parse_expression(ParsePrecedence::Start);
             if (!word.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(word, return, "a immediate value was expected");
@@ -221,7 +221,7 @@ void Assembler::assemble_directive()
                 advance(); // ,
             }
 
-            Token dword = parse_expression(ParsePrecedence::Start);
+            AsmToken dword = parse_expression(ParsePrecedence::Start);
             if (!dword.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(dword, return, "a immediate value was expected");
@@ -249,7 +249,7 @@ void Assembler::assemble_directive()
                 advance(); // ,
             }
 
-            Token f = parse_expression(ParsePrecedence::Start);
+            AsmToken f = parse_expression(ParsePrecedence::Start);
             if (!f.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(f, return, "a immediate value was expected");
@@ -277,7 +277,7 @@ void Assembler::assemble_directive()
                 advance(); // ,
             }
 
-            Token f = parse_expression(ParsePrecedence::Start);
+            AsmToken f = parse_expression(ParsePrecedence::Start);
             if (!f.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(f, return, "a immediate value was expected");
@@ -305,7 +305,7 @@ void Assembler::assemble_directive()
                 advance(); // ,
             }
 
-            Token f = parse_expression(ParsePrecedence::Start);
+            AsmToken f = parse_expression(ParsePrecedence::Start);
             if (!f.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(f, return, "a immediate value was expected");
@@ -333,7 +333,7 @@ void Assembler::assemble_directive()
                 advance(); // ,
             }
 
-            Token f = parse_expression(ParsePrecedence::Start);
+            AsmToken f = parse_expression(ParsePrecedence::Start);
             if (!f.is(TOKEN_IMMEDIATE))
             {
                 MAKE_ERROR(f, return, "a immediate value was expected");
@@ -350,7 +350,7 @@ void Assembler::assemble_directive()
         u32 index = token_index - 3;
         u32 prog_idx = program_index;
         
-        Token count = parse_expression(ParsePrecedence::Start);
+        AsmToken count = parse_expression(ParsePrecedence::Start);
         if (!count.is(TOKEN_IMMEDIATE))
         {
             MAKE_ERROR(count, return, "a immediate value was expected");
@@ -374,7 +374,7 @@ void Assembler::assemble_directive()
     break;
     case TD_ALIGN:
     {
-        Token alignment = parse_expression(ParsePrecedence::Start);
+        AsmToken alignment = parse_expression(ParsePrecedence::Start);
         if (!alignment.is(TOKEN_IMMEDIATE))
         {
             MAKE_ERROR(alignment, return, "a immediate value was expected");

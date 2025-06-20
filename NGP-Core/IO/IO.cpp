@@ -8,9 +8,10 @@
 
 #include "IO/Display/Display.h"
 #include "IO/DMA/DMA.h"
-#include "IO/GUDevice/GUDevice.h"
+#include "IO/GU/GU.h"
 #include "IO/IRQ/IRQ.h"
 #include "IO/Pad/Pad.h"
+#include "IO/USI/USI.h"
 
 #include "Memory/Bus.h"
 
@@ -64,11 +65,14 @@ void initialize()
         case PAD_SEGMENT:
             io_devices.emplace_back(Pad::get_io_device());
             break;
+        case USI_SEGMENT:
+            io_devices.emplace_back(USI::get_io_device());
+            break;
         case DISPLAY_SEGMENT:
             io_devices.emplace_back(Display::get_io_device());
             break;
         case GU_SEGMENT:
-            io_devices.emplace_back(GUDevice::get_io_device());
+            io_devices.emplace_back(GU::get_io_device());
             break;
         default:
             io_devices.emplace_back(get_default_io_device(IO_BASE | (io_page << SegmentBits)));

@@ -8,7 +8,6 @@ file(GLOB NGPAS_SOURCES
     "Frontend/AsmLexer.cpp"
     "Frontend/AsmPreProcessor.cpp"
     "Main.cpp"
-    "StringPool.cpp"
 )
 
 add_executable("ngpas" ${NGPAS_SOURCES})

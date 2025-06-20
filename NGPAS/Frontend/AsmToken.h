@@ -8,7 +8,7 @@
 #include "StringPool.h"
 
 
-enum TokenType : u8 {
+enum AsmTokenType : u8 {
     TOKEN_ERROR,
     TOKEN_END_OF_FILE,
 
@@ -55,7 +55,7 @@ enum TokenType : u8 {
     TOKEN_COUNT,
 };
 
-enum TokenRegister : u8
+enum AsmTokenRegister : u8
 {
     TOKEN_R0 = 0,
     TOKEN_R1,
@@ -256,7 +256,7 @@ enum TokenRegister : u8
     TOKEN_V31_D2,
 };
 
-enum TokenDirective : u8
+enum AsmTokenDirective : u8
 {
     TD_FORMAT,
     TD_FORMAT_RAW,
@@ -280,7 +280,7 @@ enum TokenDirective : u8
     TD_ALIGN,
 };
 
-enum TokenInstruction : u8
+enum AsmTokenInstruction : u8
 {
     TI_NOP,
 
@@ -414,11 +414,11 @@ enum FPType
     FPVector = 3,
 };
 
-struct Token
+struct AsmToken
 {
+    AsmTokenType type;
     StringID source_file;
     u32 line;
-    TokenType type;
     u8 subtype;
 
     StringID str;
@@ -439,12 +439,12 @@ struct Token
     [[nodiscard]] std::string_view get_source_file() const { return StringPool::get(source_file); }
     [[nodiscard]] std::string_view get_str() const { return StringPool::get(str); }
 
-    [[nodiscard]] constexpr bool is(TokenType tk) const
+    [[nodiscard]] constexpr bool is(AsmTokenType tk) const
     {
         return type == tk;
     }
 
-    [[nodiscard]] constexpr bool is_one_of(TokenType tk1, TokenType tk2) const
+    [[nodiscard]] constexpr bool is_one_of(AsmTokenType tk1, AsmTokenType tk2) const
     {
         return type == tk1 || type == tk2;
     }

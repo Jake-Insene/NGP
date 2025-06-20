@@ -118,15 +118,13 @@ template<typename T>
 static FORCE_INLINE T read_at(VirtualAddress addr)
 {
     const Word page_index = Bus::get_page_index(addr);
-    if(Bus::page_table[page_index].access & Bus::PageRead)
+    if (Bus::page_table[page_index].access & Bus::PageRead)
     {
-        return *(T*)(Bus::MAPPED_BUS_ADDRESS_START + addr);
+        return *reinterpret_cast<T*>(Bus::MAPPED_BUS_ADDRESS_START + addr);
     }
-    else
-    {
-        Bus::invalid_read(addr);
-        return T();
-    }
+
+    Bus::invalid_read(addr);
+    return T();
 }
 
 QWord Bus::read_qword(VirtualAddress addr)
@@ -168,21 +166,17 @@ template<typename T>
 inline void write_at(VirtualAddress addr, T value)
 {
     VirtualAddress page_index = Bus::get_page_index(addr);
-    if(Bus::page_table[page_index].access & Bus::PageWrite)
+    if (Bus::page_table[page_index].access & Bus::PageWrite)
     {
         if ((addr >> 28) == 1)
-        {
             IO::write_io<T>(addr, value);
-        }
         else
-        {
-            *(T*)(Bus::MAPPED_BUS_ADDRESS_START + addr) = value;
-        }
+            *reinterpret_cast<T*>(Bus::MAPPED_BUS_ADDRESS_START + addr) = value;
+
+        return;
     }
-    else
-    {
-        Bus::invalid_write(addr);
-    }
+ 
+    Bus::invalid_write(addr);
 }
 
 void Bus::write_qword(VirtualAddress addr, QWord qword)

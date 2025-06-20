@@ -6,13 +6,13 @@
 /******************************************************/
 #pragma once
 #include "Frontend/AsmPreProcessor.h"
-#include "Backend/AssemblerUtility.h"
+#include "EncodingUtility.h"
 #include "FileFormat/ISA.h"
 #include "StringPool.h"
 
-#define MAKE_ERROR(TOKEN, BREAKER, ...) \
+#define MAKE_ERROR(AsmToken, BREAKER, ...) \
     {\
-        ErrorManager::error(TOKEN.get_source_file().data(), TOKEN.line, __VA_ARGS__);\
+        ErrorManager::error(AsmToken.get_source_file().data(), AsmToken.line, __VA_ARGS__);\
         BREAKER;\
     }
 
@@ -94,12 +94,38 @@ enum RegisterType
 
 struct Assembler
 {
+    AsmPreProcessor pre_processor;
+
+    AsmToken* last;
+    AsmToken* current;
+    AsmToken* next;
+    u32 token_index;
+
+    struct
+    {
+        bool undefined_label;
+        bool unknown_label;
+        bool is_in_resolve;
+    } context;
+
+    std::vector<u8> program;
+    u32 program_index;
+
+    AsmTokenDirective file_format;
+    std::string_view extension;
+    StringID last_label;
+    std::unordered_map<StringID, Symbol> symbols;
+    std::vector<ToResolveItem> to_resolve;
+
+    u32 origin_address;
+    u32 last_size;
+
     bool assemble_file(const char* file_path, const char* output_path);
 
     // First phase: search labels and constants
     void phase1();
-    Symbol& make_label(const Token& label, u64 address, StringID source_file, u32 line);
-    Symbol& make_symbol(const Token& label, u64 value, StringID source_file, u32 line);
+    Symbol& make_label(const AsmToken& label, u64 address, StringID source_file, u32 line);
+    Symbol& make_symbol(const AsmToken& label, u64 value, StringID source_file, u32 line);
 
     // Second phase: assembly
     void phase2();
@@ -124,8 +150,8 @@ struct Assembler
 
     void advance();
     void synchronize();
-    bool expected(TokenType tk, const char* format, ...);
-    bool expectedv(TokenType tk, const char* format, va_list va);
+    bool expected(AsmTokenType tk, const char* format, ...);
+    bool expectedv(AsmTokenType tk, const char* format, va_list va);
     bool expected_comma();
     bool expected_left_key();
     bool expected_right_key();
@@ -133,9 +159,9 @@ struct Assembler
     void advance_to_next_line();
 
     // Utility
-    u8 get_register(Token tk);
+    u8 get_register(AsmToken tk);
     bool try_get_register(u8& reg, RegisterType reg_type, const char* format, ...);
-    bool try_get_register_tk(Token tk, u8& reg, RegisterType reg_type);
+    bool try_get_register_tk(AsmToken tk, u8& reg, RegisterType reg_type);
     u32& new_word();
     u16& new_half();
     u8& new_byte();
@@ -145,56 +171,30 @@ struct Assembler
     // Parser
 
     // Prefix
-    Token parse_minus(Token, Token);
-    Token parse_not(Token, Token);
-    Token parse_immediate(Token, Token);
-    Token parse_symbol(Token, Token);
-    Token parse_register(Token, Token);
-    Token parse_group(Token, Token);
-    Token parse_dollar(Token, Token);
-    Token parse_string(Token, Token);
+    AsmToken parse_minus(AsmToken, AsmToken);
+    AsmToken parse_not(AsmToken, AsmToken);
+    AsmToken parse_immediate(AsmToken, AsmToken);
+    AsmToken parse_symbol(AsmToken, AsmToken);
+    AsmToken parse_register(AsmToken, AsmToken);
+    AsmToken parse_group(AsmToken, AsmToken);
+    AsmToken parse_dollar(AsmToken, AsmToken);
+    AsmToken parse_string(AsmToken, AsmToken);
 
     // Infix
-    Token parse_add(Token lsh, Token rhs);
-    Token parse_sub(Token lsh, Token rhs);
-    Token parse_and(Token lsh, Token rhs);
-    Token parse_or(Token lsh, Token rhs);
-    Token parse_xor(Token lsh, Token rhs);
-    Token parse_shl(Token lsh, Token rhs);
-    Token parse_shr(Token lsh, Token rhs);
-    Token parse_asr(Token lsh, Token rhs);
-    Token parse_mul(Token lsh, Token rhs);
-    Token parse_div(Token lsh, Token rhs);
+    AsmToken parse_add(AsmToken lsh, AsmToken rhs);
+    AsmToken parse_sub(AsmToken lsh, AsmToken rhs);
+    AsmToken parse_and(AsmToken lsh, AsmToken rhs);
+    AsmToken parse_or(AsmToken lsh, AsmToken rhs);
+    AsmToken parse_xor(AsmToken lsh, AsmToken rhs);
+    AsmToken parse_shl(AsmToken lsh, AsmToken rhs);
+    AsmToken parse_shr(AsmToken lsh, AsmToken rhs);
+    AsmToken parse_asr(AsmToken lsh, AsmToken rhs);
+    AsmToken parse_mul(AsmToken lsh, AsmToken rhs);
+    AsmToken parse_div(AsmToken lsh, AsmToken rhs);
 
-    Token parse_expression(ParsePrecedence precedence);
+    AsmToken parse_expression(ParsePrecedence precedence);
 
     // expressions
 
     std::unordered_map<StringID, Symbol>::iterator find_label(StringID label);
-
-    AsmPreProcessor pre_processor;
-
-    Token* last;
-    Token* current;
-    Token* next;
-    u32 token_index;
-
-    struct
-    {
-        bool undefined_label;
-        bool unknown_label;
-        bool is_in_resolve;
-    } context;
-
-    std::vector<u8> program;
-    u32 program_index;
-
-    TokenDirective file_format;
-    std::string_view extension;
-    StringID last_label;
-    std::unordered_map<StringID, Symbol> symbols;
-    std::vector<ToResolveItem> to_resolve;
-
-    u32 origin_address;
-    u32 last_size;
 };

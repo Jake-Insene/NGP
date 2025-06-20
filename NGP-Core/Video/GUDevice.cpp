@@ -4,7 +4,7 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "Video/GU.h"
+#include "Video/GUDevice.h"
 
 #include "Video/OpenGL/GLGU.h"
 #include "Video/VGU/VGU.h"
@@ -14,19 +14,19 @@
 #include <Video/D3D12/D3D12GU.h>
 #endif // _WIN32
 
-void GU::initialize(GU::DriverApi api)
+void GUDevice::initialize(GUDevice::DriverApi api)
 {
 	switch (api)
 	{
 #ifdef _WIN32
-	case GU::D3D12:
+	case GUDevice::D3D12:
 		main_driver = D3D12GU::get_driver();
 		break;
 #endif // _WIN32
-	case GU::VGU:
+	case GUDevice::VGU:
 		main_driver = VGU::get_driver();
 		break;
-	case GU::OPENGL:
+	case GUDevice::OPENGL:
 		main_driver = GLGU::get_driver();
 		break;
 	default:

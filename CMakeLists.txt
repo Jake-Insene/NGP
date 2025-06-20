@@ -15,6 +15,7 @@ include_directories("NGP-Core")
 add_subdirectory("NGP-Core")
 add_subdirectory("NGPAS")
 add_subdirectory("NGP")
+add_subdirectory("NGPC")
 add_subdirectory("NGPFS")
 
 add_custom_command(

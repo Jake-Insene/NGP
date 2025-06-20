@@ -5,31 +5,30 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #pragma once
-#include "Frontend/AsmToken.h"
+#include "Frontend/CToken.h"
 
-
-struct AsmLexer
+struct CLexer
 {
     StringID file_path;
-    u8* content = nullptr;
-    u32 size = 0;
+    u8* content;
+    u32 size;
 
-    char current = 0;
-    u32 line = 0;
-    u32 index = 0;
+    char current;
+    u32 line;
+    u32 index;
 
     [[nodiscard]] std::string_view get_file_path() const { return StringPool::get(file_path); }
-    
+
     void set(StringID source_file, u8* ctn, u32 s);
-    AsmToken get_next();
+    CToken get_next();
 
     void skip_white_space();
     char peek(u8 offset);
     void advance();
 
-    AsmToken get_symbol_or_label();
-    AsmToken get_immediate();
-    AsmToken get_string();
+    CToken get_identifier();
+    CToken get_number();
+    CToken get_string();
 
     bool is_alpha(u8 c) const;
     bool is_num(u8 c) const;

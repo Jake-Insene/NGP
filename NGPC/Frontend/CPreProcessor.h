@@ -5,11 +5,7 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #pragma once
-#include "Frontend/AsmLexer.h"
-#include "StringPool.h"
-#include <unordered_map>
-#include <vector>
-
+#include "Frontend/CLexer.h"
 
 struct SourceFile
 {
@@ -25,7 +21,7 @@ struct SourceFile
 };
 
 using SourceFileList = std::vector<SourceFile>;
-using AsmTokenList = std::vector<AsmToken>;
+using AsmTokenList = std::vector<CToken>;
 
 struct MacroDefinition
 {
@@ -34,24 +30,24 @@ struct MacroDefinition
     AsmTokenList tokens;
 };
 
-struct AsmPreProcessor
+struct CPreProcessor
 {
-    AsmLexer lexer;
+    CLexer lexer;
 
-    AsmToken last;
-    AsmToken current;
-    AsmToken next;
+    CToken last;
+    CToken current;
+    CToken next;
 
     SourceFileList sources;
     AsmTokenList tokens;
     std::unordered_map<StringID, MacroDefinition> macros;
 
-    void process(const char* file_path);
+	void process(const char* file_path);
 
     void process_source();
     void process_directive();
     void expand_macro(const MacroDefinition& macro);
 
     void advance();
-    bool expected(AsmTokenType type, const char* format, ...);
+    bool expected(CTokenType type, const char* format, ...);
 };

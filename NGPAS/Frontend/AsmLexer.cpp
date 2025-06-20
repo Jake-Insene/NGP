@@ -14,7 +14,7 @@ struct SymbolInfo
 {
     const char* symbol;
     u8 size;
-    TokenType type;
+    AsmTokenType type;
     u8 subtype;
 };
 
@@ -405,9 +405,9 @@ void AsmLexer::set(StringID source_file, u8* ctn, u32 s)
     current = content[index];
 }
 
-Token AsmLexer::get_next()
+AsmToken AsmLexer::get_next()
 {
-    Token tk = {};
+    AsmToken tk = {};
     tk.type = TOKEN_ERROR;
     tk.source_file = file_path;
     tk.line = line;
@@ -592,9 +592,10 @@ void AsmLexer::advance()
     }
 }
 
-Token AsmLexer::get_symbol_or_label()
+AsmToken AsmLexer::get_symbol_or_label()
 {
-    Token tk = {
+    AsmToken tk =
+    {
         .source_file = file_path,
         .line = line,
     };
@@ -641,12 +642,13 @@ Token AsmLexer::get_symbol_or_label()
     return tk;
 }
 
-Token AsmLexer::get_immediate()
+AsmToken AsmLexer::get_immediate()
 {
-    Token tk = {
+    AsmToken tk =
+    {
+        .type = TOKEN_IMMEDIATE,
         .source_file = file_path,
         .line = line,
-        .type = TOKEN_IMMEDIATE,
     };
 
     if (current == '#')
@@ -742,12 +744,13 @@ bool AsmLexer::is_bin(u8 c) const
     return c == '0' || c == '1';
 }
 
-Token AsmLexer::get_string()
+AsmToken AsmLexer::get_string()
 {
-    Token tk = {
+    AsmToken tk =
+    {
+        .type = TOKEN_STRING,
         .source_file = file_path,
         .line = line,
-        .type = TOKEN_STRING,
     };
 
     bool cuot = current == '\'';

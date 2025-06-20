@@ -46,9 +46,9 @@ const Vertex vertices[] =
 };
 
 
-GU::GUDriver D3D11GU::get_driver()
+GUDevice::GUDriver D3D11GU::get_driver()
 {
-    return GU::GUDriver
+    return GUDevice::GUDriver
     {
         .initialize = &D3D11GU::initialize,
         .shutdown = &D3D11GU::shutdown,

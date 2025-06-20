@@ -10,17 +10,21 @@ file(GLOB NGP_CORE_SOURCES
     "IO/IO.cpp"
     "IO/Display/Display.cpp"
     "IO/DMA/DMA.cpp"
-    "IO/GUDevice/GUDevice.cpp"
+    "IO/GU/GU.cpp"
     "IO/IRQ/IRQ.cpp"
     "IO/Pad/Pad.cpp"
+    "IO/USI/USI.cpp"
     
     "Memory/Bus.cpp"
     
-    "Video/GU.cpp"
+    "Video/GUDevice.cpp"
     "Video/VGU/VGU.cpp"
+    "Video/VGU/VGUQueue.cpp"
+    "Video/VGU/VRasterizer.cpp"
     "Video/OpenGL/GLGU.cpp"
     
     "Emulator.cpp"
+    "StringPool.cpp"
 )
 
 

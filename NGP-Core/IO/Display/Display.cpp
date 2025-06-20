@@ -6,7 +6,7 @@
 /******************************************************/
 #include "IO/Display/Display.h"
 
-#include "Video/GU.h"
+#include "Video/GUDevice.h"
 
 
 IO::IODevice Display::get_io_device()
@@ -50,16 +50,16 @@ void Display::handle_write_word(VirtualAddress local_address, Word value)
 		get_registers().ctr = value;
 		break;
 	case DISPLAY_BUFFER_ADDR:
-		if (get_registers().ctr & DISPLAY_ENABLE)
+		if (get_registers().ctr & ENABLE)
 		{
-			GU::display_set_address(value);
+			GUDevice::display_set_address(value);
 			get_registers().buffer_addr = value;
 		}
 		break;
 	case DISPLAY_FORMAT:
-		if (get_registers().ctr & DISPLAY_ENABLE)
+		if (get_registers().ctr & ENABLE)
 		{
-			GU::display_set_config(
+			GUDevice::display_set_config(
 				value & 0x3FFF, (value >> 14) & 0x3FFF, 
 				(Display::DisplayFormat)(value >> 28)
 			);
@@ -67,9 +67,9 @@ void Display::handle_write_word(VirtualAddress local_address, Word value)
 		}
 		break;
 	case DISPLAY_PRESENT:
-		if (get_registers().ctr & DISPLAY_ENABLE)
+		if (get_registers().ctr & ENABLE)
 		{
-			GU::request_present();
+			GUDevice::request_present();
 		}
 		break;
 	default:

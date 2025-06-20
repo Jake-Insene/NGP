@@ -11,7 +11,7 @@
 #include "Platform/Header.h"
 #include "Platform/OS.h"
 #include "Platform/Time.h"
-#include "Video/GU.h"
+#include "Video/GUDevice.h"
 #include "Video/Window.h"
 
 #include <cstdlib>
@@ -137,7 +137,7 @@ void Emulator::initialize()
     IO::initialize();
 
     Window::initialize(Window::DefaultWindowWidth, Window::DefaultWindowHeight);
-    GU::initialize(GU::VGU);
+    GUDevice::initialize(GUDevice::VGU);
 
     auto thread_count = std::thread::hardware_concurrency();
 }
@@ -149,7 +149,7 @@ void Emulator::shutdown()
 
     cores.clear();
 
-    GU::shutdown();
+    GUDevice::shutdown();
     Window::shutdown();
     IO::shutdown();
     Bus::shutdown();
@@ -240,7 +240,7 @@ void Emulator::loop()
 
         Window::update();
         IO::dispatch();
-        GU::present(true);
+        GUDevice::present(true);
         fps++;
         auto dt = Time::get_time() - start;
         elapsed += dt;

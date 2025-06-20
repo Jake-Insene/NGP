@@ -6,7 +6,7 @@
 /******************************************************/
 #include "IO/DMA/DMA.h"
 
-#include "Video/GU.h"
+#include "Video/GUDevice.h"
 #include "Memory/Bus.h"
 
 
@@ -72,7 +72,7 @@ void DMA::dispatch()
             switch (ch)
             {
             case DMA_CHANNEL_GU:
-                GU::dma_send(channel.dst, channel.src, channel.cnt, channel.ctr);
+                GUDevice::dma_send(channel.dst, channel.src, channel.cnt, channel.ctr);
                 break;
             default:
                 break;

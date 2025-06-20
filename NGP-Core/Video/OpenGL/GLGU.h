@@ -5,13 +5,13 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #pragma once
-#include "Video/GU.h"
+#include "Video/GUDevice.h"
 
 
 struct GLGU
 {
 
-    static GU::GUDriver get_driver();
+    static GUDevice::GUDriver get_driver();
 
     static void initialize();
     static void shutdown();

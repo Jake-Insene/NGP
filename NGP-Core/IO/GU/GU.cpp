@@ -79,10 +79,8 @@ void GU::handle_write_word(VirtualAddress local_address, Word value)
     case GU_QUEUE_CTR:
         if (value & QUEUE_START)
         {
-            u8 queue_priority = value & 0x3;
-            u8 queue = (value >> 2) & 0x3;
-            ::GUDevice::queue_execute(
-                queue, queue_priority, get_registers().queue_addr,
+            GUDevice::queue_execute(
+                get_registers().queue_addr,
                 get_registers().queue_len
             );
         }

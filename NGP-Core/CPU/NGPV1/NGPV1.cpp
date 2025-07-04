@@ -8,6 +8,7 @@
 
 #include "FileFormat/ISA.h"
 #include "Memory/Bus.h"
+#include "Emulator.h"
 
 #include <cstdio>
 #include <bit>
@@ -17,13 +18,13 @@
 
 
 #define MAKE_SIMPLE_ARITH_LOGIC(NAME, OP) \
-    static FORCE_INLINE void NAME(NGPV1& core, const u8 dest, const u8 src1, const u8 src2, const u8 src3)\
+    static FORCE_INLINE void NAME(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)\
     {\
         core.list[dest] = (dest != CPUCore::ZeroRegister) * (OP);\
     }
 
 #define MAKE_SETTING_FLAGS(NAME, OP) \
-    static FORCE_INLINE void NAME(NGPV1& core, const u8 dest, const u8 src1, const u8 src2, const u8 src3)\
+    static FORCE_INLINE void NAME(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)\
     {\
         core.list[dest] = (dest != CPUCore::ZeroRegister) * (OP);\
     }
@@ -109,64 +110,21 @@ static FORCE_INLINE u32 add_with_carry(const u32 src1, const u32 src2, const u32
     return u32(res);
 }
 
-MAKE_SIMPLE_ARITH_LOGIC(add_shl, core.list[src1] + (core.list[src2] << src3));
-MAKE_SIMPLE_ARITH_LOGIC(add_shr, core.list[src1] + (core.list[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(add_asr, core.list[src1] + (core.ilist[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(adc, add_with_carry(core.list[src1], core.list[src2], core.psr.CARRY));
-
-MAKE_SIMPLE_ARITH_LOGIC(sub_shl, core.list[src1] - (core.list[src2] << src3));
-MAKE_SIMPLE_ARITH_LOGIC(sub_shr, core.list[src1] - (core.list[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(sub_asr, core.list[src1] - (core.ilist[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(sbc, add_with_carry(core.list[src1], ~core.list[src2], core.psr.CARRY));
-
-MAKE_SIMPLE_ARITH_LOGIC(and_shl, core.list[src1] & (core.list[src2] << src3));
-MAKE_SIMPLE_ARITH_LOGIC(and_shr, core.list[src1] & (core.list[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(and_asr, core.list[src1] & (core.ilist[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(and_ror, core.list[src1] & (std::rotr(core.list[src2], src3)));
-
-MAKE_SIMPLE_ARITH_LOGIC(or_shl, core.list[src1] | (core.list[src2] << src3));
-MAKE_SIMPLE_ARITH_LOGIC(or_shr, core.list[src1] | (core.list[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(or_asr, core.list[src1] | (core.ilist[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(or_ror, core.list[src1] | (core.ilist[src2]));
-
-MAKE_SIMPLE_ARITH_LOGIC(orn_shl, core.list[src1] | ~(core.list[src2] << src3));
-MAKE_SIMPLE_ARITH_LOGIC(orn_shr, core.list[src1] | ~(core.list[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(orn_asr, core.list[src1] | ~(core.ilist[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(orn_ror, core.list[src1] | ~(std::rotr(core.list[src2], src3)));
-
-MAKE_SIMPLE_ARITH_LOGIC(eor_shl, core.list[src1] ^ (core.list[src2] << src3));
-MAKE_SIMPLE_ARITH_LOGIC(eor_shr, core.list[src1] ^ (core.list[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(eor_asr, core.list[src1] ^ (core.ilist[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(eor_ror, core.list[src1] ^ std::rotr(core.list[src2], src3));
-
-MAKE_SETTING_FLAGS(adds_shl, add_with_carry_setting_flags(core, core.list[src1], core.list[src2] << src3, 0));
-MAKE_SETTING_FLAGS(adds_shr, add_with_carry_setting_flags(core, core.list[src1], core.list[src2] >> src3, 0));
-MAKE_SETTING_FLAGS(adds_asr, add_with_carry_setting_flags(core, core.list[src1], core.ilist[src2] >> src3, 0));
-MAKE_SETTING_FLAGS(adds_ror, add_with_carry_setting_flags(core, core.list[src1], std::rotr(core.list[src2], src3), 0));
-
-
-MAKE_SETTING_FLAGS(subs_shl, add_with_carry_setting_flags(core, core.list[src1], ~(core.list[src2] << src3), 1));
-MAKE_SETTING_FLAGS(subs_shr, add_with_carry_setting_flags(core, core.list[src1], ~(core.list[src2] >> src3), 1));
-MAKE_SETTING_FLAGS(subs_asr, add_with_carry_setting_flags(core, core.list[src1], ~(core.ilist[src2] >> src3), 1));
-MAKE_SETTING_FLAGS(subs_ror, add_with_carry_setting_flags(core, core.list[src1], std::rotr(core.list[src2], src3), 1));
-
-MAKE_SETTING_FLAGS(ands_shl, and_setting_flags(core, core.list[src1], core.list[src2] << src3));
-MAKE_SETTING_FLAGS(ands_shr, and_setting_flags(core, core.list[src1], core.list[src2] >> src3));
-MAKE_SETTING_FLAGS(ands_asr, and_setting_flags(core, core.list[src1], core.ilist[src2] >> src3));
-MAKE_SETTING_FLAGS(ands_ror, and_setting_flags(core, core.list[src1], std::rotr(core.list[src2], src3)));
-
-MAKE_SIMPLE_ARITH_LOGIC(bic_shl, core.list[src1] & ~(core.list[src2] << src3));
-MAKE_SIMPLE_ARITH_LOGIC(bic_shr, core.list[src1] & ~(core.list[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(bic_asr, core.list[src1] & ~(core.ilist[src2] >> src3));
-MAKE_SIMPLE_ARITH_LOGIC(bic_ror, core.list[src1] & ~(std::rotr(core.list[src2], src3)));
-
-MAKE_SETTING_FLAGS(bics_shl, and_setting_flags(core, core.list[src1], ~(core.list[src2] << src3)));
-MAKE_SETTING_FLAGS(bics_shr, and_setting_flags(core, core.list[src1], ~(core.list[src2] >> src3)));
-MAKE_SETTING_FLAGS(bics_asr, and_setting_flags(core, core.list[src1], ~(core.ilist[src2] >> src3)));
-MAKE_SETTING_FLAGS(bics_ror, and_setting_flags(core, core.list[src1], std::rotr(core.list[src2], src3)));
-
-MAKE_SIMPLE_ARITH_LOGIC(adcs, add_with_carry_setting_flags(core, core.list[src1], core.list[src2], core.psr.CARRY));
-MAKE_SIMPLE_ARITH_LOGIC(sbcs, add_with_carry_setting_flags(core, core.list[src1], ~core.list[src2], core.psr.CARRY));
+MAKE_SIMPLE_ARITH_LOGIC(_add, core.list[src1] + core.list[src2]);
+MAKE_SIMPLE_ARITH_LOGIC(_adc, add_with_carry(core.list[src1], core.list[src2], core.psr.CARRY));
+MAKE_SIMPLE_ARITH_LOGIC(_sub, core.list[src1] - core.list[src2]);
+MAKE_SIMPLE_ARITH_LOGIC(_sbc, add_with_carry(core.list[src1], ~core.list[src2], core.psr.CARRY));
+MAKE_SIMPLE_ARITH_LOGIC(_and, core.list[src1] & core.list[src2]);
+MAKE_SIMPLE_ARITH_LOGIC(_or, core.list[src1] | core.list[src2]);
+MAKE_SIMPLE_ARITH_LOGIC(_orn, core.list[src1] | ~core.list[src2]);
+MAKE_SIMPLE_ARITH_LOGIC(_eor, core.list[src1] ^ core.list[src2]);
+MAKE_SETTING_FLAGS(_adds, add_with_carry_setting_flags(core, core.list[src1], core.list[src2], 0));
+MAKE_SETTING_FLAGS(_subs, add_with_carry_setting_flags(core, core.list[src1], ~core.list[src2], 1));
+MAKE_SETTING_FLAGS(_ands, and_setting_flags(core, core.list[src1], core.list[src2]));
+MAKE_SIMPLE_ARITH_LOGIC(_bic, core.list[src1] & ~core.list[src2]);
+MAKE_SETTING_FLAGS(_bics, and_setting_flags(core, core.list[src1], ~core.list[src2]));
+MAKE_SIMPLE_ARITH_LOGIC(_adcs, add_with_carry_setting_flags(core, core.list[src1], core.list[src2], core.psr.CARRY));
+MAKE_SIMPLE_ARITH_LOGIC(_sbcs, add_with_carry_setting_flags(core, core.list[src1], ~core.list[src2], core.psr.CARRY));
 
 
 // Memory
@@ -283,27 +241,31 @@ static FORCE_INLINE void div(NGPV1& core, const u8 dest, const u8 src1, const u8
     core.ilist[dest] = (dest != CPUCore::ZeroRegister) * (core.ilist[src1] / core.ilist[src2]);
 }
 
-static FORCE_INLINE void shl(NGPV1& core, const u8 dest, const u8 src1, const u8 src2, const u8 src3)
+// Src2 is a immediate value
+static FORCE_INLINE void _shl(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)
 {
     core.ilist[dest] = (dest != CPUCore::ZeroRegister) * (core.ilist[src1] << src2);
 }
 
-static FORCE_INLINE void shr(NGPV1& core, const u8 dest, const u8 src1, const u8 src2, const u8)
+// Src2 is a immediate value
+static FORCE_INLINE void _shr(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)
 {
     core.ilist[dest] = (dest != CPUCore::ZeroRegister) * (core.ilist[src1] >> src2);
 }
 
-static FORCE_INLINE void asr(NGPV1& core, const u8 dest, const u8 src1, const u8 src2, const u8)
+// Src2 is a immediate value
+static FORCE_INLINE void _asr(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)
 {
     core.ilist[dest] = (dest != CPUCore::ZeroRegister) * (core.ilist[src1] >> src2);
 }
 
-static FORCE_INLINE void ror(NGPV1& core, const u8 dest, const u8 src1, const u8 src2, const u8)
+// Src2 is a immediate value
+static FORCE_INLINE void _ror(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)
 {
     core.list[dest] = (dest != CPUCore::ZeroRegister) * (std::rotr(core.list[src1], (i32)src2));
 }
 
-static FORCE_INLINE void abs(NGPV1& core, const u8 dest, const u8 src1, const u8, const u8)
+static FORCE_INLINE void _abs(NGPV1& core, const u8 dest, const u8 src1, const u8)
 {
     core.ilist[dest] = (dest != CPUCore::ZeroRegister) *
         (core.ilist[src1] >= 0 ? core.ilist[src1] : -core.ilist[src1]);
@@ -352,53 +314,7 @@ static FORCE_INLINE void smc(NGPV1& core, const u8 src1, const u8 src2, const u3
 static FORCE_INLINE void eret(NGPV1& core, const u8, const u8, const u32) { core.return_exception(); }
 static FORCE_INLINE void wfi(NGPV1& core, const u8, const u8, const u32) {}
 
-static FORCE_INLINE void msr(NGPV1& core, const u8 dest, const u8 src2, const u32 op)
-{
-    const NGPSystemRegister sr = NGPSystemRegister(src2 | op << 5);
-    switch (sr)
-    {
-    case NGP_PSTATE:
-        core.list[dest] = (dest != ZeroRegister) * core.psr.raw & 0xF;
-        break;
-    case NGP_CURRENT_EL:
-        core.list[dest] = (dest != ZeroRegister) * core.psr.CURRENT_EL;
-        break;
-    case NGP_SPSR_EL1:
-    case NGP_SPSR_EL2:
-    case NGP_SPSR_EL3:
-    case NGP_SPSR_IRQ:
-        core.list[dest] = (dest != ZeroRegister) * core.system_regs.spsr.spsr[sr - NGP_SPSR_EL1].raw;
-        break;
-    case NGP_EDR_EL1:
-    case NGP_EDR_EL2:
-    case NGP_EDR_EL3:
-        core.list[dest] = (dest != ZeroRegister) * core.system_regs.edr.edr_el[sr - NGP_EDR_EL1];
-        break;
-    case NGP_ELR_EL1:
-    case NGP_ELR_EL2:
-    case NGP_ELR_EL3:
-        core.list[dest] = (dest != ZeroRegister) * core.system_regs.elr.elr_el[sr - NGP_ELR_EL1];
-        break;
-    case NGP_VBAR_EL1:
-    case NGP_VBAR_EL2:
-    case NGP_VBAR_EL3:
-        core.list[dest] = (dest != ZeroRegister) * core.system_regs.vbar.vbar_el[sr - NGP_VBAR_EL1];
-        break;
-    case NGP_CLCK_FREQ:
-        core.list[dest] = (dest != ZeroRegister) * core.clock_speed;
-        break;
-    case NGP_CLCK_MAX_FREQ:
-        core.list[dest] = (dest != ZeroRegister) * core.clock_speed;
-        break;
-    case NGP_FAR_EL1:
-    case NGP_FAR_EL2:
-    case NGP_FAR_EL3:
-        core.list[dest] = (dest != ZeroRegister) * core.system_regs.far.far_el[sr - NGP_FAR_EL1];
-        break;
-    }
-}
-
-static FORCE_INLINE void mrs(NGPV1& core, const u8 src, const u8 src2, const u32 op)
+static FORCE_INLINE void msr(NGPV1& core, const u8 src, const u8 src2, const u32 op)
 {
     const NGPSystemRegister sr = NGPSystemRegister(src2 | op << 5);
     switch (sr)
@@ -412,7 +328,6 @@ static FORCE_INLINE void mrs(NGPV1& core, const u8 src, const u8 src2, const u32
     case NGP_SPSR_EL1:
     case NGP_SPSR_EL2:
     case NGP_SPSR_EL3:
-    case NGP_SPSR_IRQ:
         core.system_regs.spsr.spsr[sr - NGP_SPSR_EL1].raw = core.list[src];
         break;
     case NGP_EDR_EL1:
@@ -436,6 +351,45 @@ static FORCE_INLINE void mrs(NGPV1& core, const u8 src, const u8 src2, const u32
         core.system_regs.far.far_el[sr - NGP_FAR_EL1] = core.list[src];
         break;
     default:
+        break;
+    }
+}
+
+static FORCE_INLINE void mrs(NGPV1& core, const u8 dest, const u8 src2, const u32 op)
+{
+    const NGPSystemRegister sr = NGPSystemRegister(src2 | op << 5);
+    switch (sr)
+    {
+    case NGP_PSTATE:
+        core.list[dest] = (dest != ZeroRegister) * core.psr.raw & 0xF;
+        break;
+    case NGP_CURRENT_EL:
+        core.list[dest] = (dest != ZeroRegister) * core.psr.CURRENT_EL;
+        break;
+    case NGP_SPSR_EL1:
+    case NGP_SPSR_EL2:
+    case NGP_SPSR_EL3:
+        core.list[dest] = (dest != ZeroRegister) * core.system_regs.spsr.spsr[sr - NGP_SPSR_EL1].raw;
+        break;
+    case NGP_EDR_EL1:
+    case NGP_EDR_EL2:
+    case NGP_EDR_EL3:
+        core.list[dest] = (dest != ZeroRegister) * core.system_regs.edr.edr_el[sr - NGP_EDR_EL1];
+        break;
+    case NGP_ELR_EL1:
+    case NGP_ELR_EL2:
+    case NGP_ELR_EL3:
+        core.list[dest] = (dest != ZeroRegister) * core.system_regs.elr.elr_el[sr - NGP_ELR_EL1];
+        break;
+    case NGP_VBAR_EL1:
+    case NGP_VBAR_EL2:
+    case NGP_VBAR_EL3:
+        core.list[dest] = (dest != ZeroRegister) * core.system_regs.vbar.vbar_el[sr - NGP_VBAR_EL1];
+        break;
+    case NGP_FAR_EL1:
+    case NGP_FAR_EL2:
+    case NGP_FAR_EL3:
+        core.list[dest] = (dest != ZeroRegister) * core.system_regs.far.far_el[sr - NGP_FAR_EL1];
         break;
     }
 }
@@ -516,72 +470,75 @@ static FORCE_INLINE void bcond(NGPV1& core, const u32 inst)
     }
 }
 
-static FORCE_INLINE void logical_add_sub(NGPV1& core, const u32 inst)
+static FORCE_INLINE void _3op(NGPV1& core, const u32 inst)
 {
-    const u8 las = (inst >> 6) & 0x3F;
-    const u8 dest = (inst >> 12) & 0x1F;
-    const u8 src1 = (inst >> 17) & 0x1F;
-    const u8 src2 = (inst >> 22) & 0x1F;
-    const u8 src3 = (inst >> 27) & 0x1F;
+    const u16 _alu_opc = (inst >> 6) & 0x7FF;
+    const u8 dest_src = (inst >> 17) & 0x1F;
+    const u8 src1_base = (inst >> 22) & 0x1F;
+    const u8 src2_index = (inst >> 27) & 0x1F;
 
-#define CASE(op, name) case op: name(core, dest, src1, src2, src3); break
-    switch (las)
+#define CASE_R(op, func) case op: \
+    HANDLE_READ(core, dest_src, func, core.list[src1_base] + core.list[src2_index]); break
+#define CASE_R_SIGNED(op, func) case op: \
+    HANDLE_READ_SIGNED(core, dest_src, func, core.list[src1_base] + core.list[src2_index]); break
+#define CASE_SIMD_R(op, field, func) case op: \
+    HANDLE_SIMD_READ(core, dest_src, field, func, core.list[src1_base] + core.list[src2_index]); break
+
+#define CASE_W(op, type, func) case op: \
+    HANDLE_WRITE(core, dest_src, type, func, core.list[src1_base] + core.list[src2_index]); break
+#define CASE_SIMD_W(op, field, func) case op: \
+    HANDLE_SIMD_WRITE(core, dest_src, field, func, core.list[src1_base] + core.list[src2_index]); break
+
+#define CASE(op, name) case op: name(core, dest_src, src1_base, core.list[src2_index] & 0x1F); break
+#define CASE_IMM_SHIFT(op, name) case op: name(core, dest_src, src1_base, src2_index); break
+    switch (_alu_opc)
     {
-        CASE(NGP_ADD_SHL, add_shl);
-        CASE(NGP_ADD_SHR, add_shr);
-        CASE(NGP_ADD_ASR, add_asr);
-        CASE(NGP_ADC, adc);
-        CASE(NGP_SUB_SHL, sub_shl);
-        CASE(NGP_SUB_SHR, sub_shr);
-        CASE(NGP_SUB_ASR, sub_asr);
-        CASE(NGP_SBC, sbc);
-        CASE(NGP_AND_SHL, and_shl);
-        CASE(NGP_AND_SHR, and_shr);
-        CASE(NGP_AND_ASR, and_asr);
-        CASE(NGP_AND_ROR, and_ror);
-        CASE(NGP_OR_SHL, or_shl);
-        CASE(NGP_OR_SHR, or_shr);
-        CASE(NGP_OR_ASR, or_asr);
-        CASE(NGP_OR_ROR, or_ror);
-        CASE(NGP_ORN_SHL, orn_shl);
-        CASE(NGP_ORN_SHR, orn_shr);
-        CASE(NGP_ORN_ASR, orn_asr);
-        CASE(NGP_ORN_ROR, orn_ror);
-        CASE(NGP_EOR_SHL, eor_shl);
-        CASE(NGP_EOR_SHR, eor_shr);
-        CASE(NGP_EOR_ASR, eor_asr);
-        CASE(NGP_EOR_ROR, eor_ror);
-        CASE(NGP_ADDS_SHL, adds_shl);
-        CASE(NGP_ADDS_SHR, adds_shr);
-        CASE(NGP_ADDS_ASR, adds_asr);
-        CASE(NGP_ADDS_ROR, adds_ror);
-        CASE(NGP_SUBS_SHL, subs_shl);
-        CASE(NGP_SUBS_SHR, subs_shr);
-        CASE(NGP_SUBS_ASR, subs_asr);
-        CASE(NGP_SUBS_ROR, subs_ror);
-        CASE(NGP_ANDS_SHL, ands_shl);
-        CASE(NGP_ANDS_SHR, ands_shr);
-        CASE(NGP_ANDS_ASR, ands_asr);
-        CASE(NGP_ANDS_ROR, ands_ror);
-        CASE(NGP_BIC_SHL, bic_shl);
-        CASE(NGP_BIC_SHR, bic_shr);
-        CASE(NGP_BIC_ASR, bic_asr);
-        CASE(NGP_BIC_ROR, bic_ror);
-        CASE(NGP_BICS_SHL, bics_shl);
-        CASE(NGP_BICS_SHR, bics_shr);
-        CASE(NGP_BICS_ASR, bics_asr);
-        CASE(NGP_BICS_ROR, bics_ror);
-        CASE(NGP_ADCS, adcs);
-        CASE(NGP_SBCS, sbcs);
-        CASE(NGP_SHL, shl);
-        CASE(NGP_SHR, shr);
-        CASE(NGP_ASR, asr);
-        CASE(NGP_ROR, ror);
-        CASE(NGP_ABS, abs);
+        CASE(NGP_ADD, _add);
+        CASE(NGP_ADC, _adc);
+        CASE(NGP_SUB, _sub);
+        CASE(NGP_SBC, _sbc);
+        CASE(NGP_AND, _and);
+        CASE(NGP_OR, _or);
+        CASE(NGP_ORN, _orn);
+        CASE(NGP_EOR, _eor);
+        CASE(NGP_ADDS, _adds);
+        CASE(NGP_SUBS, _subs);
+        CASE(NGP_ANDS, _ands);
+        CASE(NGP_BIC, _bic);
+        CASE(NGP_BICS, _bics);
+        CASE(NGP_ADCS, _adcs);
+        CASE(NGP_SBCS, _sbcs);
+        CASE(NGP_SHL, _shl);
+        CASE(NGP_SHR, _shr);
+        CASE(NGP_ASR, _asr);
+        CASE(NGP_ROR, _ror);
+        CASE_IMM_SHIFT(NGP_SHL_IMM, _shl);
+        CASE_IMM_SHIFT(NGP_SHR_IMM, _shr);
+        CASE_IMM_SHIFT(NGP_ASR_IMM, _asr);
+        CASE_IMM_SHIFT(NGP_ROR_IMM, _ror);
+        CASE(NGP_ABS, _abs);
+        CASE_R(NGP_LD, Bus::read_word);
+        CASE_R_SIGNED(NGP_LDSH, Bus::read_ihalf);
+        CASE_R(NGP_LDH, Bus::read_half);
+        CASE_R_SIGNED(NGP_LDSB, Bus::read_ibyte);
+        CASE_R(NGP_LDB, Bus::read_byte);
+        CASE_W(NGP_ST, Word, Bus::write_word);
+        CASE_W(NGP_STH, u16, Bus::write_word);
+        CASE_W(NGP_STB, u8, Bus::write_word);
+        CASE_SIMD_R(NGP_LD_S, w, Bus::read_word);
+        CASE_SIMD_R(NGP_LD_D, dw, Bus::read_dword);
+        CASE_SIMD_R(NGP_LD_V, qw, Bus::read_qword);
+        CASE_SIMD_W(NGP_ST_S, w, Bus::write_word);
+        CASE_SIMD_W(NGP_ST_D, dw, Bus::write_dword);
+        CASE_SIMD_W(NGP_ST_V, qw, Bus::write_qword);
     default:
-        // TODO: invalid instruction
         break;
     }
+#undef CASE_R
+#undef CASE_R_SIGNED
+#undef CASE_SIMD_R
+#undef CASE_W
+#undef CASE_SIMD_W
 #undef CASE
 }
 
@@ -1126,8 +1083,10 @@ void NGPV1::print_registers()
     }
 }
 
-void NGPV1::set_psr(ProgramStateRegister psr)
-{}
+void NGPV1::set_psr(ProgramStateRegister new_psr)
+{
+    psr = new_psr;
+}
 
 CPUCore::ProgramStateRegister NGPV1::get_psr()
 {
@@ -1143,16 +1102,6 @@ void NGPV1::set_pc(VirtualAddress new_pc)
 VirtualAddress NGPV1::get_pc()
 {
     return pc;
-}
-
-void NGPV1::set_clock_speed(usize new_clock_speed)
-{
-    clock_speed = new_clock_speed;
-}
-
-usize NGPV1::get_clock_speed()
-{
-    return clock_speed;
 }
 
 void NGPV1::external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr)
@@ -1183,18 +1132,17 @@ usize NGPV1::run(usize num_cycles)
         pc_page_offset += 1;
 
         const u8 opcode = inst & 0x3F;
-
 #define CASE(op, name) case op: name(*this, inst); break
         switch (opcode)
         {
             CASE(NGP_BL, bl);
             CASE(NGP_B, b);
             CASE(NGP_B_COND, bcond);
-            CASE(NGP_ALU, logical_add_sub);
+            CASE(NGP_3OP, _3op);
             CASE(NGP_FP_OP, fp_op);
             CASE(NGP_LOAD_STORE_IMMEDIATE, load_store_immediate);
             CASE(NGP_LOAD_STORE_FP_IMMEDIATE, load_store_fp_immediate);
-            CASE(NGP_LOAD_STORE_REGISTER, load_store_register);
+            CASE(0x7, [](NGPV1& core, const u32) {});
             CASE(NGP_LOAD_STORE_PAIR, load_store_pair);
             CASE(NGP_EXTENDEDALU, extended_alu);
             CASE(NGP_NON_BINARY, non_binary);
@@ -1221,7 +1169,6 @@ usize NGPV1::run(usize num_cycles)
             break;
         }
 #undef CASE
-     
         num_cycles--;
     }
 
@@ -1241,13 +1188,13 @@ void NGPV1::handle_pc_change()
     {
         pc_page_index = pc_page.page_index;
         pc_page_addr = (Word*)pc_page.physical_address;
-        pc_page_offset = (pc & Bus::get_page_mask()) >> 2;
-        _mm_prefetch((char*)pc_page_addr + pc_page_offset, _MM_HINT_NTA);
+        pc_page_offset = Bus::get_page_offset(pc) >> 2;
+        _mm_prefetch((char*)pc_page_addr, _MM_HINT_NTA);
         return;
     }
 
     pc_page_addr = nullptr;
-    make_exception(NGPV1::AccessViolationException, NGPV1::ExceptionVBOffset, NGPV1::CannotExecute);
+    make_exception(NGPV1::AccessViolationException, NGPV1::ExceptionVBOffset, NGPV1::CantExecute);
     return;
 }
 
@@ -1288,7 +1235,7 @@ void NGPV1::make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 co
 
         if (Bus::check_virtual_address(vba, Bus::WriteableAddress) == Bus::ValidAddress)
         {
-            pc = Bus::read_word(vba + vec_offset);
+            pc = vba + vec_offset;
             handle_pc_change();
         }
         else
@@ -1311,8 +1258,10 @@ void NGPV1::make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 co
 
 void NGPV1::return_exception()
 {
-    VirtualAddress target_pc = system_regs.elr.elr_el[psr.CURRENT_EL];
-    ProgramStateRegister last_psr = system_regs.spsr.spsr[psr.CURRENT_EL];
+    VirtualAddress target_pc; 
+    ProgramStateRegister last_psr;
+    target_pc = system_regs.elr.elr_el[psr.CURRENT_EL - 1];
+    last_psr = system_regs.spsr.spsr[psr.CURRENT_EL - 1];
 
     psr = last_psr;
     pc = target_pc;

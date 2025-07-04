@@ -14,7 +14,7 @@
 #include <Video/D3D12/D3D12GU.h>
 #endif // _WIN32
 
-void GUDevice::initialize(GUDevice::DriverApi api)
+void GUDevice::initialize(GUDevice::DriverApi api, Word requested_vram_size)
 {
 	switch (api)
 	{
@@ -33,6 +33,6 @@ void GUDevice::initialize(GUDevice::DriverApi api)
 		break;
 	}
 
-	main_driver.initialize();
+	main_driver.initialize(requested_vram_size);
 }
 

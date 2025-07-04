@@ -68,7 +68,7 @@ u32 OS::exception_handler(void* ptr)
                 "\tvirtual address: %08X\n",
                 address, VirtualAddress(address)
             );
-            local_core->core->external_handle_exception(CPUCore::AccessViolationException, CPUCore::CommentNone, VirtualAddress(address));
+            local_core->get_core().external_handle_exception(CPUCore::AccessViolationException, CPUCore::CommentNone, VirtualAddress(address));
         }
         else
         {

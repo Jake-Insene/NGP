@@ -42,13 +42,14 @@ struct VGU
     {
         GUDevice::GUDriver internal_driver;
 
+        Word vram_size;
         Word* vram;
         Word* display_address;
 
         std::vector<VFramebuffer> cached_framebuffers;
         i32 current_fb;
 
-        VGUQueue queues[GU::QUEUE_INDEX_MAX];
+        VGUQueue queue;
         TMU texture_units[16];
         std::mutex sync_mutex;
         std::mutex queue_mutex;
@@ -67,7 +68,7 @@ struct VGU
 
     static GUDevice::GUDriver get_driver();
 
-    static void initialize();
+    static void initialize(Word requested_vram_size);
     static void shutdown();
 
     static void present(bool vsync);
@@ -76,7 +77,7 @@ struct VGU
     static void display_set_config(i32 width, i32 height, Display::DisplayFormat display_format);
     static void display_set_address(VirtualAddress vva);
 
-    static void queue_execute(u8 index, u8 priority, VirtualAddress cmd_list, Word cmd_len);
+    static void queue_execute(VirtualAddress cmd_list, Word cmd_len);
     static void queue_dispatch();
 
     static void dma_send(VirtualAddress dest, VirtualAddress src, Word len, Word flags);

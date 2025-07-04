@@ -77,7 +77,7 @@ void X86JIT::jit_block(CodeBlock& block, VirtualAddress pc)
             memory = X86::mov_rcx_mem32_imm32(memory, dest * 4, (pc + 4) + disp);
         }
             break;
-        case NGP_ALU:
+        case NGP_3OP:
         {
             u8 las = (inst >> 6) & 0x3F;
             u8 dest = (inst >> 12) & 0x1F;
@@ -87,11 +87,9 @@ void X86JIT::jit_block(CodeBlock& block, VirtualAddress pc)
 
             switch (las)
             {
-            case NGP_SUB_SHL:
+            case NGP_SUB:
                 memory = X86::mov_reg_rcx_mem32(memory, X86::EAX, src1 * 4);
                 memory = X86::mov_reg_rcx_mem32(memory, X86::EBX, src2 * 4);
-                if(src3 != 0)
-                    memory = X86::shl(memory, X86::EBX, src3);
                 break;
             }
         }

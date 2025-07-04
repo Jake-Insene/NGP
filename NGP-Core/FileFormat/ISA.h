@@ -44,12 +44,11 @@ enum NGPBaseOpcode : u8
     NGP_B = 0x1,
     NGP_B_COND = 0x2,
 
-    NGP_ALU = 0x03,
+    NGP_3OP = 0x03,
     NGP_FP_OP = 0x4,
 
     NGP_LOAD_STORE_IMMEDIATE = 0x5,
     NGP_LOAD_STORE_FP_IMMEDIATE = 0x6,
-    NGP_LOAD_STORE_REGISTER = 0x7,
     NGP_LOAD_STORE_PAIR = 0x8,
 
     NGP_EXTENDEDALU = 0x9,
@@ -107,93 +106,83 @@ enum NGPBranchCond
 };
 
 // Logical Sub Add
-// [6 - 11] -> Opcode
-// [12 - 16] -> Dest 
-// [17 - 21] -> Src1
-// [22 - 26] -> Src2
-// [27 - 31] -> Imm5/Src3
-enum NGPALU
+// [6 - 16] -> Opcode
+// [17 - 21] -> Dest
+// [22 - 26] -> Src1
+// [27 - 31] -> Src2/Imm5
+enum NGP3OP
 {
     // Rd = R[Dest]
     // Rfs = R[Src1]
     // Rss = R[Src2]
-    // Rts = R[Src3]
 
-    // ADD Rd, Rfs, Rss, SHL/SHR/ASR (#Imm5)
-    NGP_ADD_SHL = 0x0,
-    NGP_ADD_SHR = 0x1,
-    NGP_ADD_ASR = 0x2,
-
+    // ADD Rd, Rfs, Rss
+    NGP_ADD = 0x0,
     // ADC Rd, Rfs, Rss
-    NGP_ADC = 0x3,
-
-    // SUB Rd, Rfs, Rss, SHL/SHR/ASR (#Imm5)
-    NGP_SUB_SHL = 0x4,
-    NGP_SUB_SHR = 0x5,
-    NGP_SUB_ASR = 0x6,
-
+    NGP_ADC = 0x1,
+    // SUB Rd, Rfs, Rss
+    NGP_SUB = 0x2,
     // SBC Rd, Rfs, Rss
-    NGP_SBC = 0x7,
+    NGP_SBC = 0x3,
 
-    // Rd = Rfs <OPC> Rss SHL/SHR/ASR/ROR (#Imm5)
-    NGP_AND_SHL = 0x8,
-    NGP_AND_SHR = 0x9,
-    NGP_AND_ASR = 0xA,
-    NGP_AND_ROR = 0xB,
-
-    NGP_OR_SHL = 0xC,
-    NGP_OR_SHR = 0xD,
-    NGP_OR_ASR = 0xE,
-    NGP_OR_ROR = 0xF,
-
-    NGP_ORN_SHL = 0x10,
-    NGP_ORN_SHR = 0x11,
-    NGP_ORN_ASR = 0x12,
-    NGP_ORN_ROR = 0x13,
-
-    NGP_EOR_SHL = 0x14,
-    NGP_EOR_SHR = 0x15,
-    NGP_EOR_ASR = 0x16,
-    NGP_EOR_ROR = 0x17,
-
-    NGP_ADDS_SHL = 0x18,
-    NGP_ADDS_SHR = 0x19,
-    NGP_ADDS_ASR = 0x1A,
-    NGP_ADDS_ROR = 0x1B,
-
-    NGP_SUBS_SHL = 0x1C,
-    NGP_SUBS_SHR = 0x1D,
-    NGP_SUBS_ASR = 0x1E,
-    NGP_SUBS_ROR = 0x1F,
-
-    NGP_ANDS_SHL = 0x20,
-    NGP_ANDS_SHR = 0x21,
-    NGP_ANDS_ASR = 0x22,
-    NGP_ANDS_ROR = 0x23,
-
-    NGP_BIC_SHL = 0x24,
-    NGP_BIC_SHR = 0x25,
-    NGP_BIC_ASR = 0x26,
-    NGP_BIC_ROR = 0x27,
-
-    NGP_BICS_SHL = 0x28,
-    NGP_BICS_SHR = 0x29,
-    NGP_BICS_ASR = 0x2A,
-    NGP_BICS_ROR = 0x2B,
+    // OPC Rd, Rfs, Rss
+    NGP_AND = 0x4,
+    NGP_OR = 0x5,
+    NGP_ORN = 0x6,
+    NGP_EOR = 0x7,
+    NGP_ADDS = 0x8,
+    NGP_SUBS = 0x9,
+    NGP_ANDS = 0xA,
+    NGP_BIC = 0xB,
+    NGP_BICS = 0xC,
 
     // OPC, Rd, Rfs, Rss
-    NGP_ADCS = 0x2C,
-    NGP_SBCS = 0x2D,
+    NGP_ADCS = 0xD,
+    NGP_SBCS = 0xE,
 
-    // OP Rd, Rfs, Rss
-    // Imm5 don't not affect
-    NGP_SHL = 0x2E,
-    NGP_SHR = 0x2F,
-    NGP_ASR = 0x30,
-    NGP_ROR = 0x31,
+    // SHIFT Rd, Rfs, Rss
+    NGP_SHL = 0xF,
+    NGP_SHR = 0x10,
+    NGP_ASR = 0x11,
+    NGP_ROR = 0x12,
+    
+    // SHIFT Rd, Rfs, Imm5
+    NGP_SHL_IMM = 0x13,
+    NGP_SHR_IMM = 0x14,
+    NGP_ASR_IMM = 0x15,
+    NGP_ROR_IMM = 0x16,
 
     // ABS Rd, Rfs
-    NGP_ABS = 0x32,
+    NGP_ABS = 0x17,
+
+    // Base = Src1
+    // Index = Src2
+    // Rd = R[Dest]
+    // Rfs = R[Src]
+    // Rb = R[Base]
+    // Ri = R[Index]
+
+    //LD[SH/H/SB/B] Rd, [Rb, Ri]
+    NGP_LD = 0x20,
+    NGP_LDSH = 0x21,
+    NGP_LDH = 0x22,
+    NGP_LDSB = 0x23,
+    NGP_LDB = 0x24,
+
+    //ST[H/B] Rfs, [Rb, Ri]
+    NGP_ST = 0x25,
+    NGP_STH = 0x26,
+    NGP_STB = 0x27,
+
+    //LD[S/D/Q] Rd, [Rb, Ri]
+    NGP_LD_S = 0x28,
+    NGP_LD_D = 0x29,
+    NGP_LD_V = 0x2A,
+
+    //ST[S/D/Q] Rfs, [Rb, Ri]
+    NGP_ST_S = 0x2B,
+    NGP_ST_D = 0x2C,
+    NGP_ST_V = 0x2D,
 };
 
 // Binary (FP)
@@ -317,41 +306,6 @@ enum NGPMemoryFPImmediate
     NGP_ST_V_IMMEDIATE = 0x5,
 };
 
-// Load Store (Register)
-// [6 - 16] -> Opcode
-// [17 - 21] -> Dest/Src
-// [22 - 26] -> Base
-// [27 - 31] -> Index
-enum NGPLoadStoreRegister
-{
-    // Rd = R[Dest]
-    // Rfs = R[Src]
-    // Rb = R[Base]
-    // Ri = R[Index]
-
-    //LD[SH/H/SB/B] Rd, [Rb, Ri]
-    NGP_LD = 0x0,
-    NGP_LDSH = 0x1,
-    NGP_LDH = 0x2,
-    NGP_LDSB = 0x3,
-    NGP_LDB = 0x4,
-
-    //ST[H/B] Rfs, [Rb, Ri]
-    NGP_ST = 0x5,
-    NGP_STH = 0x6,
-    NGP_STB = 0x7,
-
-    //LD[S/D/Q] Rd, [Rb, Ri]
-    NGP_LD_S = 0x8,
-    NGP_LD_D = 0x9,
-    NGP_LD_V = 0xA,
-
-    //ST[S/D/Q] Rfs, [Rb, Ri]
-    NGP_ST_S = 0xB,
-    NGP_ST_D = 0xC,
-    NGP_ST_V = 0xD,
-};
-
 // Memory Pair
 // [6 - 8] -> Opcode
 // [9 - 13] -> Dest1/Src1
@@ -412,12 +366,15 @@ enum NGPSystemRegister
     // [4] -> halt Flag
     NGP_PSTATE = 0x0,
 
+    // 0 -> EL0
+    // 1 -> EL1
+    // 2 -> EL2
+    // 3 -> EL3
     NGP_CURRENT_EL = 0x1,
 
     NGP_SPSR_EL1 = 0x2,
     NGP_SPSR_EL2 = 0x3,
     NGP_SPSR_EL3 = 0x4,
-    NGP_SPSR_IRQ = 0x5,
 
     NGP_EDR_EL1 = 0x6,
     NGP_EDR_EL2 = 0x7,
@@ -431,12 +388,9 @@ enum NGPSystemRegister
     NGP_VBAR_EL2 = 0xD,
     NGP_VBAR_EL3 = 0xE,
 
-    NGP_CLCK_FREQ = 0xF,
-    NGP_CLCK_MAX_FREQ = 0x10,
-
-    NGP_FAR_EL1 = 0x11,
-    NGP_FAR_EL2 = 0x12,
-    NGP_FAR_EL3 = 0x13,
+    NGP_FAR_EL1 = 0xF,
+    NGP_FAR_EL2 = 0x10,
+    NGP_FAR_EL3 = 0x11,
 };
 
 // Non Binary Opcode
@@ -459,12 +413,11 @@ enum NGPNonBinary
     
     NGP_ERET = 0x7,
     NGP_WFI = 0x8,
-    NGP_WFE = 0x9,
 
-    NGP_MSR = 0xA,
-    NGP_MRS = 0xB,
+    NGP_MSR = 0x9,
+    NGP_MRS = 0xA,
 
-    NGP_HALT = 0xC,
+    NGP_HALT = 0xB,
 
     NGP_NOP = 0x3F,
 };

@@ -19,7 +19,7 @@ struct GUDevice
 
     struct GUDriver
     {
-        void(*initialize)();
+        void(*initialize)(Word);
         void(*shutdown)();
 
         void(*present_framebuffer)(PhysicalAddress, bool);
@@ -29,7 +29,7 @@ struct GUDevice
         void(*display_set_config)(i32, i32, Display::DisplayFormat);
         void(*display_set_address)(VirtualAddress);
 
-        void(*queue_execute)(u8, u8, VirtualAddress, Word);
+        void(*queue_execute)(VirtualAddress, Word);
         void(*queue_dispatch)();
 
         void(*dma_send)(VirtualAddress, VirtualAddress, Word, Word);
@@ -60,7 +60,7 @@ struct GUDevice
         VGU,
     };
 
-    static void initialize(DriverApi api);
+    static void initialize(DriverApi api, Word requested_vram_size);
 
     VTFUNCDEF(shutdown);
     VTFUNCDEFARG1(present, bool);
@@ -70,7 +70,7 @@ struct GUDevice
     VTFUNCDEFARG1(display_set_address, VirtualAddress);
 
     VTFUNCDEF(queue_dispatch);
-    VTFUNCDEFARG4(queue_execute, u8, u8, VirtualAddress, Word);
+    VTFUNCDEFARG2(queue_execute, VirtualAddress, Word);
 
     VTFUNCDEFARG4(dma_send, VirtualAddress, VirtualAddress, Word, Word);
 

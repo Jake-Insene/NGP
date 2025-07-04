@@ -175,8 +175,19 @@ Symbol& Assembler::make_label(const AsmToken& label, u64 address, StringID sourc
 
 Symbol& Assembler::make_symbol(const AsmToken& label, u64 value, StringID source_file, u32 line)
 {
-    std::string str_name = std::string(label.get_str());
-    auto it = symbols.find(label.str);
+    std::string composed = {};
+
+    if (label.get_str()[0] == '.')
+    {
+        composed = std::string(StringPool::get(last_label)) + std::string(label.get_str());
+    }
+    else
+    {
+        composed = label.get_str();
+    }
+
+    StringID composed_id = StringPool::get_or_insert(composed);
+    auto it = symbols.find(composed_id);
     if (it != symbols.end())
     {
         auto& symbol = it->second;
@@ -184,11 +195,11 @@ Symbol& Assembler::make_symbol(const AsmToken& label, u64 value, StringID source
     }
 
     auto& symbol = symbols.emplace(
-        label.str, Symbol()
+        composed_id, Symbol()
     ).first->second;
 
     symbol.uvalue = value;
-    symbol.symbol = label.str;
+    symbol.symbol = composed_id;
     symbol.source_file = source_file;
     symbol.line = line;
     return symbol;
@@ -222,7 +233,7 @@ void Assembler::phase2()
             AsmToken* name = current;
             advance();
 
-            auto it = find_label(name->str);
+            auto it = find_label_or_symbol(name->str);
             if (it != symbols.end())
             {
                 if (it->second.is_defined)
@@ -258,7 +269,7 @@ void Assembler::phase2()
         case TOKEN_LABEL:
         {
             u32 address = u64(origin_address + program_index - last_size);
-            find_label(current->str)->second.uvalue = address;
+            find_label_or_symbol(current->str)->second.uvalue = address;
             advance();
         }
         break;
@@ -398,7 +409,7 @@ void Assembler::advance_to_next_line()
     }
 }
 
-u8 Assembler::get_register(AsmToken tk)
+u16 Assembler::get_register(AsmToken tk)
 {
     if (tk.subtype >= TOKEN_R0 && tk.subtype <= TOKEN_R31)
         return u8(tk.subtype);
@@ -412,11 +423,13 @@ u8 Assembler::get_register(AsmToken tk)
         return u8(tk.subtype - TOKEN_V0_S4);
     else if (tk.subtype >= TOKEN_V0_D2 && tk.subtype <= TOKEN_V31_D2)
         return u8(tk.subtype - TOKEN_V0_D2);
+    else if (tk.subtype >= TOKEN_PSR && tk.subtype <= TOKEN_END_SYSTEM_REGS)
+        return u8(tk.subtype - TOKEN_PSR);
 
-    MAKE_ERROR(tk, return u8(-1), "invalid register name");
+    MAKE_ERROR(tk, return u16(-1), "invalid register name");
 }
 
-bool Assembler::try_get_register(u8& reg, RegisterType reg_type, const char* format, ...)
+bool Assembler::try_get_register(u16& reg, RegisterType reg_type, const char* format, ...)
 {
     va_list va;
     va_start(va, format);
@@ -437,6 +450,10 @@ bool Assembler::try_get_register(u8& reg, RegisterType reg_type, const char* for
         {
             MAKE_ERROR((*last), return false, "expected a gp register but a vector register was given");
         }
+        else if (last->is_system_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a gp register but a system register was given");
+        }
     }
     
     if (reg_type == RegisterFP && !last->is_fp_reg())
@@ -448,6 +465,10 @@ bool Assembler::try_get_register(u8& reg, RegisterType reg_type, const char* for
         else if (last->is_vector_reg())
         {
             MAKE_ERROR((*last), return false, "expected a fp register but a vector register was given");
+        }
+        else if (last->is_system_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a gp register but a system register was given");
         }
     }
     
@@ -461,18 +482,45 @@ bool Assembler::try_get_register(u8& reg, RegisterType reg_type, const char* for
         {
             MAKE_ERROR((*last), return false, "expected a vector register but a fp register was given");
         }
+        else if (last->is_system_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a gp register but a system register was given");
+        }
     }
 
-    if (reg_type == RegisterFPOrVector && last->is_gp_reg())
+    if (reg_type == RegisterFPOrVector)
     {
-        MAKE_ERROR((*last), return false, "expected a fp or vector register but a gp register was given");
+        if (last->is_gp_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a fp or vector register but a gp register was given");
+        }
+        else if (last->is_system_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a fp or vector register but a system register was given");
+        }
+    }
+
+    if (reg_type == RegisterSysReg)
+    {
+        if (last->is_gp_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a system register but a gp register was given");
+        }
+        else if (last->is_fp_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a system register but a fp register was given");
+        }
+        else if (last->is_vector_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a system register but a vector register was given");
+        }
     }
 
     reg = get_register(*last);
     return true;
 }
 
-bool Assembler::try_get_register_tk(AsmToken tk, u8& reg, RegisterType reg_type)
+bool Assembler::try_get_register_tk(AsmToken tk, u16& reg, RegisterType reg_type)
 {
     if (reg_type == RegisterGP && !tk.is_gp_reg())
     {
@@ -510,9 +558,32 @@ bool Assembler::try_get_register_tk(AsmToken tk, u8& reg, RegisterType reg_type)
         }
     }
 
-    if (reg_type == RegisterFPOrVector && tk.is_gp_reg())
+    if (reg_type == RegisterFPOrVector)
     {
-        MAKE_ERROR(tk, return false, "expected a fp or vector register but a gp register was given");
+        if (last->is_gp_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a fp or vector register but a gp register was given");
+        }
+        else if (last->is_system_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a fp or vector register but a system register was given");
+        }
+    }
+
+    if (reg_type == RegisterSysReg)
+    {
+        if (last->is_gp_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a system register but a gp register was given");
+        }
+        else if (last->is_fp_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a system register but a fp register was given");
+        }
+        else if (last->is_vector_reg())
+        {
+            MAKE_ERROR((*last), return false, "expected a system register but a vector register was given");
+        }
     }
 
     reg = get_register(tk);
@@ -561,13 +632,13 @@ void Assembler::check_capacity(u32 count)
     }
 }
 
-std::unordered_map<StringID, Symbol>::iterator Assembler::find_label(StringID label)
+std::unordered_map<StringID, Symbol>::iterator Assembler::find_label_or_symbol(StringID label)
 {
     auto it = symbols.find(label);
-    if (it == symbols.end())
+    if (it != symbols.end())
     {
-        return symbols.end();
+        return it;
     }
 
-    return it;
+    return symbols.end();
 }

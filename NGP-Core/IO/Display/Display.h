@@ -16,17 +16,20 @@ struct Display
     enum Register
     {
         // [0] HBLANK
-        DISPLAY_IRQ_MASK = 0x0000,
-        DISPLAY_IRQ_STATUS = 0x0004,
-        DISPLAY_CTR = 0x0008,
-        DISPLAY_ID = 0x000C,
+        DISPLAY_IRQ_MASK =      0x0000,
+        DISPLAY_IRQ_STATUS =    0x0004,
+        
+        // Display Control
+        // [0] Enable
+        // [1] Present
+        DISPLAY_CTR =   0x0008,
+        DISPLAY_ID =    0x000C,
+        
         DISPLAY_BUFFER_ADDR = 0x0010,
         // [0 - 13] Width
         // [14 - 27] Height
         // [28 - 31] Display Format
         DISPLAY_FORMAT = 0x0014,
-        // Write anything to trigger a presentation
-        DISPLAY_PRESENT = 0x0018,
     };
 
     enum DisplayIRQMask
@@ -37,6 +40,7 @@ struct Display
     enum DisplayControlBit
     {
         ENABLE = 0x1,
+        PRESENT = 0x2,
     };
 
     enum DisplayID

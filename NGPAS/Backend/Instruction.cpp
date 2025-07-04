@@ -15,7 +15,7 @@
         BREAKER;\
     }\
     AsmToken* VAR_TK = last;\
-    u8 VAR;\
+    u16 VAR;\
     if(!try_get_register_tk(*last, VAR, RegisterVector)) { BREAKER ; }\
     if(last->get_fp_subfix() == FPSubfixNone)\
     {\
@@ -91,7 +91,7 @@ void Assembler::assemble_instruction()
         break;
     case TI_ADR:
     {
-        u8 dest;
+        u16 dest;
         if (!try_get_register(dest, RegisterGP, "expected destination register"))
             break;
         if(!expected_comma())
@@ -157,59 +157,59 @@ void Assembler::assemble_instruction()
         BCOND(NGP_BAL, TI_BAL);
         break;
     case TI_ADD:
-        assemble_binary(inst, NGP_ADD_SHL, NGP_ADD_IMMEDIATE, 0xFFFF, false, true);
+        assemble_binary(inst, NGP_ADD, NGP_ADD_IMMEDIATE, 0xFFFF);
         break;
     case TI_ADDS:
-        assemble_binary(inst, NGP_ADDS_SHL, NGP_ADDS_IMMEDIATE, 0xFFFF, false, true);
+        assemble_binary(inst, NGP_ADDS, NGP_ADDS_IMMEDIATE, 0xFFFF);
         break;
     case TI_SUB:
-        assemble_binary(inst, NGP_SUB_SHL, NGP_SUB_IMMEDIATE, 0xFFFF, false, true);
+        assemble_binary(inst, NGP_SUB, NGP_SUB_IMMEDIATE, 0xFFFF);
         break;
     case TI_SUBS:
-        assemble_binary(inst, NGP_SUBS_SHL, NGP_SUBS_IMMEDIATE, 0xFFFF, false, true);
+        assemble_binary(inst, NGP_SUBS, NGP_SUBS_IMMEDIATE, 0xFFFF);
         break;
     case TI_ADC:
         assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2)
             {
-                return alu(NGP_ADC, dest, src1, src2, 0);
+                return inst_3op(NGP_ADC, dest, src1, src2);
             }
         );
         break;
     case TI_ADCS:
         assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2)
             {
-                return alu(NGP_ADCS, dest, src1, src2, 0);
+                return inst_3op(NGP_ADCS, dest, src1, src2);
             }
         );
         break;
     case TI_SBC:
         assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2)
             {
-                return alu(NGP_SBC, dest, src1, src2, 0);
+                return inst_3op(NGP_SBC, dest, src1, src2);
             }
         );
         break;
     case TI_SBCS:
         assemble_two_operands(inst, [](u8 dest, u8 src1, u8 src2)
             {
-                return alu(NGP_SBCS, dest, src1, src2, 0);
+                return inst_3op(NGP_SBCS, dest, src1, src2);
             }
         );
         break;
     case TI_AND:
-        assemble_binary(inst, NGP_AND_SHL, NGP_AND_IMMEDIATE, 0xFFFF, false, true);
+        assemble_binary(inst, NGP_AND, NGP_AND_IMMEDIATE, 0xFFFF);
         break;
     case TI_ANDS:
-        assemble_binary(inst, NGP_ANDS_SHL, NGP_ANDS_IMMEDIATE, 0xFFFF, false, true);
+        assemble_binary(inst, NGP_ANDS, NGP_ANDS_IMMEDIATE, 0xFFFF);
         break;
     case TI_OR:
-        assemble_binary(inst, NGP_OR_SHL, NGP_OR_IMMEDIATE, 0xFFFF, false, true);
+        assemble_binary(inst, NGP_OR, NGP_OR_IMMEDIATE, 0xFFFF);
         break;
     case TI_ORN:
-        assemble_binary(inst, NGP_ORN_SHL, NGP_ORN_IMMEDIATE, 0xFFFF, false, true);
+        assemble_binary(inst, NGP_ORN, NGP_ORN_IMMEDIATE, 0xFFFF);
         break;
     case TI_EOR:
-        assemble_binary(inst, NGP_EOR_SHL, NGP_EOR_IMMEDIATE, 0xFFFF, false, true);
+        assemble_binary(inst, NGP_EOR, NGP_EOR_IMMEDIATE, 0xFFFF);
         break;
     case TI_SHL:
         assemble_shift(inst, NGP_SHL);
@@ -224,44 +224,44 @@ void Assembler::assemble_instruction()
         assemble_shift(inst, NGP_ROR);
         break;
     case TI_BIC:
-        assemble_binary(inst, NGP_BIC_SHL, 0, u16(-1), 0, true);
+        assemble_binary(inst, NGP_BIC, 0, u16(-1));
         break;
     case TI_BICS:
-        assemble_binary(inst, NGP_BICS_SHL, 0, u16(-1), 0, true);
+        assemble_binary(inst, NGP_BICS, 0, u16(-1));
         break;
     case TI_CMP:
-        assemble_comparison(inst, NGP_SUBS_SHL, NGP_SUBS_IMMEDIATE, 0xFFFF);
+        assemble_comparison(inst, NGP_SUBS, NGP_SUBS_IMMEDIATE, 0xFFFF);
         break;
     case TI_CMN:
-        assemble_comparison(inst, NGP_ADDS_SHL, NGP_ADDS_IMMEDIATE, 0xFFFF);
+        assemble_comparison(inst, NGP_ADDS, NGP_ADDS_IMMEDIATE, 0xFFFF);
         break;
     case TI_TST:
-        assemble_comparison(inst, NGP_ANDS_SHL, NGP_ANDS_IMMEDIATE, 0xFFFF);
+        assemble_comparison(inst, NGP_ANDS, NGP_ANDS_IMMEDIATE, 0xFFFF);
         break;
     case TI_NOT:
         assemble_one_operand(inst, [](u8 dest, u8 src)
             {
-                return alu(NGP_ORN_SHL, dest, ZeroRegister, src, 0);
+                return inst_3op(NGP_ORN, dest, ZeroRegister, src);
             }
         );
         break;
     case TI_NEG:
         assemble_one_operand(inst, [](u8 dest, u8 src)
             {
-                return alu(NGP_SUB_SHL, dest, ZeroRegister, src, 0);
+                return inst_3op(NGP_SUB, dest, ZeroRegister, src);
             }
         );
         break;
     case TI_ABS:
         assemble_one_operand(inst, [](u8 dest, u8 src)
             {
-                return alu(NGP_ABS, dest, src, 0, 0);
+                return inst_3op(NGP_ABS, dest, src, 0);
             }
         );
         break;
     case TI_FMOV:
     {
-        u8 dest;
+        u16 dest;
         if (!try_get_register(dest, RegisterAny, "expected destination register"))
             break;
         AsmToken* dest_tk = last;
@@ -401,8 +401,7 @@ void Assembler::assemble_instruction()
         break;
     case TI_FSMOV:
     {
-        u8 dest;
-
+        u16 dest;
         if(!try_get_register(dest, RegisterGP, "expected destination register"))
             break;
         if(!expected_comma())
@@ -421,7 +420,7 @@ void Assembler::assemble_instruction()
         break;
     case TI_FUMOV:
     {
-        u8 dest;
+        u16 dest;
         if (!try_get_register(dest, RegisterGP, "expected destination register"))
             break;
         if(!expected_comma())
@@ -440,14 +439,14 @@ void Assembler::assemble_instruction()
         break;
     case TI_FCVT:
     {
-        u8 dest;
+        u16 dest;
         if (!try_get_register(dest, RegisterFP, "expected destination register"))
             break;
         AsmToken* dest_tk = last;
         if (!expected_comma())
             break;
 
-        u8 src;
+        u16 src;
         if(!try_get_register(src, RegisterFP, "expected source register"))
             break;
         AsmToken* src_tk = last;
@@ -464,7 +463,7 @@ void Assembler::assemble_instruction()
         break;
     case TI_SCVTF:
     {
-        u8 dest;
+        u16 dest;
         if (!try_get_register(dest, RegisterFP, "expected destination register"))
             break;
 
@@ -472,7 +471,7 @@ void Assembler::assemble_instruction()
         if (!expected_comma())
             break;
 
-        u8 src;
+        u16 src;
         if (!try_get_register(src, RegisterGP, "expected source register"))
             break;
         AsmToken* src_tk = last;
@@ -489,14 +488,14 @@ void Assembler::assemble_instruction()
         break;
     case TI_UCVTF:
     {
-        u8 dest;
+        u16 dest;
         if (!try_get_register(dest, RegisterFP, "expected destination register"))
             break;
         AsmToken* dest_tk = last;
         if (!expected_comma())
             break;
 
-        u8 src;
+        u16 src;
         if (!try_get_register(src, RegisterGP, "expected source register"))
             break;
         AsmToken* src_tk = last;
@@ -525,7 +524,7 @@ void Assembler::assemble_instruction()
         break;
     case TI_FNEG:
     {
-        u8 dest;
+        u16 dest;
         if (!try_get_register(dest, RegisterFPOrVector, "expected destination register"))
             break;
 
@@ -533,7 +532,7 @@ void Assembler::assemble_instruction()
         if (!expected_comma())
             break;
 
-        u8 src;
+        u16 src;
         if (!try_get_register(src, RegisterFPOrVector, "expected source register"))
             break;
         AsmToken* src_tk = last;
@@ -564,14 +563,14 @@ void Assembler::assemble_instruction()
         break;
     case TI_FABS:
     {
-        u8 dest;
+        u16 dest;
         if (!try_get_register(dest, RegisterFP, "expected destination register"))
             break;
         AsmToken* dest_tk = last;
         if (!expected_comma())
             break;
 
-        u8 src;
+        u16 src;
         if (!try_get_register(src, RegisterFP, "expected source register"))
             break;
         AsmToken* src_tk = last;
@@ -638,7 +637,7 @@ void Assembler::assemble_instruction()
         break;
     case TI_FDUP:
     {
-        u8 dest;
+        u16 dest;
         if(!try_get_register(dest, RegisterFP, "expected destination register"))
             break;
         AsmToken* dest_tk = last;
@@ -768,7 +767,7 @@ void Assembler::assemble_instruction()
         break;
     case TI_MOV:
     {
-        u8 dest;
+        u16 dest;
         if(!try_get_register(dest, RegisterGP, "expected destination register"))
             break;
         if(!expected_comma())
@@ -779,10 +778,10 @@ void Assembler::assemble_instruction()
 
         if (operand.is(TOKEN_REGISTER))
         {
-            u8 op_reg;
+            u16 op_reg;
             if (!try_get_register_tk(operand, op_reg, RegisterGP))
                 return;
-            inst = alu(NGP_OR_SHL, dest, ZeroRegister, op_reg, 0);
+            inst = inst_3op(NGP_OR, dest, ZeroRegister, op_reg);
         }
         else if (operand.is(TOKEN_IMMEDIATE))
         {
@@ -804,7 +803,7 @@ void Assembler::assemble_instruction()
     break;
     case TI_MOVT:
     {
-        u8 dest;
+        u16 dest;
         if (!try_get_register(dest, RegisterGP, "expected destination register"))
             break;
         if (!expected_comma())
@@ -831,7 +830,7 @@ void Assembler::assemble_instruction()
     break;
     case TI_MVN:
     {
-        u8 dest;
+        u16 dest;
         if (!try_get_register(dest, RegisterGP, "expected destination register"))
             break;
         if(!expected_comma())
@@ -861,23 +860,18 @@ void Assembler::assemble_instruction()
         inst = non_binary(NGP_RET, 30, 0, 0);
     }
         break;
-    case TI_BLR:
-    {
-        u8 reg;
-        if (!try_get_register(reg, RegisterGP, "a target branch register was expected"))
-        inst = non_binary(NGP_BLR, reg, 0, 0);
-    }
-        break;
     case TI_BR:
     {
-        u8 reg;
+        u16 reg;
         if (!try_get_register(reg, RegisterGP, "a target branch register was expected"))
         inst = non_binary(NGP_BLR, reg, 0, 0);
     }
         break;
-    case TI_ERET:
+    case TI_BLR:
     {
-        inst = non_binary(NGP_ERET, 0, 0, 0);
+        u16 reg;
+        if (!try_get_register(reg, RegisterGP, "a target branch register was expected"))
+        inst = non_binary(NGP_BLR, reg, 0, 0);
     }
         break;
     case TI_BRK:
@@ -920,6 +914,46 @@ void Assembler::assemble_instruction()
         inst = exception(NGP_SMC, (u16)last->uword);
     }
     break;
+    case TI_ERET:
+    {
+        inst = non_binary(NGP_ERET, 0, 0, 0);
+    }
+        break;
+    case TI_WFI:
+    {
+        inst = non_binary(NGP_WFI, 0, 0, 0);
+    }
+        break;
+    case TI_MSR:
+    {
+        u16 dest;
+        if (!try_get_register(dest, RegisterSysReg, "expected a destination system register"))
+            break;
+        if (!expected_comma())
+            break;
+
+        u16 src;
+        if (!try_get_register(src, RegisterGP, "expected a source register"))
+            break;
+
+        inst = non_binary_msr(src, dest);
+    }
+        break;
+    case TI_MRS:
+    {
+        u16 dest;
+        if (!try_get_register(dest, RegisterGP, "expected a destination register"))
+            break;
+        if (!expected_comma())
+            break;
+
+        u16 src;
+        if (!try_get_register(src, RegisterSysReg, "expected a source system register"))
+            break;
+
+        inst = non_binary_msr(src, dest);
+    }
+        break;
     case TI_HALT:
         inst = exception(NGP_HALT, 0);
         break;
@@ -947,7 +981,7 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
 {
     u32 index = token_index - 3;
 
-    u8 dest;
+    u16 dest;
 
     if (!try_get_register(dest, RegisterAny, "expected source/destination register"))
         return;
@@ -1000,7 +1034,7 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
         return;
     }
 
-    u8 base;
+    u16 base;
     if (!try_get_register_tk(*last, base, RegisterGP))
         return;
 
@@ -1086,25 +1120,25 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
         }
         else if (index_reg.is(TOKEN_REGISTER))
         {
-            u8 reg_index;
+            u16 reg_index;
             if (!try_get_register_tk(index_reg, reg_index, RegisterGP))
                 return;
 
             if (fp_type == FPSingle)
             {
-                inst = memoryr(NGP_LD_S, dest, base, reg_index);
+                inst = inst_3op(NGP_LD_S, dest, base, reg_index);
             }
             else if (fp_type == FPDouble)
             {
-                inst = memoryr(NGP_LD_D, dest, base, reg_index);
+                inst = inst_3op(NGP_LD_D, dest, base, reg_index);
             }
             else if (fp_type == FPVector)
             {
-                inst = memoryr(NGP_LD_V, dest, base, reg_index);
+                inst = inst_3op(NGP_LD_V, dest, base, reg_index);
             }
             else
             {
-                inst = memoryr(index_opc, dest, base, reg_index);
+                inst = inst_3op(index_opc, dest, base, reg_index);
             }
             if(!expected_right_key())
                 return;
@@ -1124,16 +1158,15 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
     }
 }
 
-void Assembler::assemble_binary(u32& inst, u8 opc,
-    u8 opc_imm, u16 immediate_limit, bool is_additional_opc, bool use_amount)
+void Assembler::assemble_binary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit)
 {
-    u8 dest;
+    u16 dest;
     if (!try_get_register(dest, RegisterGP, "expected destination register"))
         return;
     if(!expected_comma())
         return;
 
-    u8 src1;
+    u16 src1;
     if (!try_get_register(src1, RegisterGP, "expected first source register"))
         return;
     if (!expected_comma())
@@ -1142,26 +1175,11 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
     AsmToken second_operand = parse_expression(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER))
     {
-        u8 src2 = 0;
+        u16 src2 = 0;
         if (!try_get_register_tk(second_operand, src2, RegisterGP))
             return;
 
-        u8 adder = 0;
-        u8 amount = 0;
-        if (use_amount)
-        {
-            check_for_amount(adder, amount);
-        }
-
-        if (is_additional_opc)
-        {
-            // SHL/SHR/AST/ROR
-            inst = extendedalu(opc, dest, src1, src2, 0);
-        }
-        else
-        {
-            inst = alu(opc + adder, dest, src1, src2, amount);
-        }
+        inst = inst_3op(opc, dest, src1, src2);
     }
     else if (second_operand.is(TOKEN_IMMEDIATE) && immediate_limit != 0)
     {
@@ -1170,14 +1188,7 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
             MAKE_ERROR(second_operand, return, "immediate value too long");
         }
 
-        if (is_additional_opc)
-        { // SHL/SHR/ASR/ROR
-            inst = extendedalu(opc, dest, src1, (u8)last->ushort[0], 0);
-        }
-        else
-        {
-            inst = binaryi(opc_imm, dest, src1, last->ushort[0]);
-        }
+        inst = binaryi(opc_imm, dest, src1, second_operand.ushort[0]);
     }
     else if (second_operand.is(TOKEN_NEW_LINE))
     {
@@ -1191,7 +1202,7 @@ void Assembler::assemble_binary(u32& inst, u8 opc,
 
 void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 v_d2_opc)
 {
-    u8 dest;
+    u16 dest;
     if (!try_get_register(dest, RegisterFPOrVector, "expected destination register"))
         return;
 
@@ -1199,7 +1210,7 @@ void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 
     if (!expected_comma())
         return;
 
-    u8 src1;
+    u16 src1;
     if (!try_get_register(src1, RegisterFPOrVector, "expected first source register"))
         return;
 
@@ -1207,7 +1218,7 @@ void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 
     if (!expected_comma())
         return;
 
-    u8 src2;
+    u16 src2;
     if (!try_get_register(src2, RegisterFPOrVector, "expected second source register"))
         return;
 
@@ -1231,7 +1242,7 @@ void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 
 
 void Assembler::assemble_comparison(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit)
 {
-    u8 src1;
+    u16 src1;
     if (!try_get_register(src1, RegisterGP, "expected first source register"))
         return;
     if (!expected_comma())
@@ -1240,15 +1251,11 @@ void Assembler::assemble_comparison(u32& inst, u8 opc, u8 opc_imm, u16 immediate
     AsmToken second_source = parse_expression(ParsePrecedence::Start);
     if (second_source.is(TOKEN_REGISTER))
     {
-        u8 src2;
+        u16 src2;
         if (!try_get_register_tk(second_source, src2, RegisterGP))
             return;
         
-        u8 adder = 0;
-        u8 amount = 0;
-        check_for_amount(adder, amount);
-
-        inst = alu(opc + adder, ZeroRegister, src1, src2, amount);
+        inst = inst_3op(opc, ZeroRegister, src1, src2);
     }
     else if (second_source.is(TOKEN_IMMEDIATE))
     {
@@ -1270,25 +1277,25 @@ void Assembler::assemble_comparison(u32& inst, u8 opc, u8 opc_imm, u16 immediate
 
 void Assembler::assemble_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8))
 {
-    u8 dest;
+    u16 dest;
     if (!try_get_register(dest, RegisterGP, "expected destination register"))
         return;
     if (!expected_comma())
         return;
 
-    u8 src1;
+    u16 src1;
     if (!try_get_register(src1, RegisterGP, "expected first source register"))
         return;
     if (!expected_comma())
         return;
 
-    u8 src2;
+    u16 src2;
     if (!try_get_register(src2, RegisterGP, "expected second source register"))
         return;
     if (!expected_comma())
         return;
 
-    u8 src3;
+    u16 src3;
     if (!try_get_register(src3, RegisterGP, "expected third source register"))
         return;
 
@@ -1297,7 +1304,7 @@ void Assembler::assemble_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8))
 
 void Assembler::assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, FPType))
 {
-    u8 dest;
+    u16 dest;
     if (!try_get_register(dest, RegisterFP, "expected destination register"))
         return;
 
@@ -1305,7 +1312,7 @@ void Assembler::assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, F
     if (!expected_comma())
         return;
 
-    u8 src1;
+    u16 src1;
     if (!try_get_register(src1, RegisterFP, "expected first source register"))
         return;
 
@@ -1313,7 +1320,7 @@ void Assembler::assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, F
     if (!expected_comma())
         return;
 
-    u8 src2;
+    u16 src2;
     if (!try_get_register(src2, RegisterFP, "expected second source register"))
         return;
     
@@ -1321,7 +1328,7 @@ void Assembler::assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, F
     if (!expected_comma())
         return;
 
-    u8 src3;
+    u16 src3;
     if (!try_get_register(src3, RegisterFP, "expected second source register"))
         return;
     
@@ -1340,13 +1347,13 @@ void Assembler::assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, F
 
 void Assembler::assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8))
 {
-    u8 dest;
+    u16 dest;
     if (!try_get_register(dest, RegisterGP, "expected destination register"))
         return;
     if (!expected_comma())
         return;
 
-    u8 src1;
+    u16 src1;
     if (!try_get_register(src1, RegisterGP, "expected first source register"))
         return;
     if (!expected_comma())
@@ -1355,7 +1362,7 @@ void Assembler::assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8))
     AsmToken second_operand = parse_expression(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER))
     {
-        u8 src2;
+        u16 src2;
         if (!try_get_register_tk(second_operand, src2, RegisterGP))
             return;
         inst = fn(dest, src1, src2);
@@ -1372,7 +1379,7 @@ void Assembler::assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8))
 
 void Assembler::assemble_one_operand(u32& inst, u32(*fn)(u8, u8))
 {
-    u8 dest;
+    u16 dest;
     if (!try_get_register(dest, RegisterGP, "expected destination register"))
         return;
     if (!expected_comma())
@@ -1381,7 +1388,7 @@ void Assembler::assemble_one_operand(u32& inst, u32(*fn)(u8, u8))
     AsmToken operand = parse_expression(ParsePrecedence::Start);
     if (operand.is(TOKEN_REGISTER))
     {
-        u8 src;
+        u16 src;
         if (!try_get_register_tk(operand, src, RegisterGP))
             return;
         inst = fn(dest, src);
@@ -1398,13 +1405,13 @@ void Assembler::assemble_one_operand(u32& inst, u32(*fn)(u8, u8))
 
 void Assembler::assemble_shift(u32& inst, u8 opcode)
 {
-    u8 dest;
+    u16 dest;
     if (!try_get_register(dest, RegisterGP, "expected destination register"))
         return;
     if (!expected_comma())
         return;
 
-    u8 src1;
+    u16 src1;
     if (!try_get_register(src1, RegisterGP, "expected first source register"))
         return;
     if (!expected_comma())
@@ -1413,10 +1420,10 @@ void Assembler::assemble_shift(u32& inst, u8 opcode)
     AsmToken second_operand = parse_expression(ParsePrecedence::Start);
     if (second_operand.is(TOKEN_REGISTER))
     {
-        u8 src2;
+        u16 src2;
         if (!try_get_register_tk(second_operand, src2, RegisterGP))
             return;
-        inst = alu(opcode, dest, src1, src2, 0);
+        inst = inst_3op(opcode, dest, src1, src2);
     }
     else if (second_operand.is(TOKEN_IMMEDIATE))
     {
@@ -1425,8 +1432,8 @@ void Assembler::assemble_shift(u32& inst, u8 opcode)
             MAKE_ERROR(second_operand, return, "shift amount too long");
         }
 
-        u8 logopc = opcode - NGP_SHL;
-        inst = alu(NGP_OR_SHL + logopc, dest, ZeroRegister, src1, second_operand.byte[0]);
+        const u8 alu_opc = NGP_SHL_IMM + (opcode - NGP_SHL);
+        inst = inst_3op(alu_opc, dest, src1, second_operand.byte[0]);
     }
     else if (second_operand.is(TOKEN_NEW_LINE))
     {
@@ -1438,55 +1445,4 @@ void Assembler::assemble_shift(u32& inst, u8 opcode)
     }
 }
 
-void Assembler::check_for_amount(u8& adder, u8& amount)
-{
-    if (!current->is(TOKEN_COMMA))
-    {
-        return;
-    }
-
-    advance(); // skip comma
-
-    if (current->is(TOKEN_INSTRUCTION))
-    {
-        advance();
-        switch (last->subtype)
-        {
-        case TI_SHL:
-            adder = 0;
-            break;
-        case TI_SHR:
-            adder = 1;
-            break;
-        case TI_ASR:
-            adder = 2;
-            break;
-        case TI_ROR:
-            adder = 3;
-            break;
-        default:
-            ErrorManager::error(
-                current->get_source_file().data(), current->line,
-                "invalid shift type, try shl/shr/asr/ror"
-            );
-            return;
-        }
-
-        if (!expected(TOKEN_IMMEDIATE, "a amount was expected"))
-        {
-            return;
-        }
-
-        if (last->u > ZeroRegister)
-        {
-            ErrorManager::error(
-                current->get_source_file().data(), current->line,
-                "shift amount too long, must to be #0-31"
-            );
-            return;
-        }
-
-        amount = (u8)last->u;
-    }
-}
 

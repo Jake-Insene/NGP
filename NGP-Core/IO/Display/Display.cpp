@@ -47,7 +47,14 @@ void Display::handle_write_word(VirtualAddress local_address, Word value)
 	switch (local_address)
 	{
 	case DISPLAY_CTR:
+	{
 		get_registers().ctr = value;
+
+		if (value & PRESENT)
+		{
+			GUDevice::request_present();
+		}
+	}
 		break;
 	case DISPLAY_BUFFER_ADDR:
 		if (get_registers().ctr & ENABLE)
@@ -64,12 +71,6 @@ void Display::handle_write_word(VirtualAddress local_address, Word value)
 				(Display::DisplayFormat)(value >> 28)
 			);
 			get_registers().format = value;
-		}
-		break;
-	case DISPLAY_PRESENT:
-		if (get_registers().ctr & ENABLE)
-		{
-			GUDevice::request_present();
 		}
 		break;
 	default:

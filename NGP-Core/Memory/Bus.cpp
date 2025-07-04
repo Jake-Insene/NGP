@@ -17,12 +17,10 @@
 extern thread_local Emulator::ThreadCore* local_core;
 
 
-void Bus::initialize()
+void Bus::initialize(Word requested_ram_size)
 {
+    ram_size = requested_ram_size;
     // VRAM is managed by the GU
-    Word page_count = 0x1'0000'0000 >> page_bits;
-    page_table.resize(page_count);
-
     bios = (PhysicalAddress)OS::allocate_virtual_memory((void*)MAPPED_BUS_ADDRESS_START, BIOS_SIZE, OS::PAGE_READ_WRITE);
 
     io = (PhysicalAddress)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + IO_START), RAM_START - IO_START, OS::PAGE_READ_WRITE);
@@ -30,9 +28,9 @@ void Bus::initialize()
     ram = (PhysicalAddress)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + RAM_START), usize(ram_size), OS::PAGE_READ_WRITE);
 
     // By default every bios, ram and io page is accessible
-    for(usize i = 0; i < page_count; i++)
+    for(usize i = 0; i < PageCount; i++)
     {
-        VirtualAddress page_address = i << page_bits;
+        VirtualAddress page_address = i << PageBits;
         page_table[i].page_index = i;
 
         page_table[i].physical_address = PhysicalAddress(MAPPED_BUS_ADDRESS_START + page_address);
@@ -73,23 +71,14 @@ void Bus::shutdown()
     OS::deallocate_virtual_memory((void*)ram);
 }
 
-void Bus::set_ram_size(u32 new_size)
-{
-    if (new_size >= MAX_ALLOWED_RAM)
-    {
-        printf("error: invalid ram size %d MB, the maximum allowed is %d MB\n", new_size, MAX_ALLOWED_RAM_MB);
-    }
-    ram_size = new_size;
-}
-
 void Bus::invalid_read(VirtualAddress addr)
 {
-    local_core->core->external_handle_exception(CPUCore::AccessViolationException, CPUCore::CannotRead, addr);
+    local_core->get_core().external_handle_exception(CPUCore::AccessViolationException, CPUCore::CantRead, addr);
 }
 
 void Bus::invalid_write(VirtualAddress addr)
 {
-    local_core->core->external_handle_exception(CPUCore::AccessViolationException, CPUCore::CannotWrite, addr);
+    local_core->get_core().external_handle_exception(CPUCore::AccessViolationException, CPUCore::CantWrite, addr);
 }
 
 bool Bus::load_bios(const char* path)

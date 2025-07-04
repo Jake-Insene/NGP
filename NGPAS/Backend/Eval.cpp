@@ -89,7 +89,7 @@ AsmToken Assembler::parse_immediate(AsmToken, AsmToken)
 
 AsmToken Assembler::parse_symbol(AsmToken, AsmToken)
 {
-    auto it = find_label(last->str);
+    auto it = find_label_or_symbol(last->str);
     if (it != symbols.end())
     {
         if (it->second.ivalue == -1)

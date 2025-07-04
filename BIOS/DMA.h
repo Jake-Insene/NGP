@@ -24,7 +24,8 @@ DMA_IRQ = 0x80000000
 ; R3 Word Count
 DMASend:
 	IMM32 R4, DMA_BASE
-	ADD R4, R4, R0, SHL 4
+	SHL R0, R0, 4
+	ADD R4, R4, R0
 
 	ST R1, [R4, 4]
 	ST R2, [R4, 8]

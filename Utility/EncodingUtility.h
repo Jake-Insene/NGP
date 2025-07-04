@@ -47,15 +47,14 @@
 
 // Binary
 
-[[nodiscard]] static constexpr u32 alu(u8 opcode, u8 dest, u8 src1, u8 src2, u8 src3)
+[[nodiscard]] static constexpr u32 inst_3op(u16 opcode, u8 dest, u8 src1, u8 src2)
 {
     return u32(
-        NGP_ALU
+        NGP_3OP
         | (opcode << 6)
-        | (dest << 12)
-        | (src1 << 17)
-        | (src2 << 22)
-        | (src3 << 27)
+        | (dest << 17)
+        | (src1 << 22)
+        | (src2 << 27)
     );
 }
 
@@ -88,6 +87,26 @@
         NGP_NON_BINARY
         | (opcode << 6)
         | (comment << 12)
+    );
+}
+
+[[nodiscard]] static constexpr u32 non_binary_msr(u8 src, u16 sysreg)
+{
+    return u32(
+        NGP_NON_BINARY
+        | (NGP_MSR << 6)
+        | (src << 12)
+        | (sysreg << 17)
+    );
+}
+
+[[nodiscard]] static constexpr u32 non_binary_mrs(u8 dest, u16 sysreg)
+{
+    return u32(
+        NGP_NON_BINARY
+        | (NGP_MRS << 6)
+        | (dest << 12)
+        | (sysreg << 17)
     );
 }
 
@@ -141,18 +160,6 @@
         | (base << 14)
         | (add_sub << 19)
         | (offset << 20)
-    );
-}
-
-// Load Store Register Only
-[[nodiscard]] static constexpr u32 memoryr(u16 opcode, u8 dest_src, u8 base, u8 index)
-{
-    return u32(
-        NGP_LOAD_STORE_REGISTER
-        | (opcode << 6)
-        | (dest_src << 17)
-        | (base << 22)
-        | (index << 27)
     );
 }
 

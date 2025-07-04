@@ -72,7 +72,7 @@ struct D3D12GU
 
     static GUDevice::GUDriver get_driver();
 
-    static void initialize();
+    static void initialize(Word);
     static void shutdown();
 
     static void present_framebuffer(PhysicalAddress fb, bool vsync);

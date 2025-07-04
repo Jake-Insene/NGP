@@ -87,6 +87,7 @@ enum RegisterType
     RegisterGP,
     RegisterFP,
     RegisterVector,
+    RegisterSysReg,
 
     RegisterAny,
     RegisterFPOrVector,
@@ -135,7 +136,7 @@ struct Assembler
 
     // assemble_instruction();
     void assemble_load_store(u32& inst, u8 imm_opcode, u8 index_opc, u8 alignment, bool handle_symbol);
-    void assemble_binary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit, bool is_additional_opc, bool use_amount);
+    void assemble_binary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit);
     void assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 v_d2_opc);
     void assemble_comparison(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit);
     void assemble_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8));
@@ -143,7 +144,6 @@ struct Assembler
     void assemble_two_operands(u32& inst, u32(*fn)(u8, u8, u8));
     void assemble_one_operand(u32& inst, u32(*)(u8, u8));
     void assemble_shift(u32& inst, u8 opcode);
-    void check_for_amount(u8& adder, u8& amount);
 
     // Third phase: resolving instructions
     void resolve_pending();
@@ -159,9 +159,9 @@ struct Assembler
     void advance_to_next_line();
 
     // Utility
-    u8 get_register(AsmToken tk);
-    bool try_get_register(u8& reg, RegisterType reg_type, const char* format, ...);
-    bool try_get_register_tk(AsmToken tk, u8& reg, RegisterType reg_type);
+    u16 get_register(AsmToken tk);
+    bool try_get_register(u16& reg, RegisterType reg_type, const char* format, ...);
+    bool try_get_register_tk(AsmToken tk, u16& reg, RegisterType reg_type);
     u32& new_word();
     u16& new_half();
     u8& new_byte();
@@ -196,5 +196,5 @@ struct Assembler
 
     // expressions
 
-    std::unordered_map<StringID, Symbol>::iterator find_label(StringID label);
+    std::unordered_map<StringID, Symbol>::iterator find_label_or_symbol(StringID label);
 };

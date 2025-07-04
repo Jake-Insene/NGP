@@ -1,10 +1,15 @@
 FORMAT RAW AS 'BIN'
 ORG 0x00000000
-vector_address_table_el0:
+vector_address_table_el1:
 	B main ; Reset Address/Entry point
-	B $ ; Exception Handler
-	B $ ; IRQ Handler
+	B exception_handler ; Exception Handler
+	B interrupt_handler ; IRQ Handler
 	B $ ; Not Used
+
+exception_handler:
+	ERET
+interrupt_handler:
+	ERET
 
 INCLUDE "DEBUG.h"
 INCLUDE "DISPLAY.h"
@@ -13,14 +18,18 @@ INCLUDE "GU.h"
 INCLUDE "MACROS.h"
 INCLUDE "MEMORY.h"
 
-DISPLAY_CONFIG = DISPLAY_FORMAT_CREATE 0x100, 0x100, DISPLAY_FORMAT_RGBA8
-DISPLAY_BUFFER_ADDR = 0
-IMAGE_UPLOAD_ADDR = DISPLAY_BUFFER_ADDR + (0x100 * 0x100 * 4)
+DISPLAY_WIDTH = 0x100
+DISPLAY_HEIGHT = 0x100
+DISPLAY_CONFIG = DISPLAY_FORMAT_CREATE DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_FORMAT_RGBA8
 
-main:	
+
+main:
 	; Setting Up SP
 	ADR SP, SP_END
 	SUB SP, SP, 0x10
+
+	ADR R0, vector_address_table_el1
+	MSR vbar_el1, R0
 
 	BL EnableDisplay
 
@@ -41,8 +50,9 @@ main:
 	
 	ADR R3, CommandListBegin
 	MOV R2, 0x01
+	SHR R0, R0, 8
 	SHL R2, R2, 24
-	OR R2, R2, R0, SHR 8
+	OR R2, R2, R0
 	ST R2, [R3]
 
 	IMM32 R2, 0x00100100
@@ -56,8 +66,6 @@ main:
 
 	ADR R0, CommandListBegin
 	MOV R1, (CommandListEnd - CommandListBegin) >> 2
-	MOV R2, GU_QUEUE_INDEX0
-	MOV R3, GU_QUEUE_PRIORITY_NORMAL
 	BL GUSendCommandList
 
 	BL PresentDisplay
@@ -71,16 +79,15 @@ CommandListBegin:
 	.word 0x200000FF
 	.word 0x00000000
 	.word 0x01000100
-	.word 0x2100FF00
+	.word 0x2000FF00
 	.word 0x00000000
-	.word 0x00000001
 	.word 0x00010001
 	.zero 0x1000
 CommandListEnd:
 
 DoubleBuffer:
 	.word 0x00000000 ; First frame buffer
-	.word 0x00040000 ; Second framebuffer
+	.word 0x00040000 ; Second frame buffer
 
 .align 0x10
 .zero 0x400000-$

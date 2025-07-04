@@ -34,7 +34,7 @@ void thread_core_callback(void* arg)
     {
         while (true)
         {
-            if (thread.core->get_psr().HALT)
+            if (thread.get_core().get_psr().HALT)
             {
 #if DEBUGGING
                 printf(
@@ -84,9 +84,9 @@ void thread_core_callback(void* arg)
             case Emulator::RUN:
             {
                 auto start = Time::get_time();
-                u64 cycles_per_step = thread.clock_speed / 60;
+                u64 cycles_per_step = thread.clock_speed / Emulator::frames_per_second;
                 
-                usize remain = thread.core->dispatch(cycles_per_step);
+                usize remain = thread.get_core().dispatch(cycles_per_step);
 
                 auto dt = Time::get_time() - start;
                 thread.elapsed += dt;
@@ -121,12 +121,27 @@ void thread_core_callback(void* arg)
     goto continue_execution;
 }
 
-void Emulator::initialize()
+void Emulator::initialize(const EmulatorConfig& config)
 {
+#if defined(NGP_BUILD_VAR)
+    cores.resize(config.core_count);
+    core_count = config.core_count;
+    clock_cycles = config.clock_speed;
+
+    for (i32 i = 0; i < core_count; i++)
+    {
+        cores[i].core = CPUCore::create_cpu(config.cpu_type);
+    }
+#endif
+
     OS::initialize();
     Time::initialize();
 
-    Bus::initialize();
+#if defined(NGP_BUILD_VAR)
+    Bus::initialize(config.ram_size);
+#else
+    Bus::initialize(BuildConfig::RAMSize);
+#endif
     if (!Bus::load_bios(bios_file))
     {
         printf("error: invalid bios file '%s'\n", bios_file);
@@ -137,7 +152,11 @@ void Emulator::initialize()
     IO::initialize();
 
     Window::initialize(Window::DefaultWindowWidth, Window::DefaultWindowHeight);
-    GUDevice::initialize(GUDevice::VGU);
+#if defined(NGP_BUILD_VAR)
+    GUDevice::initialize(GUDevice::VGU, config.vram_size);
+#else
+    GUDevice::initialize(GUDevice::VGU, BuildConfig::VRAMSize);
+#endif
 
     auto thread_count = std::thread::hardware_concurrency();
 }
@@ -147,7 +166,9 @@ void Emulator::shutdown()
     end_cores();
     print_cores();
 
+#if defined(NGP_BUILD_VAR)
     cores.clear();
+#endif
 
     GUDevice::shutdown();
     Window::shutdown();
@@ -158,12 +179,9 @@ void Emulator::shutdown()
 
 void Emulator::start_cores()
 {
-    cores.resize(number_of_cores);
-
-    for (u32 core = 0; core < number_of_cores; core++)
+    for (u32 core = 0; core < core_count; core++)
     {
-        cores[core].core = CPUCore::create_cpu(CPUCore::CPUType::V1);
-        cores[core].core->initialize();
+        cores[core].get_core().initialize();
 
         // All cores are disable by default, except for core 0
         CPUCore::ProgramStateRegister initial_psr =
@@ -171,11 +189,12 @@ void Emulator::start_cores()
             .HALT = core == 0 ? false : true,
             .CURRENT_EL = CPUCore::MaxExceptionLevel,
         };
-        cores[core].core->set_psr(initial_psr);
-        cores[core].core->set_clock_speed(clock_cycles);
+        cores[core].get_core().set_psr(initial_psr);
+#if defined(NGP_BUILD_VAR)
         cores[core].clock_speed = clock_cycles;
+#endif
 
-        cores[core].core->set_pc(Bus::BIOS_START);
+        cores[core].get_core().set_pc(Bus::BIOS_START);
 
         cores[core].thread = std::thread(thread_core_callback, *reinterpret_cast<void**>(&core));
     }
@@ -183,19 +202,19 @@ void Emulator::start_cores()
 
 void Emulator::end_cores()
 {
-    for (u32 core = 0; core < number_of_cores; core++)
+    for (u32 core = 0; core < core_count; core++)
     {
         cores[core].thread.join();
-        cores[core].core->shutdown();
+        cores[core].get_core().shutdown();
     }
 }
 
 void Emulator::cores_restore_context()
 {
-    for (u32 core = 0; core < number_of_cores; core++)
+    for (u32 core = 0; core < core_count; core++)
     {
         cores[core].thread.join();
-        cores[core].core->shutdown();
+        cores[core].get_core().shutdown();
     }
 
     start_cores();
@@ -203,18 +222,18 @@ void Emulator::cores_restore_context()
 
 void Emulator::print_cores()
 {
-    for (u32 core = 0; core < number_of_cores; core++)
+    for (u32 core = 0; core < core_count; core++)
     {
         printf("Core: %d\n", core);
-        cores[core].core->print_registers();
+        cores[core].get_core().print_registers();
     }
 }
 
 void Emulator::signal_cores(Signal signal)
 {
-    for (u32 core = 0; core < number_of_cores; core++)
+    for (u32 core = 0; core < core_count; core++)
     {
-        if(!cores[core].core->get_psr().HALT)
+        if(!cores[core].get_core().get_psr().HALT)
         {
             cores[core].signal = signal;
         }
@@ -242,8 +261,7 @@ void Emulator::loop()
         IO::dispatch();
         GUDevice::present(true);
         fps++;
-        auto dt = Time::get_time() - start;
-        elapsed += dt;
+        elapsed += Time::get_time() - start;
 
         if (elapsed >= 1.0)
         {

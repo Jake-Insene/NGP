@@ -203,7 +203,7 @@ void write_io_word(VirtualAddress address, Word value)
         Bus::invalid_write(address);
         return;
     }
-
+ 
     VirtualAddress local_address = address & 0xFFF;
     io_devices[io_segment].write_word(local_address, value);
 }

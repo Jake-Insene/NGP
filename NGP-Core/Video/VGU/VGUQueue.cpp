@@ -124,7 +124,7 @@ void VGUQueue::try_execute()
         case GU::CMD_RECT:
         {
             Color rgb = {};
-            *((Word*)&rgb) = cmd_w & 0xFF'FFFF;
+            rgb.rgba = cmd_w & 0xFF'FFFF;
             rgb.a = 0xFF;
 
             u16 x, y, w, h;

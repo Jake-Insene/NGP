@@ -6,6 +6,7 @@
 /******************************************************/
 #pragma once
 #include "CPU/CPUCore.h"
+#include "FileFormat/ISA.h"
 #include "CPU/JIT/X86/X86JIT.h"
 
 
@@ -50,10 +51,7 @@ struct alignas(64) NGPV1 : CPUCore
 
     // PC registers
     VirtualAddress pc;
-
-    // Object fields
-    u64 clock_speed;
-
+    
     // Jitter
     JIT::X86JIT jitter;
 
@@ -62,22 +60,25 @@ struct alignas(64) NGPV1 : CPUCore
     Word pc_page_offset;
     const Word* pc_page_addr;
 
-    virtual void initialize() override;
-    virtual void shutdown() override;
+#if defined(NGP_BUILD_VAR)
+#define OVERRIDE override
+#else
+#define OVERRIDE
+#endif
 
-    virtual usize dispatch(usize num_cycles) override;
+    void initialize() OVERRIDE;
+    void shutdown() OVERRIDE;
 
-    virtual void print_registers() override;
+    usize dispatch(usize num_cycles) OVERRIDE;
 
-    virtual void set_psr(ProgramStateRegister psr) override;
-    virtual ProgramStateRegister get_psr() override;
-    virtual void set_pc(VirtualAddress new_pc) override;
-    virtual VirtualAddress get_pc() override;
+    void print_registers() OVERRIDE;
 
-    virtual void set_clock_speed(usize new_clock_speed) override;
-    virtual usize get_clock_speed() override;
+    void set_psr(ProgramStateRegister new_psr) OVERRIDE;
+    ProgramStateRegister get_psr() OVERRIDE;
+    void set_pc(VirtualAddress new_pc) OVERRIDE;
+    VirtualAddress get_pc() OVERRIDE;
 
-    virtual void external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr) override;
+    void external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr) OVERRIDE;
 
     usize run(usize num_cycles);
 

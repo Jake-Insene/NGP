@@ -254,6 +254,31 @@ enum AsmTokenRegister : u8
     TOKEN_V29_D2,
     TOKEN_V30_D2,
     TOKEN_V31_D2,
+
+    TOKEN_PSR,
+    TOKEN_CURRENT_EL,
+    TOKEN_SPSR_EL1,
+    TOKEN_SPSR_EL2,
+    TOKEN_SPSR_EL3,
+    TOKEN_SPSR_IRQ,
+
+    TOKEN_EDR_EL1,
+    TOKEN_EDR_EL2,
+    TOKEN_EDR_EL3,
+
+    TOKEN_ELR_EL1,
+    TOKEN_ELR_EL2,
+    TOKEN_ELR_EL3,
+
+    TOKEN_VBAR_EL1,
+    TOKEN_VBAR_EL2,
+    TOKEN_VBAR_EL3,
+    
+    TOKEN_FAR_EL1,
+    TOKEN_FAR_EL2,
+    TOKEN_FAR_EL3,
+
+    TOKEN_END_SYSTEM_REGS,
 };
 
 enum AsmTokenDirective : u8
@@ -387,16 +412,19 @@ enum AsmTokenInstruction : u8
     TI_MVN,
 
     TI_RET,
-
-    TI_BLR,
     TI_BR,
+    TI_BLR,
 
-    TI_ERET,
     TI_BRK,
     TI_SVC,
     TI_EVC,
     TI_SMC,
+
+    TI_ERET,
+    TI_WFI,
     TI_HALT,
+    TI_MSR,
+    TI_MRS,
 };
 
 enum FPSubfix
@@ -497,6 +525,11 @@ struct AsmToken
         return is_vector_s4_reg() ? FPSubfixS4
             : is_vector_d2_reg() ? FPSubfixD2
             : FPSubfixNone;
+    }
+
+    [[nodiscard]] constexpr bool is_system_reg() const
+    {
+        return is(TOKEN_REGISTER) && (subtype >= TOKEN_PSR && subtype < TOKEN_END_SYSTEM_REGS);
     }
 };
 

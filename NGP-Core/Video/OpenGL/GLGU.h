@@ -13,7 +13,7 @@ struct GLGU
 
     static GUDevice::GUDriver get_driver();
 
-    static void initialize();
+    static void initialize(Word);
     static void shutdown();
 
     static void present(bool vsync);

@@ -90,25 +90,24 @@ IO_PAD_MAIN_STATUS =	PAD_BASE | 0x008
 
 ; Display Interrupt Mask
 ; [0] HBLANK
+; [1] VBLANK
 DISPLAY_IRQ_MASK =		DISPLAY_BASE | 0x000
 DISPLAY_IRQ_STATUS =	DISPLAY_BASE | 0x004
 
 ; Display Controller
 ; [0] Enable
+; [1] Present
 DISPLAY_CTR =			DISPLAY_BASE | 0x008
 
 ; Display Model ID
-DISPLAY_ID =			DISPLAY_BASE | 0x00C
+DISPLAY_ID =		DISPLAY_BASE | 0x00C
 
 ; Display Buffer Address
-DISPLAY_BUFFER =		DISPLAY_BASE | 0x010
+DISPLAY_BUFFER =	DISPLAY_BASE | 0x010
 ; [0 - 13] Width
 ; [14 - 27] Height
 ; [28 - 31] Display Format
-DISPLAY_FORMAT =		DISPLAY_BASE | 0x014
-
-; Write anything to trigger a presentation
-DISPLAY_PRESENT =		DISPLAY_BASE | 0x018
+DISPLAY_FORMAT =	DISPLAY_BASE | 0x014
 
 
 ; GU Registers
@@ -122,15 +121,10 @@ GU_CTR =		GU_BASE | 0x0008
 GU_ID =			GU_BASE | 0x000C
 
 ; Queue Controller
-; [0 - 1] Queue Priority
-; [2 - 3] Queue Index
 ; [31] Start Execution
 GU_QUEUE_CTR =		GU_BASE | 0x0010
 ; Queue State
-; [0 - 1] Queue 0 State
-; [2 - 3] Queue 1 State
-; [4 - 5] Queue 2 State
-; [6 - 7] Queue 3 State
+; [0 - 31] Queue State
 GU_QUEUE_STATUS =	GU_BASE | 0x0014
 
 ; Queue Command List Address

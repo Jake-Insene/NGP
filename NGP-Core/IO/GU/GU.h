@@ -16,7 +16,7 @@ struct GU
     enum Register
     {
         // GU Interrupt Mask
-        // [0] Queue
+        // [0] Queue Execution End
         GU_IRQ_MASK =   0x0000,
         GU_IRQ_STATUS = 0x0004,
 
@@ -26,15 +26,10 @@ struct GU
         GU_ID =         0x000C,
     
         // Command Queue
-        // [0 - 1] Queue Priority
-        // [2 - 3] Queue Index
         // [31] -> Start execution
         GU_QUEUE_CTR =      0x0010,
+        // [0 - 31] Queue State.
         // Command Queue State
-        // [0 - 7]   Queue State 0
-        // [8 - 15]  Queue State 1
-        // [16 - 23] Queue State 2
-        // [24 - 31] Queue State 3
         GU_QUEUE_STATE =    0x0014,
         // Command List Address
         // [0 - 31] Command List Base Address.
@@ -60,23 +55,9 @@ struct GU
         GU_1 = 0,
     };
 
-    enum QueueIndex
-    {
-        QUEUE_INDEX0 = 0x0,
-        QUEUE_INDEX1 = 0x1,
-        QUEUE_INDEX2 = 0x2,
-        QUEUE_INDEX3 = 0x3,
-
-        QUEUE_INDEX_MAX = 0x4,
-    };
-
     enum QueueControlBit
     {
-        QUEUE_PRIORITY_LOW =     0x0,
-        QUEUE_PRIORITY_NORMAL =  0x1,
-        QUEUE_PRIORITY_HIGH =    0x2,
-
-        QUEUE_START =            0x8000'0000,
+        QUEUE_START = 0x8000'0000,
     };
 
     enum QueueState

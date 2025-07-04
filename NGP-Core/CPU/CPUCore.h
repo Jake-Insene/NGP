@@ -11,8 +11,6 @@
 #undef OVERFLOW
 
 
-static constexpr u32 DEFUALT_CORE_CLOCK_SPEED = MHZ(100);
-
 struct alignas(64) CPUCore
 {
     enum class CPUType
@@ -62,9 +60,9 @@ struct alignas(64) CPUCore
     {
         CommentNone = 0,
         // On AccessViolation
-        CannotExecute = 1,
-        CannotRead = 2,
-        CannotWrite = 3,
+        CantExecute = 1,
+        CantRead = 2,
+        CantWrite = 3,
     };
 
     union ProgramStateRegister
@@ -90,9 +88,8 @@ struct alignas(64) CPUCore
             ProgramStateRegister el1;
             ProgramStateRegister el2;
             ProgramStateRegister el3;
-            ProgramStateRegister irq;
         };
-        ProgramStateRegister spsr[4];
+        ProgramStateRegister spsr[3];
     };
 
     struct EDR
@@ -177,7 +174,7 @@ struct alignas(64) CPUCore
     };
 
     static CPUCore* create_cpu(CPUType type);
-
+#if defined(NGP_BUILD_VAR)
     virtual void initialize() = 0;
     virtual void shutdown() = 0;
 
@@ -185,14 +182,12 @@ struct alignas(64) CPUCore
 
     virtual void print_registers() = 0;
 
-    virtual void set_psr(ProgramStateRegister psr) = 0;
+    virtual void set_psr(ProgramStateRegister new_psr) = 0;
     virtual ProgramStateRegister get_psr() = 0;
     virtual void set_pc(VirtualAddress new_pc) = 0;
     virtual VirtualAddress get_pc() = 0;
 
-    virtual void set_clock_speed(usize new_clock_speed) = 0;
-    virtual usize get_clock_speed() = 0;
-
     virtual void external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr) = 0;
+#endif
 };
 

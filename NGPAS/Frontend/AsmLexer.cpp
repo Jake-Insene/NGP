@@ -16,6 +16,7 @@ struct SymbolInfo
     u8 size;
     AsmTokenType type;
     u8 subtype;
+    bool one_case;
 };
 
 SymbolInfo symbols[] =
@@ -361,16 +362,32 @@ SymbolInfo symbols[] =
     {.symbol = "mvn", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MVN },
 
     {.symbol = "ret", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_RET },
-    {.symbol = "blr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLR },
     {.symbol = "br", .size = 2, .type = TOKEN_INSTRUCTION, .subtype = TI_BR },
-    {.symbol = "eret", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_ERET },
+    {.symbol = "blr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BLR },
     {.symbol = "brk", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_BRK },
     {.symbol = "svc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SVC },
     {.symbol = "evc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_EVC },
     {.symbol = "smc", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_SMC },
+    {.symbol = "eret", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_ERET },
+    {.symbol = "wfi", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_WFI },
+    {.symbol = "msr", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MSR },
+    {.symbol = "mrs", .size = 3, .type = TOKEN_INSTRUCTION, .subtype = TI_MRS },
     {.symbol = "halt", .size = 4, .type = TOKEN_INSTRUCTION, .subtype = TI_HALT },
 
-    // fp subfixes
+    {.symbol = "psr", .size = 3, .type = TOKEN_REGISTER, .subtype = TOKEN_PSR},
+    {.symbol = "currentel", .size = 9, .type = TOKEN_REGISTER, .subtype = TOKEN_CURRENT_EL},
+    {.symbol = "spsr_el1", .size = 8, .type = TOKEN_REGISTER, .subtype = TOKEN_SPSR_EL1},
+    {.symbol = "spsr_el2", .size = 8, .type = TOKEN_REGISTER, .subtype = TOKEN_SPSR_EL2},
+    {.symbol = "spsr_el3", .size = 8, .type = TOKEN_REGISTER, .subtype = TOKEN_SPSR_EL3},
+    {.symbol = "edr_el1", .size = 7, .type = TOKEN_REGISTER, .subtype = TOKEN_EDR_EL1},
+    {.symbol = "edr_el3", .size = 7, .type = TOKEN_REGISTER, .subtype = TOKEN_EDR_EL2},
+    {.symbol = "edr_el3", .size = 7, .type = TOKEN_REGISTER, .subtype = TOKEN_EDR_EL3},
+    {.symbol = "elr_el1", .size = 7, .type = TOKEN_REGISTER, .subtype = TOKEN_ELR_EL1},
+    {.symbol = "elr_el3", .size = 7, .type = TOKEN_REGISTER, .subtype = TOKEN_ELR_EL2},
+    {.symbol = "elr_el3", .size = 7, .type = TOKEN_REGISTER, .subtype = TOKEN_ELR_EL3},
+    {.symbol = "vbar_el1", .size = 8, .type = TOKEN_REGISTER, .subtype = TOKEN_VBAR_EL1},
+    {.symbol = "vbar_el3", .size = 8, .type = TOKEN_REGISTER, .subtype = TOKEN_VBAR_EL2},
+    {.symbol = "vbar_el3", .size = 8, .type = TOKEN_REGISTER, .subtype = TOKEN_VBAR_EL3},
 };
 
 #define MAKE_TOKEN(TYPE) { \
@@ -622,21 +639,27 @@ AsmToken AsmLexer::get_symbol_or_label()
 
     for (auto& sym : symbols)
     {
-        if (sym.size == view.size())
+        if (sym.size != view.size())
+            continue;
+
+        for (u8 i = 0; i < sym.size; i++)
         {
-            for (u8 i = 0; i < sym.size; i++)
+            if (sym.one_case)
+            {
+                if (sym.symbol[i] != view[i])
+                    goto next;
+            }
+            else
             {
                 if (sym.symbol[i] != std::tolower(view[i]))
-                {
                     goto next;
-                }
             }
-
-            tk.type = sym.type;
-            tk.subtype = sym.subtype;
-        next:
-            {}
         }
+
+        tk.type = sym.type;
+        tk.subtype = sym.subtype;
+    next:
+        {}
     }
 
     return tk;

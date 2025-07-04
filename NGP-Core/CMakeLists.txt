@@ -24,7 +24,6 @@ file(GLOB NGP_CORE_SOURCES
     "Video/OpenGL/GLGU.cpp"
     
     "Emulator.cpp"
-    "StringPool.cpp"
 )
 
 
@@ -49,5 +48,5 @@ else()
     set(NGP_CORE_PLATFORM_LIBRARIES "")
 endif()
 
-add_library("ngp-core" STATIC ${NGP_CORE_SOURCES} ${NGP_CORE_PLATFORM_SOURCE} ${NGP_CPU_SOURCES})
-target_link_libraries("ngp-core" ${NGP_CORE_PLATFORM_LIBRARIES})
+set_property(GLOBAL PROPERTY NGP_SOURCES ${NGP_CORE_SOURCES} ${NGP_CORE_PLATFORM_SOURCE} ${NGP_CPU_SOURCES})
+set_property(GLOBAL PROPERTY NGP_LIBRARIES ${NGP_CORE_PLATFORM_LIBRARIES})

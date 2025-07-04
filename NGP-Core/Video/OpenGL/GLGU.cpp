@@ -26,7 +26,7 @@ GUDevice::GUDriver GLGU::get_driver()
     };
 }
 
-void GLGU::initialize() {}
+void GLGU::initialize(Word) {}
 void GLGU::shutdown() {}
 
 void GLGU::present(bool vsync) {}

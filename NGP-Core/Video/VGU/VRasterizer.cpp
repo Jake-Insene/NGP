@@ -38,8 +38,8 @@ void VRasterizer::pixel(Vector2I position, Color rgb)
             || position.x < 0 || position.x >= state.draw_buffer.size.y)
             return;
 
-        Word* wpixels = (Word*)state.draw_buffer.address;
-        wpixels[(position.y * state.draw_buffer.size.y) + position.x] = rgb.rgba;
+        Word* pixels = (Word*)state.draw_buffer.address;
+        pixels[(position.y * state.draw_buffer.size.y) + position.x] = rgb.rgba;
     }
     break;
     default:

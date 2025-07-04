@@ -19,7 +19,6 @@ struct VGUQueue
     VirtualAddress cmd_list;
     // In words
     Word cmd_len;
-    Word priority;
     GU::QueueState state;
 
     // Implementation data

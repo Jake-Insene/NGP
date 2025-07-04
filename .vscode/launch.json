@@ -6,11 +6,11 @@
     "configurations": [
         {
             "preLaunchTask": "NGP Build",
-            "name": "NGP Launch",
+            "name": "NGP Launch V1",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/NGP/ngp",
-            "args": ["-ram", "32", "-vram", "16",  "-bios", "BIOS/BIOS.BIN"],
+            "program": "${workspaceFolder}/build/NGP/ngpv1",
+            "args": ["-bios", "BIOS/BIOS.BIN"],
             "cwd": "${workspaceFolder}",
         },
         {

@@ -31,6 +31,10 @@ struct Bus
 
     static constexpr u64 MAPPED_BUS_ADDRESS_START = 0x2'0000'0000;
 
+    static constexpr Word PageSize = KB(16);
+    static constexpr Word PageMask = PageSize - 1;
+    static constexpr Word PageBits = bits_of(PageMask);
+
     enum CheckAddressResult
     {
         ValidAddress = 0,
@@ -40,7 +44,7 @@ struct Bus
     enum CheckAddressFlags
     {
         WriteableAddress = 0x1,
-        ReadeableAddress = 0x1,
+        ReadeableAddress = 0x2,
     };
 
     enum PageAccess
@@ -49,30 +53,6 @@ struct Bus
         PageRead = 0x1,
         PageWrite = 0x2,
         PageExecute = 0x4,
-    };
-
-    enum PageSize
-    {
-        Page4KB = 0x1000,
-        Page64KB = 0x1'0000,
-        Page1MB = 0x1'00000,
-        Page4MB = 0x4'00000,
-    };
-
-    enum PageBits
-    {
-        Page4KBits = 12,
-        Page64KBits = 16,
-        Page1MBits = 20,
-        Page4MBits = 22,
-    };
-
-    enum PageMask
-    {
-        Page4KBMask = 0xFFF,
-        Page64KBMask = 0xFFFF,
-        Page1MBMask = 0xF'FFFF,
-        Page4MBMask = 0x3F'FFFF,
     };
 
     struct Page
@@ -84,55 +64,33 @@ struct Bus
         PageAccess access : 12;
     };
 
-    static inline std::vector<Page> page_table;
-
-    static inline PageSize page_size = Page4KB;
-    static inline PageMask page_mask = Page4KBMask;
-    static inline PageBits page_bits = Page4KBits;
+    static constexpr Word PageCount = 0x1'0000'0000 >> PageBits;
+    static inline Page page_table[PageCount];
 
     static inline PhysicalAddress bios;
     static inline PhysicalAddress io;
     static inline PhysicalAddress ram;
 
-    // Default to 256 MB
-    static inline Word ram_size = MB(256);
     // Default to 32 MB
-    static inline Word vram_size = MB(32);
+    static inline Word ram_size = MB(32);
 
-    static void initialize();
+    static void initialize(Word requested_ram_size);
     static void shutdown();
-
-    static void set_ram_size(Word new_size);
-    static Word get_ram_size() { return ram_size; }
-
-    static FORCE_INLINE void set_page_size(PageSize new_page_size)
-    {
-        page_size = new_page_size;
-        page_mask = PageMask(new_page_size - 1);
-        page_bits = PageBits(bits_of(page_mask));
-    }
-
-    static FORCE_INLINE PageSize get_page_size() { return page_size; }
-    static FORCE_INLINE PageBits get_page_bits() { return page_bits; }
-    static FORCE_INLINE PageMask get_page_mask() { return page_mask; }
 
     static FORCE_INLINE Page& get_page(VirtualAddress addr)
     {
-        return page_table[addr >> page_bits];
+        return page_table[addr >> PageBits];
     }
 
     static FORCE_INLINE Word get_page_index(VirtualAddress addr)
     {
-        return addr >> page_bits;
+        return addr >> PageBits;
     }
 
     static FORCE_INLINE Word get_page_offset(VirtualAddress addr)
     {
-        return addr & page_mask;
+        return addr & PageMask;
     }
-
-    static void set_vram_size(Word new_size) { vram_size = new_size; }
-    static Word get_vram_size() { return vram_size; }
 
     static PhysicalAddress bios_start_address() { return PhysicalAddress(bios); }
     static PhysicalAddress ram_start_address() { return PhysicalAddress(ram); }
@@ -145,7 +103,7 @@ struct Bus
 
     static FORCE_INLINE CheckAddressResult check_virtual_address(VirtualAddress va, CheckAddressFlags flags)
     {
-        VirtualAddress page_index = va >> page_bits;
+        VirtualAddress page_index = va >> PageBits;
         Page& page = page_table[page_index];
         if(flags & WriteableAddress && !(page.access & PageWrite))
             return InvalidAddress;

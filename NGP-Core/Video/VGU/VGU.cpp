@@ -86,24 +86,21 @@ GUDevice::GUDriver VGU::get_driver()
     };
 }
 
-void VGU::initialize()
+void VGU::initialize(Word requested_vram_size)
 {
     // VRAM
-    state.vram = (Word*)OS::allocate_virtual_memory((void*)VRamAddress, Bus::get_vram_size(), OS::PAGE_READ_WRITE);
+    state.vram_size = requested_vram_size;
+    state.vram = (Word*)OS::allocate_virtual_memory((void*)VRamAddress, requested_vram_size, OS::PAGE_READ_WRITE);
 
     state.present_requested = false;
     state.irq_pending = false;
 
     // Internal driver
     state.internal_driver = get_internal_driver(GUDevice::D3D12);
-    state.internal_driver.initialize();
+    state.internal_driver.initialize(requested_vram_size);
 
-    for (u32 i = 0; i < GU::QUEUE_INDEX_MAX; i++)
-    {
-        state.queues[i].priority = GU::QUEUE_PRIORITY_LOW;
-        state.queues[i].cmd_list = VirtualAddress(0);
-        state.queues[i].cmd_len = 0;
-    }
+    state.queue.cmd_list = VirtualAddress(0);
+    state.queue.cmd_len = 0;
 
     state.cached_framebuffers.clear();
     state.current_fb = -1;
@@ -169,7 +166,7 @@ void VGU::display_set_address(VirtualAddress vva)
     state.display_address = (Word*)get_physical_vram_address(vva);
 }
 
-void VGU::queue_execute(u8 index, u8 priority, VirtualAddress cmd_list, Word cmd_len)
+void VGU::queue_execute(VirtualAddress cmd_list, Word cmd_len)
 {
     if ((cmd_list & 0x3) != 0)
     {
@@ -180,28 +177,17 @@ void VGU::queue_execute(u8 index, u8 priority, VirtualAddress cmd_list, Word cmd
     if (cmd_len == 0)
         return;
 
-    if (index >= GU::QUEUE_INDEX_MAX)
-    {
-        VGPU_LOGGER("Invalid Queue Index");
-        return;
-    }
-
     state.queue_mutex.lock();
-    VGUQueue* queue = &state.queues[index];
-    queue->priority = priority;
-    queue->cmd_list = cmd_list;
-    queue->cmd_len = cmd_len;
-    queue->set_signal(VGUQueue::QUEUE_SIGNAL_RUN);
+    state.queue.cmd_list = cmd_list;
+    state.queue.cmd_len = cmd_len;
+    state.queue.set_signal(VGUQueue::QUEUE_SIGNAL_RUN);
     state.queue_mutex.unlock();
 }
 
 void VGU::queue_dispatch()
 {
     state.queue_mutex.lock();
-    for (auto& queue : state.queues)
-    {
-        queue.try_execute();
-    }
+    state.queue.try_execute();
     state.queue_mutex.unlock();
 }
 
@@ -257,7 +243,7 @@ void VGU::dma_send(VirtualAddress dest, VirtualAddress src, Word len, Word flags
 
 Bus::CheckAddressResult VGU::check_vram_address(VirtualAddress vva)
 {
-    return vva < Bus::get_vram_size() ? Bus::ValidAddress : Bus::InvalidAddress;
+    return vva < state.vram_size ? Bus::ValidAddress : Bus::InvalidAddress;
 }
 
 // Implementation

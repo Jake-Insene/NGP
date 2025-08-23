@@ -22,7 +22,7 @@ static constexpr VirtualAddress PAD_BASE =      IO_BASE | 0x0000'2000;
 static constexpr VirtualAddress USI_BASE =      IO_BASE | 0x0000'3000;
 static constexpr VirtualAddress DISPLAY_BASE =  IO_BASE | 0x0000'4000;
 
-static constexpr VirtualAddress GU_BASE = IO_BASE | 0x0001'0000;
+static constexpr VirtualAddress GU_BASE =       IO_BASE | 0x0001'0000;
 
 static constexpr Word SegmentSize = 0x1000;
 static constexpr Word SegmentBits = 12;

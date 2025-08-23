@@ -86,18 +86,18 @@ GUDevice::GUDriver VGU::get_driver()
     };
 }
 
-void VGU::initialize(Word requested_vram_size)
+void VGU::initialize()
 {
     // VRAM
-    state.vram_size = requested_vram_size;
-    state.vram = (Word*)OS::allocate_virtual_memory((void*)VRamAddress, requested_vram_size, OS::PAGE_READ_WRITE);
+    state.vram_size = Bus::VRAM_SIZE;
+    state.vram = (Word*)OS::allocate_virtual_memory((void*)VRamAddress, Bus::VRAM_SIZE, OS::PAGE_READ_WRITE);
 
     state.present_requested = false;
     state.irq_pending = false;
 
     // Internal driver
     state.internal_driver = get_internal_driver(GUDevice::D3D12);
-    state.internal_driver.initialize(requested_vram_size);
+    state.internal_driver.initialize();
 
     state.queue.cmd_list = VirtualAddress(0);
     state.queue.cmd_len = 0;

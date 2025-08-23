@@ -6,17 +6,17 @@
 /******************************************************/
 #include "CPU/CPUCore.h"
 
-#include "CPU/NGPV1/NGPV1.h"
+#include "CPU/CPUInterpreter/CPUInterpreter.h"
 
 
-CPUCore* CPUCore::create_cpu(CPUType type)
+CPUCore* CPUCore::create_cpu(ImplementationType type)
 {
     switch (type)
     {
-    case CPUType::Unknown:
+    case ImplementationType::Unknown:
         break;
-    case CPUType::V1:
-        return new NGPV1();
+    case ImplementationType::Interpreter:
+        return new CPUInterpreter();
     default:
         break;
     }

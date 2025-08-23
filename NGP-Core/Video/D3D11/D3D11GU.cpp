@@ -61,7 +61,7 @@ GUDevice::GUDriver D3D11GU::get_driver()
     };
 }
 
-void D3D11GU::initialize(Word)
+void D3D11GU::initialize()
 {
     state.clear_color[0] = 0.f;
     state.clear_color[1] = 0.f;

@@ -5,7 +5,7 @@
 /*        See the LICENSE in the project root.        */
 /******************************************************/
 #pragma once
-#include "BuildConfig.h"
+#include "CPU/CPUCore.h"
 
 #include <thread>
 #include <vector>
@@ -15,12 +15,7 @@
 
 struct EmulatorConfig
 {
-    CPUCore::CPUType cpu_type;
-    Word core_count;
-    usize clock_speed;
-
-    Word ram_size;
-    Word vram_size;
+    CPUCore::ImplementationType impl_type;
 };
 
 struct Emulator
@@ -36,11 +31,7 @@ struct Emulator
 
     struct ThreadCore
     {
-#if defined(NGP_BUILD_VAR)
         CPUCore* core;
-#else
-        BuildConfig::CoreType core;
-#endif
         std::thread thread;
 
         Signal signal;
@@ -48,29 +39,14 @@ struct Emulator
         f64 elapsed;
         usize last_cycle_counter;
         usize cycle_counter;
-#if defined(NGP_BUILD_VAR)
-        usize clock_speed;
-#else
-        static constexpr usize clock_speed = BuildConfig::ClockSpeed;
-#endif
         usize inst_counter;
 
-#if defined(NGP_BUILD_VAR)
         CPUCore& get_core() { return *core; }
-#else
-        BuildConfig::CoreType& get_core() { return core; }
-#endif
     };
 
-#if defined(NGP_BUILD_VAR)
-    static inline std::vector<ThreadCore> cores;
-    static inline u64 core_count = 1;
-    static inline u64 clock_cycles = MHZ(10);
-#else
-    static constexpr u64 core_count = BuildConfig::CoreCount;
-    static constexpr u64 clock_cycles = BuildConfig::ClockSpeed;
-    static inline ThreadCore cores[core_count];
-#endif
+    static constexpr u64 CoreCount = CPUCore::CoreCount;
+    static constexpr u64 ClockSpeed = CPUCore::ClockSpeed;
+    static inline ThreadCore cores[CoreCount];
 
     static inline u64 frames_per_second = 60;
     static inline const char* bios_file = DefaultBIOSPath;

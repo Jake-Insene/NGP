@@ -52,7 +52,7 @@ struct D3D11GU
 
     static GUDevice::GUDriver get_driver();
 
-    static void initialize(Word);
+    static void initialize();
     static void shutdown();
 
     static void present_framebuffer(PhysicalAddress fb, bool vsync);

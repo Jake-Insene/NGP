@@ -12,24 +12,24 @@ struct Bus
 {
 
     // BIOS	00000000 - 003FFFFF = 4 MB
-    // IO   100000000 - 1FFFFFFF = N MB
-    // RAM	20000000 - FFFFFFFF = N MB
-    // VRAM is in its own address space = N MB
+    // IO   10000000 - 1FFFFFFF = N MB
+    // RAM	20000000 - 22000000 = 32 MB
+    // VRAM is in its own address space = 16 MB
 
-    static constexpr u32 BIOS_START = 0x0000'0000;
-    static constexpr u32 BIOS_END = 0x003F'FFFF;
+    static constexpr VirtualAddress BIOS_START = 0x0000'0000;
+    static constexpr VirtualAddress BIOS_END = 0x003F'FFFF;
 
-    static constexpr u32 IO_START = 0x1000'0000;
-    static constexpr u32 IO_END = 0x1FFF'FFFF;
+    static constexpr VirtualAddress IO_START = 0x1000'0000;
+    static constexpr VirtualAddress IO_END = 0x1FFF'FFFF;
 
-    static constexpr u32 RAM_START = 0x2000'0000;
+    static constexpr VirtualAddress RAM_START = 0x2000'0000;
+    static constexpr VirtualAddress RAM_END = 0x2200'0000;
 
-    static constexpr u32 BIOS_SIZE = MB(4U);
+    static constexpr Word BIOS_SIZE = MB(4U);
+    static constexpr Word RAM_SIZE = MB(32);
+    static constexpr Word VRAM_SIZE = MB(16);
 
-    static constexpr u32 MAX_ALLOWED_RAM = 0x1'0000'0000 - 0x2000'0000;
-    static constexpr u32 MAX_ALLOWED_RAM_MB = MAX_ALLOWED_RAM / 1'024 / 1'024;
-
-    static constexpr u64 MAPPED_BUS_ADDRESS_START = 0x2'0000'0000;
+    static constexpr PhysicalAddress MAPPED_BUS_ADDRESS_START = 0x2'0000'0000;
 
     static constexpr Word PageSize = KB(16);
     static constexpr Word PageMask = PageSize - 1;
@@ -71,10 +71,7 @@ struct Bus
     static inline PhysicalAddress io;
     static inline PhysicalAddress ram;
 
-    // Default to 32 MB
-    static inline Word ram_size = MB(32);
-
-    static void initialize(Word requested_ram_size);
+    static void initialize();
     static void shutdown();
 
     static FORCE_INLINE Page& get_page(VirtualAddress addr)

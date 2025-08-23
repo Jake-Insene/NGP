@@ -1,11 +1,8 @@
 
-file(GLOB NGP_CPU_SOURCES
-    "CPU/NGPV1/NGPV1.cpp"
-)
-
 file(GLOB NGP_CORE_SOURCES
     "CPU/CPUCore.cpp"
     "CPU/JIT/X86/X86JIT.cpp"
+    "CPU/CPUInterpreter/CPUInterpreter.cpp"
 
     "IO/IO.cpp"
     "IO/Display/Display.cpp"

@@ -68,7 +68,7 @@ struct VGU
 
     static GUDevice::GUDriver get_driver();
 
-    static void initialize(Word requested_vram_size);
+    static void initialize();
     static void shutdown();
 
     static void present(bool vsync);

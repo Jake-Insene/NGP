@@ -19,7 +19,7 @@ struct GUDevice
 
     struct GUDriver
     {
-        void(*initialize)(Word);
+        void(*initialize)();
         void(*shutdown)();
 
         void(*present_framebuffer)(PhysicalAddress, bool);
@@ -60,7 +60,7 @@ struct GUDevice
         VGU,
     };
 
-    static void initialize(DriverApi api, Word requested_vram_size);
+    static void initialize(DriverApi api);
 
     VTFUNCDEF(shutdown);
     VTFUNCDEFARG1(present, bool);

@@ -49,7 +49,7 @@ IO::IODevice GU::get_io_device()
 
 void GU::initialize()
 {
-    get_registers().id = GU_1;
+    get_registers().id = GU_GU1;
 }
 
 void GU::shutdown()

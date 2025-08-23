@@ -17,15 +17,14 @@
 extern thread_local Emulator::ThreadCore* local_core;
 
 
-void Bus::initialize(Word requested_ram_size)
+void Bus::initialize()
 {
-    ram_size = requested_ram_size;
     // VRAM is managed by the GU
     bios = (PhysicalAddress)OS::allocate_virtual_memory((void*)MAPPED_BUS_ADDRESS_START, BIOS_SIZE, OS::PAGE_READ_WRITE);
 
     io = (PhysicalAddress)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + IO_START), RAM_START - IO_START, OS::PAGE_READ_WRITE);
 
-    ram = (PhysicalAddress)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + RAM_START), usize(ram_size), OS::PAGE_READ_WRITE);
+    ram = (PhysicalAddress)OS::allocate_virtual_memory((void*)(MAPPED_BUS_ADDRESS_START + RAM_START), RAM_SIZE, OS::PAGE_READ_WRITE);
 
     // By default every bios, ram and io page is accessible
     for(usize i = 0; i < PageCount; i++)
@@ -43,7 +42,7 @@ void Bus::initialize(Word requested_ram_size)
         {
             page_table[i].access = PageAccess(PageRead | PageWrite);
         }
-        else if(page_address >= RAM_START && page_address < RAM_START + ram_size)
+        else if(page_address >= RAM_START && page_address < RAM_START + RAM_SIZE)
         {
             page_table[i].access = PageAccess(PageRead | PageWrite | PageExecute);
         }
@@ -59,7 +58,7 @@ void Bus::initialize(Word requested_ram_size)
     printf(
         "DEBUG: RAM mapped at:  0x%016llX\n"
         "       RAM size: 0x%08X\n",
-        u64(ram), ram_size
+        u64(ram), RAM_SIZE
     );
 #endif // !NDEBUG
 }
@@ -107,7 +106,7 @@ template<typename T>
 static FORCE_INLINE T read_at(VirtualAddress addr)
 {
     const Word page_index = Bus::get_page_index(addr);
-    if (Bus::page_table[page_index].access & Bus::PageRead)
+    if (Bus::page_table[page_index].access & Bus::PageRead) [[likely]]
     {
         return *reinterpret_cast<T*>(Bus::MAPPED_BUS_ADDRESS_START + addr);
     }
@@ -155,7 +154,7 @@ template<typename T>
 inline void write_at(VirtualAddress addr, T value)
 {
     VirtualAddress page_index = Bus::get_page_index(addr);
-    if (Bus::page_table[page_index].access & Bus::PageWrite)
+    if (Bus::page_table[page_index].access & Bus::PageWrite) [[likely]]
     {
         if ((addr >> 28) == 1)
             IO::write_io<T>(addr, value);

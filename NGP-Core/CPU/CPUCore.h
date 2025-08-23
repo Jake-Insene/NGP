@@ -13,10 +13,11 @@
 
 struct alignas(64) CPUCore
 {
-    enum class CPUType
+    enum class ImplementationType
     {
         Unknown = 0,
-        V1,
+        Interpreter,
+        JIT,
     };
 
     static constexpr Word ZeroRegister = 31;
@@ -28,6 +29,8 @@ struct alignas(64) CPUCore
     static constexpr Word ResetVBOffset = 0;
     static constexpr Word ExceptionVBOffset = 4;
     static constexpr Word IRQVBOffset = 8;
+    static constexpr u64 CoreCount = 1;
+    static constexpr u64 ClockSpeed = MHZ(100);
 
     enum PrivilegeLevel
     {
@@ -163,7 +166,7 @@ struct alignas(64) CPUCore
         f64 d2[2];
     };
 
-    union SIMDRegisterV1
+    union SIMDRegister
     {
         Vec128 vec;
         QWord qw;
@@ -173,8 +176,7 @@ struct alignas(64) CPUCore
         DWord dw;
     };
 
-    static CPUCore* create_cpu(CPUType type);
-#if defined(NGP_BUILD_VAR)
+    static CPUCore* create_cpu(ImplementationType type);
     virtual void initialize() = 0;
     virtual void shutdown() = 0;
 
@@ -188,6 +190,5 @@ struct alignas(64) CPUCore
     virtual VirtualAddress get_pc() = 0;
 
     virtual void external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr) = 0;
-#endif
 };
 

@@ -6,12 +6,15 @@
 /******************************************************/
 #include "Memory/Bus.h"
 #include "Emulator.h"
-#include "BuildConfig.h"
 
 #include <cstdio>
 #include <string>
 
-EmulatorConfig config = {};
+EmulatorConfig config =
+{
+    // Interpreter by default.
+    .impl_type = CPUCore::ImplementationType::Interpreter,
+};
 
 
 void print_help()
@@ -21,12 +24,6 @@ void print_help()
         "options:\n"
         "\t-help show this help\n"
         "\t-bios <path> set the bios file\n"
-#if defined(NGP_BUILD_VAR)
-        "\t-m <MB> size of the ram\n"
-        "\t-vram <MB> set the size of vram\n"
-        "\t-cores <N> number of cores of the machine\n"
-        "\t-cycles <N> number of cycles per core\n"
-#endif
     );
 }
 
@@ -62,46 +59,10 @@ void handle_arguments(int argc, char** argv)
             }
             Emulator::bios_file = argv[index++];
         }
-#if defined(NGP_BUILD_VAR)
-        else if (arg == "ram")
+        else if (arg == "jit")
         {
-            if (index == argc)
-            {
-                printf("error: -ram require a number\n");
-                exit(1);
-            }
-            config.ram_size = MB(std::atoi(argv[index++]));
+            config.impl_type = CPUCore::ImplementationType::JIT;
         }
-        else if (arg == "cores")
-        {
-            if (index == argc)
-            {
-                printf("error: -cores require a number\n");
-                exit(1);
-            }
-            config.core_count = std::atoi(argv[index++]);
-        }
-        else if (arg == "vram")
-        {
-            if (index == argc)
-            {
-                printf("error: -vram require a number\n");
-                exit(1);
-            }
-            config.vram_size = MB(std::atoi(argv[index++]));
-        }
-        else if (arg == "cycles")
-        {
-            if (index == argc)
-            {
-                printf("error: -cycles require a number\n");
-                exit(1);
-            }
-
-            config.vram_size = MB(std::atoi(argv[index++]));
-            Emulator::clock_cycles = std::atoi(argv[index++]);
-        }
-#endif
         else
         {
             printf("error: unknown option '%s'\n", arg.c_str());

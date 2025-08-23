@@ -64,7 +64,7 @@ struct D3D12GU
 
         std::unordered_map<D3D12_GPU_VIRTUAL_ADDRESS, VFramebuffer> vframebuffers;
 
-        u32 current_frame;
+        Word current_frame;
         FLOAT clear_color[4];
     };
 
@@ -72,7 +72,7 @@ struct D3D12GU
 
     static GUDevice::GUDriver get_driver();
 
-    static void initialize(Word);
+    static void initialize();
     static void shutdown();
 
     static void present_framebuffer(PhysicalAddress fb, bool vsync);

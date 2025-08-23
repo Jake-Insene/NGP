@@ -59,7 +59,7 @@ GUDevice::GUDriver D3D12GU::get_driver()
     };
 }
 
-void D3D12GU::initialize(Word)
+void D3D12GU::initialize()
 {
     state.current_frame = 0;
 

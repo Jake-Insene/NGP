@@ -4,7 +4,7 @@
 /*       Copyright (c) 2024-Present Jake-Insene       */
 /*        See the LICENSE in the project root.        */
 /******************************************************/
-#include "CPU/NGPV1/NGPV1.h"
+#include "CPU/CPUInterpreter/CPUInterpreter.h"
 
 #include "FileFormat/ISA.h"
 #include "Memory/Bus.h"
@@ -18,19 +18,19 @@
 
 
 #define MAKE_SIMPLE_ARITH_LOGIC(NAME, OP) \
-    static FORCE_INLINE void NAME(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)\
+    static FORCE_INLINE void NAME(CPUInterpreter& core, const u8 dest, const u8 src1, const u8 src2)\
     {\
         core.list[dest] = (dest != CPUCore::ZeroRegister) * (OP);\
     }
 
 #define MAKE_SETTING_FLAGS(NAME, OP) \
-    static FORCE_INLINE void NAME(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)\
+    static FORCE_INLINE void NAME(CPUInterpreter& core, const u8 dest, const u8 src1, const u8 src2)\
     {\
         core.list[dest] = (dest != CPUCore::ZeroRegister) * (OP);\
     }
 
 #define MAKE_IMMEDIATE_OP(NAME, OP) \
-    static FORCE_INLINE void NAME(NGPV1& core, const u32 inst)\
+    static FORCE_INLINE void NAME(CPUInterpreter& core, const u32 inst)\
     {\
         const u8 dest = (inst >> 6) & 0x1F;\
         const u8 src = (inst >> 11) & 0x1F;\
@@ -60,7 +60,7 @@
     FUNC(ADDRESS, CORE.simd[SRC].FIELD)
 
 // Logical Add sub
-static FORCE_INLINE void set_flags(NGPV1& core, const u32 src1, const u32 src2, const u64 res, const bool is_sub)
+static FORCE_INLINE void set_flags(CPUInterpreter& core, const u32 src1, const u32 src2, const u64 res, const bool is_sub)
 {
     // Set Z flag (zero flag)
     core.psr.ZERO = u32(res) == 0;
@@ -85,7 +85,7 @@ static FORCE_INLINE void set_flags(NGPV1& core, const u32 src1, const u32 src2, 
 }
 
 // Comparison
-static FORCE_INLINE u32 add_with_carry_setting_flags(NGPV1& core, const u32 src1, const u32 src2, const u32 carry)
+static FORCE_INLINE u32 add_with_carry_setting_flags(CPUInterpreter& core, const u32 src1, const u32 src2, const u32 carry)
 {
     const u64 lhs = src1;
     const u64 rhs = src2;
@@ -95,7 +95,7 @@ static FORCE_INLINE u32 add_with_carry_setting_flags(NGPV1& core, const u32 src1
     return u32(res);
 }
 
-static u32 FORCE_INLINE and_setting_flags(NGPV1& core, const u32 src1, const u32 src2)
+static u32 FORCE_INLINE and_setting_flags(CPUInterpreter& core, const u32 src1, const u32 src2)
 {
     u32 res = src1 & src2;
     core.psr.NEGATIVE = (res & 0x8000'0000) != 0;
@@ -128,113 +128,113 @@ MAKE_SIMPLE_ARITH_LOGIC(_sbcs, add_with_carry_setting_flags(core, core.list[src1
 
 
 // Memory
-static FORCE_INLINE void memory_read_single(NGPV1& core, const u8 dest, const VirtualAddress address)
+static FORCE_INLINE void memory_read_single(CPUInterpreter& core, const u8 dest, const VirtualAddress address)
 {
     HANDLE_SIMD_READ(core, dest, w, Bus::read_word, address);
 }
 
-static FORCE_INLINE void memory_read_double(NGPV1& core, const u8 dest, const VirtualAddress address)
+static FORCE_INLINE void memory_read_double(CPUInterpreter& core, const u8 dest, const VirtualAddress address)
 {
     HANDLE_SIMD_READ(core, dest, dw, Bus::read_dword, address);
 }
 
-static FORCE_INLINE void memory_read_v(NGPV1& core, const u8 dest, const VirtualAddress address)
+static FORCE_INLINE void memory_read_v(CPUInterpreter& core, const u8 dest, const VirtualAddress address)
 {
     HANDLE_SIMD_READ(core, dest, qw, Bus::read_qword, address);
 }
 
-static FORCE_INLINE void memory_write_single(NGPV1& core, const u8 src, const VirtualAddress address)
+static FORCE_INLINE void memory_write_single(CPUInterpreter& core, const u8 src, const VirtualAddress address)
 {
     HANDLE_SIMD_WRITE(core, src, w, Bus::write_word, address);
 }
 
-static FORCE_INLINE void memory_write_double(NGPV1& core, const u8 src, const VirtualAddress address)
+static FORCE_INLINE void memory_write_double(CPUInterpreter& core, const u8 src, const VirtualAddress address)
 {
     HANDLE_SIMD_WRITE(core, src, dw, Bus::write_dword, address);
 }
 
-static FORCE_INLINE void memory_write_v(NGPV1& core, const u8 src, const VirtualAddress address)
+static FORCE_INLINE void memory_write_v(CPUInterpreter& core, const u8 src, const VirtualAddress address)
 {
     HANDLE_SIMD_WRITE(core, src, qw, Bus::write_qword, address);
 }
 
-static FORCE_INLINE void memory_pair_read_word(NGPV1& core, const u8 dest1, const u8 dest2, const VirtualAddress address)
+static FORCE_INLINE void memory_pair_read_word(CPUInterpreter& core, const u8 dest1, const u8 dest2, const VirtualAddress address)
 {
     HANDLE_READ(core, dest1, Bus::read_word, address);
     HANDLE_READ(core, dest2, Bus::read_word, address + 4);
 }
 
-static FORCE_INLINE void memory_pair_read_single(NGPV1& core, const u8 dest1, const u8 dest2, const VirtualAddress address)
+static FORCE_INLINE void memory_pair_read_single(CPUInterpreter& core, const u8 dest1, const u8 dest2, const VirtualAddress address)
 {
     HANDLE_SIMD_READ(core, dest1, w, Bus::read_word, address);
     HANDLE_SIMD_READ(core, dest2, w, Bus::read_word, address + 4);
 }
 
-static FORCE_INLINE void memory_pair_read_double(NGPV1& core, const u8 dest1, const u8 dest2, const VirtualAddress address)
+static FORCE_INLINE void memory_pair_read_double(CPUInterpreter& core, const u8 dest1, const u8 dest2, const VirtualAddress address)
 {
     HANDLE_SIMD_READ(core, dest1, dw, Bus::read_dword, address);
     HANDLE_SIMD_READ(core, dest2, dw, Bus::read_dword, address + 8);
 }
 
-static FORCE_INLINE void memory_pair_read_v(NGPV1& core, const u8 dest1, const u8 dest2, const VirtualAddress address)
+static FORCE_INLINE void memory_pair_read_v(CPUInterpreter& core, const u8 dest1, const u8 dest2, const VirtualAddress address)
 {
     HANDLE_SIMD_READ(core, dest1, qw, Bus::read_qword, address);
     HANDLE_SIMD_READ(core, dest2, qw, Bus::read_qword, address + 16);
 }
 
-static FORCE_INLINE void memory_pair_write_word(NGPV1& core, const u8 src1, const u8 src2, const VirtualAddress address)
+static FORCE_INLINE void memory_pair_write_word(CPUInterpreter& core, const u8 src1, const u8 src2, const VirtualAddress address)
 {
     HANDLE_WRITE(core, src1, Word, Bus::write_word, address);
     HANDLE_WRITE(core, src2, Word, Bus::write_word, address + 4);
 }
 
-static FORCE_INLINE void memory_pair_write_single(NGPV1& core, const u8 src1, const u8 src2, const VirtualAddress address)
+static FORCE_INLINE void memory_pair_write_single(CPUInterpreter& core, const u8 src1, const u8 src2, const VirtualAddress address)
 {
     HANDLE_SIMD_WRITE(core, src1, w, Bus::write_word, address);
     HANDLE_SIMD_WRITE(core, src2, w, Bus::write_word, address + 4);
 }
 
-static FORCE_INLINE void memory_pair_write_double(NGPV1& core, const u8 src1, const u8 src2, const VirtualAddress address)
+static FORCE_INLINE void memory_pair_write_double(CPUInterpreter& core, const u8 src1, const u8 src2, const VirtualAddress address)
 {
     HANDLE_SIMD_WRITE(core, src1, dw, Bus::write_dword, address);
     HANDLE_SIMD_WRITE(core, src2, dw, Bus::write_dword, address + 8);
 }
 
-static FORCE_INLINE void memory_pair_write_v(NGPV1& core, const u8 src1, const u8 src2, const VirtualAddress address)
+static FORCE_INLINE void memory_pair_write_v(CPUInterpreter& core, const u8 src1, const u8 src2, const VirtualAddress address)
 {
     HANDLE_SIMD_WRITE(core, src1, qw, Bus::write_qword, address);
     HANDLE_SIMD_WRITE(core, src2, qw, Bus::write_qword, address + 16);
 }
 
 // ExtendedAlu
-static FORCE_INLINE void madd(NGPV1& core, const u8 dest, const u8 src1, const u8 src2, const u8 src3)
+static FORCE_INLINE void madd(CPUInterpreter& core, const u8 dest, const u8 src1, const u8 src2, const u8 src3)
 {
     core.list[dest] = (dest != CPUCore::ZeroRegister) *
         (core.list[src3] + (core.list[src1] * core.list[src2]));
 }
 
-static FORCE_INLINE void msub(NGPV1& core, const u8 dest, const u8 src1, const u8 src2, const u8 src3)
+static FORCE_INLINE void msub(CPUInterpreter& core, const u8 dest, const u8 src1, const u8 src2, const u8 src3)
 {
     core.list[dest] = (dest != CPUCore::ZeroRegister) *
         (core.list[src3] - (core.list[src1] * core.list[src2]));
 }
 
-static FORCE_INLINE void udiv(NGPV1& core, const u8 dest, const u8 src1, const u8 src2, const u8)
+static FORCE_INLINE void udiv(CPUInterpreter& core, const u8 dest, const u8 src1, const u8 src2, const u8)
 {
     if (core.list[src2] == 0)
     {
-        core.make_exception(NGPV1::DivideByZeroException, 0, 0);
+        core.make_exception(CPUInterpreter::DivideByZeroException, 0, 0);
         return;
     }
 
     core.list[dest] = (dest != CPUCore::ZeroRegister) * (core.list[src1] / core.list[src2]);
 }
 
-static FORCE_INLINE void div(NGPV1& core, const u8 dest, const u8 src1, const u8 src2, const u8)
+static FORCE_INLINE void div(CPUInterpreter& core, const u8 dest, const u8 src1, const u8 src2, const u8)
 {
     if (core.list[src2] == 0)
     {
-        core.make_exception(NGPV1::DivideByZeroException, 0, 0);
+        core.make_exception(CPUInterpreter::DivideByZeroException, 0, 0);
         return;
     }
 
@@ -242,79 +242,79 @@ static FORCE_INLINE void div(NGPV1& core, const u8 dest, const u8 src1, const u8
 }
 
 // Src2 is a immediate value
-static FORCE_INLINE void _shl(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)
+static FORCE_INLINE void _shl(CPUInterpreter& core, const u8 dest, const u8 src1, const u8 src2)
 {
     core.ilist[dest] = (dest != CPUCore::ZeroRegister) * (core.ilist[src1] << src2);
 }
 
 // Src2 is a immediate value
-static FORCE_INLINE void _shr(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)
+static FORCE_INLINE void _shr(CPUInterpreter& core, const u8 dest, const u8 src1, const u8 src2)
 {
     core.ilist[dest] = (dest != CPUCore::ZeroRegister) * (core.ilist[src1] >> src2);
 }
 
 // Src2 is a immediate value
-static FORCE_INLINE void _asr(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)
+static FORCE_INLINE void _asr(CPUInterpreter& core, const u8 dest, const u8 src1, const u8 src2)
 {
     core.ilist[dest] = (dest != CPUCore::ZeroRegister) * (core.ilist[src1] >> src2);
 }
 
 // Src2 is a immediate value
-static FORCE_INLINE void _ror(NGPV1& core, const u8 dest, const u8 src1, const u8 src2)
+static FORCE_INLINE void _ror(CPUInterpreter& core, const u8 dest, const u8 src1, const u8 src2)
 {
     core.list[dest] = (dest != CPUCore::ZeroRegister) * (std::rotr(core.list[src1], (i32)src2));
 }
 
-static FORCE_INLINE void _abs(NGPV1& core, const u8 dest, const u8 src1, const u8)
+static FORCE_INLINE void _abs(CPUInterpreter& core, const u8 dest, const u8 src1, const u8)
 {
     core.ilist[dest] = (dest != CPUCore::ZeroRegister) *
         (core.ilist[src1] >= 0 ? core.ilist[src1] : -core.ilist[src1]);
 }
 
 // Non Binary
-static FORCE_INLINE void ret(NGPV1& core, const u8 src, const u8, const u32)
+static FORCE_INLINE void ret(CPUInterpreter& core, const u8 src, const u8, const u32)
 {
     core.pc = core.list[src];
     core.handle_pc_change();
 }
 
-static FORCE_INLINE void br(NGPV1& core, const u8 src, const u8, const u32)
+static FORCE_INLINE void br(CPUInterpreter& core, const u8 src, const u8, const u32)
 {
     core.pc = core.list[src];
     core.handle_pc_change();
 }
 
-static FORCE_INLINE void blr(NGPV1& core, const u8 src, const u8, const u32)
+static FORCE_INLINE void blr(CPUInterpreter& core, const u8 src, const u8, const u32)
 {
     core.gpr.lr = core.pc;
     core.pc = core.list[src];
     core.handle_pc_change();
 }
 
-static FORCE_INLINE void brk(NGPV1& core, const u8 src1, const u8 src2, const u32 op)
+static FORCE_INLINE void brk(CPUInterpreter& core, const u8 src1, const u8 src2, const u32 op)
 {
     core.handle_breakpoint(src1 | src2 << 5 | op << 10);
 }
 
-static FORCE_INLINE void svc(NGPV1& core, const u8 src1, const u8 src2, const u32 op)
+static FORCE_INLINE void svc(CPUInterpreter& core, const u8 src1, const u8 src2, const u32 op)
 {
-    core.make_exception(NGPV1::SupervisorException, NGPV1::ExceptionVBOffset, src1 | src2 << 5 | op << 10);
+    core.make_exception(CPUInterpreter::SupervisorException, CPUInterpreter::ExceptionVBOffset, src1 | src2 << 5 | op << 10);
 }
 
-static FORCE_INLINE void evc(NGPV1& core, const u8 src1, const u8 src2, const u32 op)
+static FORCE_INLINE void evc(CPUInterpreter& core, const u8 src1, const u8 src2, const u32 op)
 {
-    core.make_exception(NGPV1::ExtendedSupervisorException, NGPV1::ExceptionVBOffset, src1 | src2 << 5 | op << 10);
+    core.make_exception(CPUInterpreter::ExtendedSupervisorException, CPUInterpreter::ExceptionVBOffset, src1 | src2 << 5 | op << 10);
 }
 
-static FORCE_INLINE void smc(NGPV1& core, const u8 src1, const u8 src2, const u32 op)
+static FORCE_INLINE void smc(CPUInterpreter& core, const u8 src1, const u8 src2, const u32 op)
 {
-    core.make_exception(NGPV1::SecureMachineControllerException, NGPV1::ExceptionVBOffset, src1 | src2 << 5 | op << 10);
+    core.make_exception(CPUInterpreter::SecureMachineControllerException, CPUInterpreter::ExceptionVBOffset, src1 | src2 << 5 | op << 10);
 }
 
-static FORCE_INLINE void eret(NGPV1& core, const u8, const u8, const u32) { core.return_exception(); }
-static FORCE_INLINE void wfi(NGPV1& core, const u8, const u8, const u32) {}
+static FORCE_INLINE void eret(CPUInterpreter& core, const u8, const u8, const u32) { core.return_exception(); }
+static FORCE_INLINE void wfi(CPUInterpreter& core, const u8, const u8, const u32) {}
 
-static FORCE_INLINE void msr(NGPV1& core, const u8 src, const u8 src2, const u32 op)
+static FORCE_INLINE void msr(CPUInterpreter& core, const u8 src, const u8 src2, const u32 op)
 {
     const NGPSystemRegister sr = NGPSystemRegister(src2 | op << 5);
     switch (sr)
@@ -355,7 +355,7 @@ static FORCE_INLINE void msr(NGPV1& core, const u8 src, const u8 src2, const u32
     }
 }
 
-static FORCE_INLINE void mrs(NGPV1& core, const u8 dest, const u8 src2, const u32 op)
+static FORCE_INLINE void mrs(CPUInterpreter& core, const u8 dest, const u8 src2, const u32 op)
 {
     const NGPSystemRegister sr = NGPSystemRegister(src2 | op << 5);
     switch (sr)
@@ -394,10 +394,10 @@ static FORCE_INLINE void mrs(NGPV1& core, const u8 dest, const u8 src2, const u3
     }
 }
 
-static FORCE_INLINE void hlt(NGPV1& core, const u8, const u8, const u32) { core.psr.HALT = true; }
+static FORCE_INLINE void hlt(CPUInterpreter& core, const u8, const u8, const u32) { core.psr.HALT = true; }
 
 // Main opcodes
-static FORCE_INLINE void bl(NGPV1& core, const u32 inst)
+static FORCE_INLINE void bl(CPUInterpreter& core, const u32 inst)
 {
     const u32 disp_inst = inst >> 6;
     const u32 disp = inst & 0x8000000 ? (0xFC00'0000 | disp_inst) << 2 : disp_inst << 2;
@@ -406,14 +406,14 @@ static FORCE_INLINE void bl(NGPV1& core, const u32 inst)
     HANDLE_BRANCH(true, core, disp);
 }
 
-static FORCE_INLINE void b(NGPV1& core, const u32 inst)
+static FORCE_INLINE void b(CPUInterpreter& core, const u32 inst)
 {
     const u32 disp_inst = inst >> 6;
     const u32 disp = inst & 0x8000000 ? (0xFC00'0000 | disp_inst) << 2 : disp_inst << 2;
     HANDLE_BRANCH(true, core, disp);
 }
 
-static FORCE_INLINE void bcond(NGPV1& core, const u32 inst)
+static FORCE_INLINE void bcond(CPUInterpreter& core, const u32 inst)
 {
     const u8 cond = (inst >> 6) & 0xF;
     const i32 disp_inst = (inst >> 10);
@@ -470,7 +470,7 @@ static FORCE_INLINE void bcond(NGPV1& core, const u32 inst)
     }
 }
 
-static FORCE_INLINE void _3op(NGPV1& core, const u32 inst)
+static FORCE_INLINE void _3op(CPUInterpreter& core, const u32 inst)
 {
     const u16 _alu_opc = (inst >> 6) & 0x7FF;
     const u8 dest_src = (inst >> 17) & 0x1F;
@@ -489,7 +489,7 @@ static FORCE_INLINE void _3op(NGPV1& core, const u32 inst)
 #define CASE_SIMD_W(op, field, func) case op: \
     HANDLE_SIMD_WRITE(core, dest_src, field, func, core.list[src1_base] + core.list[src2_index]); break
 
-#define CASE(op, name) case op: name(core, dest_src, src1_base, core.list[src2_index] & 0x1F); break
+#define CASE(op, name) case op: name(core, dest_src, src1_base, src2_index); break
 #define CASE_IMM_SHIFT(op, name) case op: name(core, dest_src, src1_base, src2_index); break
     switch (_alu_opc)
     {
@@ -542,7 +542,7 @@ static FORCE_INLINE void _3op(NGPV1& core, const u32 inst)
 #undef CASE
 }
 
-static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
+static FORCE_INLINE void fp_op(CPUInterpreter& core, const u32 inst)
 {
     const u16 fpop = (inst >> 6) & 0x7FF;
     const u8 dest = (inst >> 17) & 0x1F;
@@ -596,7 +596,7 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
     case NGP_FDIV_S:
         if (core.simd[src2].s == 0)
         {
-            core.make_exception(NGPV1::DivideByZeroException, NGPV1::ExceptionVBOffset, NGPV1::CommentNone);
+            core.make_exception(CPUInterpreter::DivideByZeroException, CPUInterpreter::ExceptionVBOffset, CPUInterpreter::CommentNone);
             break;
         }
         core.simd[dest].s = core.simd[src1].s / core.simd[src2].s;
@@ -613,7 +613,7 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
     case NGP_FDIV_D:
         if (core.simd[src2].d == 0)
         {
-            core.make_exception(NGPV1::DivideByZeroException, NGPV1::ExceptionVBOffset, NGPV1::CommentNone);
+            core.make_exception(CPUInterpreter::DivideByZeroException, CPUInterpreter::ExceptionVBOffset, CPUInterpreter::CommentNone);
             break;
         }
         core.simd[dest].d = core.simd[src1].d / core.simd[src2].d;
@@ -641,19 +641,19 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
         break;
     case NGP_FDUP_S_V_S4:
     {
-        NGPV1::Vec128 vec = core.simd[src1].vec;
+        CPUInterpreter::Vec128 vec = core.simd[src1].vec;
         core.simd[dest].s = vec.s4[src2 & 0x3];
     }
         break;
     case NGP_FDUP_D_V_D2:
     {
-        NGPV1::Vec128 vec = core.simd[src1].vec;
+        CPUInterpreter::Vec128 vec = core.simd[src1].vec;
         core.simd[dest].d = vec.d2[src2 & 0x1];
     }
         break;
     case NGP_FDUP_V_V_S4:
     {
-        NGPV1::Vec128 vec = core.simd[src1].vec;
+        CPUInterpreter::Vec128 vec = core.simd[src1].vec;
         core.simd[dest].vec.s4[0] = vec.s4[src2 & 0x3];
         core.simd[dest].vec.s4[1] = vec.s4[src2 & 0x3];
         core.simd[dest].vec.s4[2] = vec.s4[src2 & 0x3];
@@ -662,15 +662,15 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
         break;
     case NGP_FDUP_V_V_D2:
     {
-        NGPV1::Vec128 vec = core.simd[src1].vec;
+        CPUInterpreter::Vec128 vec = core.simd[src1].vec;
         core.simd[dest].vec.d2[0] = vec.d2[src2 & 0x1];
         core.simd[dest].vec.d2[1] = vec.d2[src2 & 0x1];
     }
         break;
     case NGP_FADD_V_S4:
     {
-        NGPV1::Vec128 op1 = core.simd[src1].vec;
-        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
+        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
         core.simd[dest].vec.s4[0] = op1.s4[0] + op2.s4[0];
         core.simd[dest].vec.s4[1] = op1.s4[1] + op2.s4[1];
         core.simd[dest].vec.s4[2] = op1.s4[2] + op2.s4[2];
@@ -679,8 +679,8 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
     break;
     case NGP_FSUB_V_S4:
     {
-        NGPV1::Vec128 op1 = core.simd[src1].vec;
-        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
+        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
         core.simd[dest].vec.s4[0] = op1.s4[0] - op2.s4[0];
         core.simd[dest].vec.s4[1] = op1.s4[1] - op2.s4[1];
         core.simd[dest].vec.s4[2] = op1.s4[2] - op2.s4[2];
@@ -689,8 +689,8 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
         break;
     case NGP_FMUL_V_S4:
     {
-        NGPV1::Vec128 op1 = core.simd[src1].vec;
-        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
+        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
         core.simd[dest].vec.s4[0] = op1.s4[0] * op2.s4[0];
         core.simd[dest].vec.s4[1] = op1.s4[1] * op2.s4[1];
         core.simd[dest].vec.s4[2] = op1.s4[2] * op2.s4[2];
@@ -699,11 +699,11 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
         break;
     case NGP_FDIV_V_S4:
     {
-        NGPV1::Vec128 op1 = core.simd[src1].vec;
-        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
+        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
         if (op2.s4[0] == 0 || op2.s4[1] == 0 || op2.s4[2] == 0 || op2.s4[3] == 0)
         {
-            core.make_exception(NGPV1::DivideByZeroException, NGPV1::ExceptionVBOffset, NGPV1::CommentNone);
+            core.make_exception(CPUInterpreter::DivideByZeroException, CPUInterpreter::ExceptionVBOffset, CPUInterpreter::CommentNone);
             break;
         }
         core.simd[dest].vec.s4[0] = op1.s4[0] / op2.s4[0];
@@ -714,35 +714,35 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
         break;
     case NGP_FADD_V_D2:
     {
-        NGPV1::Vec128 op1 = core.simd[src1].vec;
-        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
+        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
         core.simd[dest].vec.d2[0] = op1.d2[0] + op2.d2[0];
         core.simd[dest].vec.d2[1] = op1.d2[1] + op2.d2[1];
     }
     break;
     case NGP_FSUB_V_D2:
     {
-        NGPV1::Vec128 op1 = core.simd[src1].vec;
-        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
+        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
         core.simd[dest].vec.d2[0] = op1.s4[0] - op2.d2[0];
         core.simd[dest].vec.d2[1] = op1.s4[1] - op2.d2[1];
     }
         break;
     case NGP_FMUL_V_D2:
     {
-        NGPV1::Vec128 op1 = core.simd[src1].vec;
-        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
+        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
         core.simd[dest].vec.d2[0] = op1.d2[0] * op2.d2[0];
         core.simd[dest].vec.d2[1] = op1.d2[1] * op2.d2[1];
     }
         break;
     case NGP_FDIV_V_D2:
     {
-        NGPV1::Vec128 op1 = core.simd[src1].vec;
-        NGPV1::Vec128 op2 = core.simd[src2].vec;
+        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
+        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
         if (op2.d2[0] == 0 || op2.d2[1] == 0)
         {
-            core.make_exception(NGPV1::DivideByZeroException, NGPV1::ExceptionVBOffset, NGPV1::CommentNone);
+            core.make_exception(CPUInterpreter::DivideByZeroException, CPUInterpreter::ExceptionVBOffset, CPUInterpreter::CommentNone);
             break;
         }
         core.simd[dest].vec.d2[0] = op1.d2[0] / op2.d2[0];
@@ -751,7 +751,7 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
         break;
     case NGP_FNEG_V_S4:
     {
-        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
         core.simd[dest].vec.s4[0] = -op1.s4[0];
         core.simd[dest].vec.s4[1] = -op1.s4[1];
         core.simd[dest].vec.s4[2] = -op1.s4[2];
@@ -760,7 +760,7 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
         break;
     case NGP_FNEG_V_D2:
     {
-        NGPV1::Vec128 op1 = core.simd[src1].vec;
+        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
         core.simd[dest].vec.d2[0] = -op1.d2[0];
         core.simd[dest].vec.d2[1] = -op1.d2[1];
     }
@@ -768,7 +768,7 @@ static FORCE_INLINE void fp_op(NGPV1& core, const u32 inst)
     }
 }
 
-static FORCE_INLINE void load_store_immediate(NGPV1& core, const u32 inst)
+static FORCE_INLINE void load_store_immediate(CPUInterpreter& core, const u32 inst)
 {
     const u8 memopc = (inst >> 6) & 0x7;
     const u8 dest_src = (inst >> 9) & 0x1F;
@@ -801,7 +801,7 @@ static FORCE_INLINE void load_store_immediate(NGPV1& core, const u32 inst)
 #undef CASE_W
 }
 
-static FORCE_INLINE void load_store_fp_immediate(NGPV1& core, const u32 inst)
+static FORCE_INLINE void load_store_fp_immediate(CPUInterpreter& core, const u32 inst)
 {
     const u8 memopc = (inst >> 6) & 0x7;
     const u8 dest_src = (inst >> 9) & 0x1F;
@@ -832,52 +832,9 @@ static FORCE_INLINE void load_store_fp_immediate(NGPV1& core, const u32 inst)
     }
 }
 
-static FORCE_INLINE void load_store_register(NGPV1& core, const u32 inst)
-{
-    const u16 opc = (inst >> 6) & 0x7FF;
-	const u8 dest_src = (inst >> 17) & 0x1F;
-    const u8 base = (inst >> 22) & 0x1F;
-	const u8 index = (inst >> 27) & 0x1F;
+static FORCE_INLINE void load_store_pair(CPUInterpreter& core, const u32 inst) {}
 
-#define CASE_R(op, func) case op: \
-    HANDLE_READ(core, dest_src, func, core.list[base] + core.list[index]); break
-#define CASE_R_SIGNED(op, func) case op: \
-    HANDLE_READ_SIGNED(core, dest_src, func, core.list[base] + core.list[index]); break
-#define CASE_SIMD_R(op, field, func) case op: \
-    HANDLE_SIMD_READ(core, dest_src, field, func, core.list[base] + core.list[index]); break
-
-#define CASE_W(op, type, func) case op: \
-    HANDLE_WRITE(core, dest_src, type, func, core.list[base] + core.list[index]); break
-#define CASE_SIMD_W(op, field, func) case op: \
-    HANDLE_SIMD_WRITE(core, dest_src, field, func, core.list[base] + core.list[index]); break
-
-    switch (opc)
-    {
-        CASE_R(NGP_LD, Bus::read_word);
-        CASE_R_SIGNED(NGP_LDSH, Bus::read_ihalf);
-        CASE_R(NGP_LDH, Bus::read_half);
-        CASE_R_SIGNED(NGP_LDSB, Bus::read_ibyte);
-        CASE_R(NGP_LDB, Bus::read_byte);
-        CASE_W(NGP_ST, Word, Bus::write_word);
-        CASE_W(NGP_STH, u16, Bus::write_word);
-        CASE_W(NGP_STB, u8, Bus::write_word);
-        CASE_SIMD_R(NGP_LD_S, w, Bus::read_word);
-        CASE_SIMD_R(NGP_LD_D, dw, Bus::read_dword);
-        CASE_SIMD_R(NGP_LD_V, qw, Bus::read_qword);
-        CASE_SIMD_W(NGP_ST_S, w, Bus::write_word);
-        CASE_SIMD_W(NGP_ST_D, dw, Bus::write_dword);
-        CASE_SIMD_W(NGP_ST_V, qw, Bus::write_qword);
-    }
-#undef CASE_R
-#undef CASE_R_SIGNED
-#undef CASE_SIMD_R
-#undef CASE_W
-#undef CASE_SIMD_W
-}
-
-static FORCE_INLINE void load_store_pair(NGPV1& core, const u32 inst) {}
-
-static FORCE_INLINE void extended_alu(NGPV1& core, const u32 inst)
+static FORCE_INLINE void extended_alu(CPUInterpreter& core, const u32 inst)
 {
     const u8 extopc = (inst >> 6) & 0x3F;
     const u8 dest = (inst >> 12) & 0x1F;
@@ -898,7 +855,7 @@ static FORCE_INLINE void extended_alu(NGPV1& core, const u32 inst)
 #undef CASE
 }
 
-static FORCE_INLINE void non_binary(NGPV1& core, const u32 inst)
+static FORCE_INLINE void non_binary(CPUInterpreter& core, const u32 inst)
 {
     const u16 non_opc = (inst >> 6) & 0x3F;
     const u8 dest_src = (inst >> 12) & 0x1F;
@@ -926,7 +883,7 @@ static FORCE_INLINE void non_binary(NGPV1& core, const u32 inst)
 #undef CASE
 }
 
-static FORCE_INLINE void ld_pc(NGPV1& core, const u32 inst)
+static FORCE_INLINE void ld_pc(CPUInterpreter& core, const u32 inst)
 {
     const u8 dest = (inst >> 6) & 0x1F;
     const u32 disp_inst = inst >> 11;
@@ -934,7 +891,7 @@ static FORCE_INLINE void ld_pc(NGPV1& core, const u32 inst)
     core.list[dest] = (dest != CPUCore::ZeroRegister) * Bus::read_word(core.pc + disp);
 }
 
-static FORCE_INLINE void ld_s_pc(NGPV1& core, const u32 inst)
+static FORCE_INLINE void ld_s_pc(CPUInterpreter& core, const u32 inst)
 {
     const u8 dest = (inst >> 6) & 0x1F;
     const u32 disp_inst = inst >> 11;
@@ -942,7 +899,7 @@ static FORCE_INLINE void ld_s_pc(NGPV1& core, const u32 inst)
     core.simd[dest].w = Bus::read_word(core.pc + disp);
 }
 
-static FORCE_INLINE void ld_d_pc(NGPV1& core, const u32 inst)
+static FORCE_INLINE void ld_d_pc(CPUInterpreter& core, const u32 inst)
 {
     const u8 dest = (inst >> 6) & 0x1F;
     const u32 disp_inst = inst >> 11;
@@ -950,7 +907,7 @@ static FORCE_INLINE void ld_d_pc(NGPV1& core, const u32 inst)
     core.simd[dest].dw = Bus::read_dword(core.pc + disp);
 }
 
-static FORCE_INLINE void ld_v_pc(NGPV1& core, const u32 inst)
+static FORCE_INLINE void ld_v_pc(CPUInterpreter& core, const u32 inst)
 {
     const u8 dest = (inst >> 6) & 0x1F;
     const u32 disp_inst = inst >> 11;
@@ -958,7 +915,7 @@ static FORCE_INLINE void ld_v_pc(NGPV1& core, const u32 inst)
     core.simd[dest].qw = Bus::read_qword(core.pc + disp);
 }
 
-static FORCE_INLINE void adr_pc(NGPV1& core, const u32 inst)
+static FORCE_INLINE void adr_pc(CPUInterpreter& core, const u32 inst)
 {
     const u8 dest = (inst >> 6) & 0x1F;
     const u32 disp_inst = inst >> 11;
@@ -966,7 +923,7 @@ static FORCE_INLINE void adr_pc(NGPV1& core, const u32 inst)
     core.list[dest] = (dest != CPUCore::ZeroRegister) * (core.pc + disp);
 }
 
-static FORCE_INLINE void immediate(NGPV1& core, const u32 inst)
+static FORCE_INLINE void immediate(CPUInterpreter& core, const u32 inst)
 {
     const u16 imm = inst >> 16;
     const u8 immopc = (inst >> 6) & 0x1F;
@@ -980,7 +937,7 @@ static FORCE_INLINE void immediate(NGPV1& core, const u32 inst)
 
 MAKE_IMMEDIATE_OP(add_immediate, core.list[src] + imm);
 
-static FORCE_INLINE void adds_immediate(NGPV1& core, const u32 inst)
+static FORCE_INLINE void adds_immediate(CPUInterpreter& core, const u32 inst)
 {
     const u8 dest = (inst >> 6) & 0x1F;
     const u8 src = (inst >> 11) & 0x1F;
@@ -991,7 +948,7 @@ static FORCE_INLINE void adds_immediate(NGPV1& core, const u32 inst)
 
 MAKE_IMMEDIATE_OP(sub_immediate, core.list[src] - imm);
 
-static FORCE_INLINE void subs_immediate(NGPV1& core, const u32 inst)
+static FORCE_INLINE void subs_immediate(CPUInterpreter& core, const u32 inst)
 {
     const u8 dest = (inst >> 6) & 0x1F;
     const u8 src = (inst >> 11) & 0x1F;
@@ -1002,7 +959,7 @@ static FORCE_INLINE void subs_immediate(NGPV1& core, const u32 inst)
 
 MAKE_IMMEDIATE_OP(and_immediate, core.list[src] & imm);
 
-static FORCE_INLINE void ands_immediate(NGPV1& core, const u32 inst)
+static FORCE_INLINE void ands_immediate(CPUInterpreter& core, const u32 inst)
 {
     const u8 dest = (inst >> 6) & 0x1F;
     const u8 src = (inst >> 11) & 0x1F;
@@ -1014,12 +971,12 @@ static FORCE_INLINE void ands_immediate(NGPV1& core, const u32 inst)
 MAKE_IMMEDIATE_OP(or_immediate, core.list[src] | imm);
 MAKE_IMMEDIATE_OP(eor_immediate, core.list[src] ^ imm);
 
-static FORCE_INLINE void tbz(NGPV1& core, const u32 inst) {}
-static FORCE_INLINE void tbnz(NGPV1& core, const u32 inst) {}
-static FORCE_INLINE void cbz(NGPV1& core, const u32 inst) {}
-static FORCE_INLINE void cbnz(NGPV1& core, const u32 inst) {}
+static FORCE_INLINE void tbz(CPUInterpreter& core, const u32 inst) {}
+static FORCE_INLINE void tbnz(CPUInterpreter& core, const u32 inst) {}
+static FORCE_INLINE void cbz(CPUInterpreter& core, const u32 inst) {}
+static FORCE_INLINE void cbnz(CPUInterpreter& core, const u32 inst) {}
 
-static FORCE_INLINE void fp_4op(NGPV1& core, const u32 inst)
+static FORCE_INLINE void fp_4op(CPUInterpreter& core, const u32 inst)
 {
     const u8 fpopc = (inst >> 6) & 0x3F;
     const u8 dest = (inst >> 12) & 0x1F;
@@ -1051,21 +1008,21 @@ static FORCE_INLINE void fp_4op(NGPV1& core, const u32 inst)
 }
 
 
-void NGPV1::initialize()
+void CPUInterpreter::initialize()
 {
     pc = 0;
     handle_pc_change();
 }
 
-void NGPV1::shutdown() {}
+void CPUInterpreter::shutdown() {}
 
 
-usize NGPV1::dispatch(usize num_cycles)
+usize CPUInterpreter::dispatch(usize num_cycles)
 {
     return run(num_cycles);
 }
 
-void NGPV1::print_registers()
+void CPUInterpreter::print_registers()
 {
     for (u32 i = 0; i < 29; i++)
     {
@@ -1083,28 +1040,28 @@ void NGPV1::print_registers()
     }
 }
 
-void NGPV1::set_psr(ProgramStateRegister new_psr)
+void CPUInterpreter::set_psr(ProgramStateRegister new_psr)
 {
     psr = new_psr;
 }
 
-CPUCore::ProgramStateRegister NGPV1::get_psr()
+CPUCore::ProgramStateRegister CPUInterpreter::get_psr()
 {
     return psr;
 }
 
-void NGPV1::set_pc(VirtualAddress new_pc)
+void CPUInterpreter::set_pc(VirtualAddress new_pc)
 {
     pc = new_pc & 0xFFFF'FFFC;
     handle_pc_change();
 }
 
-VirtualAddress NGPV1::get_pc()
+VirtualAddress CPUInterpreter::get_pc()
 {
     return pc;
 }
 
-void NGPV1::external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr)
+void CPUInterpreter::external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr)
 {
     switch (code)
     {
@@ -1121,7 +1078,7 @@ void NGPV1::external_handle_exception(ExceptionCode code, ExceptionComment comme
     }
 }
 
-usize NGPV1::run(usize num_cycles)
+usize CPUInterpreter::run(usize num_cycles)
 {
     // One cycle for fetching, decoding and simple arithmetic
     while (num_cycles && !psr.HALT)
@@ -1142,7 +1099,7 @@ usize NGPV1::run(usize num_cycles)
             CASE(NGP_FP_OP, fp_op);
             CASE(NGP_LOAD_STORE_IMMEDIATE, load_store_immediate);
             CASE(NGP_LOAD_STORE_FP_IMMEDIATE, load_store_fp_immediate);
-            CASE(0x7, [](NGPV1& core, const u32) {});
+            CASE(0x7, [](CPUCore&,Word) {});
             CASE(NGP_LOAD_STORE_PAIR, load_store_pair);
             CASE(NGP_EXTENDEDALU, extended_alu);
             CASE(NGP_NON_BINARY, non_binary);
@@ -1175,11 +1132,11 @@ usize NGPV1::run(usize num_cycles)
     return num_cycles;
 }
 
-void NGPV1::handle_pc_change()
+void CPUInterpreter::handle_pc_change()
 {
     if (pc & 0x3)
     {
-        make_exception(NGPV1::BadPCAlignment, NGPV1::ExceptionVBOffset, NGPV1::CommentNone);
+        make_exception(CPUInterpreter::BadPCAlignment, CPUInterpreter::ExceptionVBOffset, CPUInterpreter::CommentNone);
         return;
     }
 
@@ -1194,11 +1151,11 @@ void NGPV1::handle_pc_change()
     }
 
     pc_page_addr = nullptr;
-    make_exception(NGPV1::AccessViolationException, NGPV1::ExceptionVBOffset, NGPV1::CantExecute);
+    make_exception(CPUInterpreter::AccessViolationException, CPUInterpreter::ExceptionVBOffset, CPUInterpreter::CantExecute);
     return;
 }
 
-Word NGPV1::fetch_next_inst()
+Word CPUInterpreter::fetch_next_inst()
 {
     const Word page_index = Bus::get_page_index(pc);
     if (pc_page_index == page_index) [[likely]]
@@ -1211,7 +1168,7 @@ Word NGPV1::fetch_next_inst()
     return 0;
 }
 
-void NGPV1::make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 comment)
+void CPUInterpreter::make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 comment)
 {
     switch (code)
     {
@@ -1230,7 +1187,7 @@ void NGPV1::make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 co
         VirtualAddress vba = system_regs.vbar.vbar_el[target_exception_level];
         if (vba & 0xF)
         {
-            make_exception(NGPV1::BadSystemRegAlignment, ExceptionVBOffset, CommentNone);
+            make_exception(CPUInterpreter::BadSystemRegAlignment, ExceptionVBOffset, CommentNone);
         }
 
         if (Bus::check_virtual_address(vba, Bus::WriteableAddress) == Bus::ValidAddress)
@@ -1256,7 +1213,7 @@ void NGPV1::make_exception(ExceptionCode code, VirtualAddress vec_offset, u16 co
     }
 }
 
-void NGPV1::return_exception()
+void CPUInterpreter::return_exception()
 {
     VirtualAddress target_pc; 
     ProgramStateRegister last_psr;
@@ -1268,7 +1225,7 @@ void NGPV1::return_exception()
     handle_pc_change();
 }
 
-void NGPV1::handle_breakpoint(u16 comment)
+void CPUInterpreter::handle_breakpoint(u16 comment)
 {
     
 }

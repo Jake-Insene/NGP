@@ -10,7 +10,7 @@
 #include "CPU/JIT/X86/X86JIT.h"
 
 
-struct alignas(64) NGPV1 : CPUCore
+struct alignas(64) CPUInterpreter : CPUCore
 {
     enum FetchType
     {
@@ -24,7 +24,7 @@ struct alignas(64) NGPV1 : CPUCore
         u32 list[32];
         i32 ilist[32];
     };
-    SIMDRegisterV1 simd[SIMDRegistersCount];
+    SIMDRegister simd[SIMDRegistersCount];
 
     // CPU Registers
     // System registers
@@ -60,25 +60,19 @@ struct alignas(64) NGPV1 : CPUCore
     Word pc_page_offset;
     const Word* pc_page_addr;
 
-#if defined(NGP_BUILD_VAR)
-#define OVERRIDE override
-#else
-#define OVERRIDE
-#endif
+    void initialize() override;
+    void shutdown() override;
 
-    void initialize() OVERRIDE;
-    void shutdown() OVERRIDE;
+    usize dispatch(usize num_cycles) override;
 
-    usize dispatch(usize num_cycles) OVERRIDE;
+    void print_registers() override;
 
-    void print_registers() OVERRIDE;
+    void set_psr(ProgramStateRegister new_psr) override;
+    ProgramStateRegister get_psr() override;
+    void set_pc(VirtualAddress new_pc) override;
+    VirtualAddress get_pc() override;
 
-    void set_psr(ProgramStateRegister new_psr) OVERRIDE;
-    ProgramStateRegister get_psr() OVERRIDE;
-    void set_pc(VirtualAddress new_pc) OVERRIDE;
-    VirtualAddress get_pc() OVERRIDE;
-
-    void external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr) OVERRIDE;
+    void external_handle_exception(ExceptionCode code, ExceptionComment comment, VirtualAddress addr) override;
 
     usize run(usize num_cycles);
 

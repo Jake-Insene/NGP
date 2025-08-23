@@ -52,7 +52,7 @@ struct GU
 
     enum GUID
     {
-        GU_1 = 0,
+        GU_GU1 = 0,
     };
 
     enum QueueControlBit

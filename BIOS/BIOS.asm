@@ -22,7 +22,6 @@ DISPLAY_WIDTH = 0x100
 DISPLAY_HEIGHT = 0x100
 DISPLAY_CONFIG = DISPLAY_FORMAT_CREATE DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_FORMAT_RGBA8
 
-
 main:
 	; Setting Up SP
 	ADR SP, SP_END
@@ -50,9 +49,9 @@ main:
 	
 	ADR R3, CommandListBegin
 	MOV R2, 0x01
-	SHR R0, R0, 8
+	SHR R4, R0, 8
 	SHL R2, R2, 24
-	OR R2, R2, R0
+	OR R2, R2, R4
 	ST R2, [R3]
 
 	IMM32 R2, 0x00100100
@@ -85,6 +84,7 @@ CommandListBegin:
 	.zero 0x1000
 CommandListEnd:
 
+.align 4
 DoubleBuffer:
 	.word 0x00000000 ; First frame buffer
 	.word 0x00040000 ; Second frame buffer

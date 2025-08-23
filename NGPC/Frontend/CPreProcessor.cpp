@@ -13,8 +13,6 @@
 
 void CPreProcessor::process(const char* file_path)
 {
-    sources.clear();
-
     std::ifstream input{ file_path, std::ios::binary | std::ios::ate };
     if (!input.is_open())
     {

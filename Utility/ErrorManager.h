@@ -8,6 +8,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#define MAKE_ERROR(tk, BREAKER, ...) \
+    {\
+        ErrorManager::error(tk.get_source_file().data(), tk.line, __VA_ARGS__);\
+        BREAKER;\
+    }
+
 struct ErrorManager
 {
     static inline void error(const char* file_path, u32 line, const char* format, ...)

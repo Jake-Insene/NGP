@@ -62,12 +62,17 @@ enum CTokenNumberType
 
 enum CTokenKeyword
 {
+    TK_VOID,
     TK_CHAR,
     TK_SHORT,
     TK_INT,
     TK_LONG,
     TK_UNSIGNED,
     TK_SIGNED,
+    TK_FLOAT,
+    TK_DOUBLE,
+
+    TK_CONST,
     TK_STATIC,
     TK_INLINE,
     TK_STRUCT,
@@ -78,7 +83,7 @@ enum CTokenKeyword
     TK_WHILE,
     TK_DO,
     TK_GOTO,
-    TK_CONST,
+    TK_TYPEDEF,
 };
 
 enum CTokenDirective
@@ -120,5 +125,22 @@ struct CToken
     [[nodiscard]] constexpr bool is_one_of(CTokenType tk1, CTokenType tk2) const
     {
         return type == tk1 || type == tk2;
+    }
+
+    [[nodiscard]] constexpr bool is_primitive_type() const
+    {
+        return is(TOKEN_KEYWORD) && subtype >= TK_VOID && subtype <= TK_DOUBLE;
+    }
+
+    [[nodiscard]] constexpr bool is_storage_mod() const
+    {
+        return is(TOKEN_KEYWORD) 
+            && (subtype == TK_STATIC || subtype == TK_INLINE || subtype == TK_CONST);
+    }
+
+    [[nodiscard]] constexpr bool is_sign_specifier() const
+    {
+        return is(TOKEN_KEYWORD)
+            && (subtype == TK_SIGNED || subtype == TK_UNSIGNED);
     }
 };

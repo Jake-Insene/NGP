@@ -10,11 +10,6 @@
 #include "FileFormat/ISA.h"
 #include "StringPool.h"
 
-#define MAKE_ERROR(AsmToken, BREAKER, ...) \
-    {\
-        ErrorManager::error(AsmToken.get_source_file().data(), AsmToken.line, __VA_ARGS__);\
-        BREAKER;\
-    }
 
 #define ADD_RESOLVE(RESOLVE_TYPE, IDX, PIDX) \
     {\

@@ -1,0 +1,22 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "ngpv1.exe (NGP\\ngpv1.exe)",
+      "name": "launch ngp v1",
+      "currentDir": "${workspaceRoot}",
+      "args": [ "-bios BIOS/BIOS.BIN" ]
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "ngpc.exe (NGPC\\ngpc.exe)",
+      "name": "launch ngp c compiler",
+      "currentDir": "${workspaceRoot}",
+      "args": [ "BIOS/start.c" ]
+    }
+  ]
+}

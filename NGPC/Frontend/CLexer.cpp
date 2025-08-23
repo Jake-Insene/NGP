@@ -23,12 +23,16 @@ SymbolInfo symbols[] =
     {.symbol = "define", .size = 6, .type = TOKEN_DIRECTIVE, .subtype = TD_DEFINE },
 
     // keywords
+    {.symbol = "void", .size = 4, .type = TOKEN_KEYWORD, .subtype = TK_VOID },
     {.symbol = "char", .size = 4, .type = TOKEN_KEYWORD, .subtype = TK_CHAR },
     {.symbol = "short", .size = 5, .type = TOKEN_KEYWORD, .subtype = TK_SHORT },
     {.symbol = "int", .size = 3, .type = TOKEN_KEYWORD, .subtype = TK_INT },
     {.symbol = "long", .size = 4, .type = TOKEN_KEYWORD, .subtype = TK_LONG },
     {.symbol = "unsigned", .size = 8, .type = TOKEN_KEYWORD, .subtype = TK_UNSIGNED },
     {.symbol = "signed", .size = 6, .type = TOKEN_KEYWORD, .subtype = TK_SIGNED },
+    {.symbol = "float", .size = 5, .type = TOKEN_KEYWORD, .subtype = TK_FLOAT },
+    {.symbol = "double", .size = 6, .type = TOKEN_KEYWORD, .subtype = TK_DOUBLE },
+    
     {.symbol = "static", .size = 6, .type = TOKEN_KEYWORD, .subtype = TK_STATIC },
     {.symbol = "inline", .size = 6, .type = TOKEN_KEYWORD, .subtype = TK_INLINE },
     {.symbol = "struct", .size = 6, .type = TOKEN_KEYWORD, .subtype = TK_STRUCT },
@@ -84,6 +88,7 @@ CToken CLexer::get_next()
 
     skip_white_space();
 
+lexer_routine:
     switch (current)
     {
     case ':':
@@ -180,6 +185,8 @@ CToken CLexer::get_next()
             {
                 advance();
             }
+
+            goto lexer_routine;
         }
         else
         {

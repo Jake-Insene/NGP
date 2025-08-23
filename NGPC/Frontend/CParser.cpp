@@ -23,7 +23,18 @@ void CParser::process_tokens()
 {
 	while (current->type != TOKEN_END_OF_FILE)
 	{
-		try_parse_statement();
+		ASTNodeID node = try_parse_statement();
+		if (node == ASTNodeID(-1))
+		{
+			if (ErrorManager::must_synchronize)
+			{
+				synchronize();
+			}
+		}
+		else
+		{
+			main_nodes.emplace_back(node);
+		}
 	}
 }
 
@@ -53,114 +64,132 @@ bool CParser::expected(CTokenType type, const char* format, ...)
 	return true;
 }
 
-void CParser::add_declaration(const ASTStorageInfo& storage_info, StringID name, bool is_func)
+void CParser::synchronize()
 {
-	ASTDeclaration decl = {};
-	decl.is_func = is_func;
-	decl.name = name;
-	decl.storage_info = storage_info;
-	declarations.insert({ name, decl });
+	while (true)
+	{
+		if (current->is(TOKEN_END_OF_FILE))
+		{
+			return;
+		}
+		else if (!current->is(TOKEN_KEYWORD))
+		{
+			advance();
+			continue;
+		}
+
+		switch (current->subtype)
+		{
+		case TK_FUNC:
+		case TK_VAR:
+		case TK_CONST:
+			return;
+		}
+
+		advance();
+	}
 }
 
-
-void CParser::try_parse_statement()
+ASTNodeID CParser::try_parse_statement()
 {
-	ASTStorageInfo storage_info = parse_storage_info();
-
-	if (!current->is(TOKEN_IDENTIFIER))
+	if (current->is_func())
 	{
-		MAKE_ERROR((*current), return, "a name was expected");
+		return parse_function();
 	}
+	else if (current->is_var())
+	{
+		return parse_var();
+	}
+	else if (current->is_const())
+	{
+		return parse_const();
+	}
+
+	ASTNodeID pe = try_parse_expression_statement();
+	expected(TOKEN_SEMICOLON, "';' was expected");
+	return pe;
+}
+
+ASTNodeID CParser::parse_function()
+{
+	advance(); // func keyword
 
 	StringID name = current->str;
-	advance();
-
-	if (current->is(TOKEN_LEFT_PARENT))
-	{
-		try_parse_function(storage_info, name);
-	}
-	else if (current->is(TOKEN_EQUAL))
-	{
-		try_parse_definition(storage_info, name);
-	}
-	else
-	{
-		expected(TOKEN_SEMICOLON, "';' was expected");
-		add_declaration(storage_info, name, true);
-	}
-}
-
-void CParser::try_parse_function(const ASTStorageInfo& return_type, StringID name)
-{
 	if (declarations.find(name) != declarations.end())
 	{
-		MAKE_ERROR((*last), return, "'%.*s' is already defined", last->get_str().length(), last->get_str().data());
+		MAKE_ERROR((*last), return ASTNodeID(-1), "'%.*s' is already defined", last->get_str().length(), last->get_str().data());
 	}
+	advance(); // name
 
 	if (!expected(TOKEN_LEFT_PARENT, "'(' was expected"))
 	{
-		return;
+		return ASTNodeID(-1);
 	}
 
 	if (!expected(TOKEN_RIGHT_PARENT, "')' was expected"))
 	{
-		return;
+		return ASTNodeID(-1);
 	}
 
-	if (current->is(TOKEN_SEMICOLON))
+	ASTStorageInfo return_info = {};
+	if (current->is(TOKEN_LEFT_BRACE))
 	{
-		add_declaration(return_type, name, true);
-		return;
+		return_info.type = ASTStorageInfo::Void;
+	}
+	else
+	{
+		return_info = parse_storage_info();
 	}
 
 	if (!expected(TOKEN_LEFT_BRACE, "'{' was expected"))
 	{
-		return;
+		return ASTNodeID(-1);
 	}
 
-	// Get expresions.
+	// Get expressions.
+	std::vector<ASTNodeID> statements = {};
+	while (!current->is(TOKEN_END_OF_FILE) && !current->is(TOKEN_RIGHT_BRACE))
+	{
+		ASTNodeID node = try_parse_statement();
+		statements.emplace_back(node);
+	}
 
-	expected(TOKEN_RIGHT_BRACE, "'}' was expected");
+	if (!expected(TOKEN_RIGHT_BRACE, "'}' was expected"))
+	{
+		return ASTNodeID(-1);
+	}
+
+	ASTNodeID func_id = create_node<ASTStatementFunc>();
+	ASTStatementFunc* func = get_node<ASTStatementFunc>(func_id);
+	func->return_info = return_info;
+	func->name = name;
+	func->statements = statements;
+	return func_id;
 }
 
-void CParser::try_parse_definition(const ASTStorageInfo& storage_info, StringID name)
+ASTNodeID CParser::parse_var()
 {
-	if (declarations.find(name) != declarations.end())
-	{
-		MAKE_ERROR((*last), return, "'%.*s' is already defined", last->get_str().length(), last->get_str().data());
-	}
+	advance(); // var keyword
+
+	return ASTNodeID(-1);
+}
+
+ASTNodeID CParser::parse_const()
+{
+	advance(); // const keyword
+
+	return ASTNodeID(-1);
+}
+
+ASTNodeID CParser::try_parse_expression_statement()
+{
+	return ASTNodeID(-1);
 }
 
 ASTStorageInfo CParser::parse_storage_info()
 {
 	ASTStorageInfo storage_info = {};
-
-	while (current->is_storage_mod())
-	{
-		switch (current->subtype)
-		{
-		case TK_STATIC:
-			storage_info.is_static = true;
-			break;
-		case TK_INLINE:
-			storage_info.is_inline = true;
-			break;
-		case TK_CONST:
-			storage_info.is_const = true;
-			break;
-		}
-
-		advance();
-	}
-
-	if (current->is_sign_specifier())
-	{
-		storage_info.type = ASTStorageInfo::Integer;
-		storage_info.byte_size = 4;
-		storage_info.is_signed = current->subtype == TK_SIGNED;
-		advance();
-	}
-
+	
 	if (!current->is_primitive_type())
 	{
 		MAKE_ERROR((*current), return ASTStorageInfo(), "unknown type");
@@ -173,25 +202,44 @@ ASTStorageInfo CParser::parse_storage_info()
 		storage_info.byte_size = 0;
 		storage_info.type_name = StringPool::get_or_insert("void");
 		break;
-	case TK_CHAR:
+	case TK_I8:
 		storage_info.type = ASTStorageInfo::Integer;
 		storage_info.byte_size = 1;
 		storage_info.type_name = StringPool::get_or_insert("char");
+		storage_info.is_signed = true;
 		break;
-	case TK_SHORT:
-		storage_info.type = ASTStorageInfo::Integer;
-		storage_info.byte_size = 2;
-		storage_info.type_name = StringPool::get_or_insert("short");
-		break;
-	case TK_INT:
-		storage_info.type = ASTStorageInfo::Integer;
-		storage_info.byte_size = 4;
-		storage_info.type_name = StringPool::get_or_insert("int");
-		break;
-	case TK_LONG:
+	case TK_U8:
 		storage_info.type = ASTStorageInfo::Integer;
 		storage_info.byte_size = 1;
+		storage_info.type_name = StringPool::get_or_insert("short");
+		break;
+	case TK_I16:
+		storage_info.type = ASTStorageInfo::Integer;
+		storage_info.byte_size = 2;
+		storage_info.type_name = StringPool::get_or_insert("int");
+		storage_info.is_signed = true;
+		break;
+	case TK_U16:
+		storage_info.type = ASTStorageInfo::Integer;
+		storage_info.byte_size = 2;
 		storage_info.type_name = StringPool::get_or_insert("long");
+		break;
+	case TK_I32:
+		storage_info.type = ASTStorageInfo::Integer;
+		storage_info.byte_size = 4;
+		storage_info.type_name = StringPool::get_or_insert("long");
+		storage_info.is_signed = true;
+		break;
+	case TK_U32:
+		storage_info.type = ASTStorageInfo::Integer;
+		storage_info.byte_size = 4;
+		storage_info.type_name = StringPool::get_or_insert("long");
+		break;
+	case TK_F32:
+		storage_info.type = ASTStorageInfo::FloatingPoint;
+		storage_info.byte_size = 4;
+		storage_info.type_name = StringPool::get_or_insert("long");
+		storage_info.is_signed = true;
 		break;
 	}
 

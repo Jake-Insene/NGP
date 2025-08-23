@@ -1,0 +1,2 @@
+StartBIOS:
+	ret

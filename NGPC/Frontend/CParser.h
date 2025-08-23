@@ -15,8 +15,10 @@ enum ASTNodeType
 {
 	AST_NODE_UNKNOWN = 0,
 
+	AST_STATEMENT,
+
 	AST_NODE_STRUCT,
-	AST_NODE_DECLARATION,
+	AST_NODE_STATEMENT,
 	AST_NODE_DEFINITION,
 	AST_NODE_CONST,
 	AST_NODE_FUNCTION,
@@ -27,6 +29,16 @@ enum ASTNodeType
 	AST_NODE_DO_WHILE,
 	AST_NODE_GOTO,
 	AST_NODE_RETURN,
+};
+
+enum ASTStatementType
+{
+	AST_STATEMENT_UNKNOWN = 0,
+
+	AST_STATEMENT_FUNC,
+	AST_STATEMENT_VAR,
+	AST_STATEMENT_CONST,
+	AST_STATEMENT_EXPRESION_STATEMENT,
 };
 
 struct ASTNode
@@ -51,19 +63,42 @@ struct ASTStorageInfo
 
 	bool is_static;
 	bool is_inline;
-	bool is_const;
 	bool is_ptr;
 	bool is_signed;
 };
 
-struct ASTDeclaration : ASTNode
+struct ASTStatement : ASTNode
 {
-	ASTDeclaration() { type = AST_NODE_DECLARATION; };
+	ASTStatement() { type = AST_NODE_STATEMENT; };
+
+	ASTStatementType statement_type;
+};
+
+struct ASTStatementFunc : ASTStatement
+{
+	ASTStatementFunc() { statement_type = AST_STATEMENT_FUNC; }
+	
+	ASTStorageInfo return_info;
+	StringID name;
+	std::vector<ASTNodeID> statements;
+};
+
+struct ASTStatementVar : ASTStatement
+{
+	ASTStatementVar() { statement_type = AST_STATEMENT_VAR; }
 
 	ASTStorageInfo storage_info;
 	StringID name;
+	ASTNodeID value;
+};
 
-	bool is_func;
+struct ASTStatementConst : ASTStatement
+{
+	ASTStatementConst() { statement_type = AST_STATEMENT_CONST; }
+
+	ASTStorageInfo storage_info;
+	StringID name;
+	ASTNodeID value;
 };
 
 using ASTNodeID = usize;
@@ -103,19 +138,38 @@ struct CParser
 	u32 token_index;
 
 	ASTNodePool pool;
-	std::vector<ASTNode> main_nodes;
+	std::vector<ASTNodeID> main_nodes;
 
-	std::unordered_map<StringID, ASTDeclaration> declarations;
+	std::unordered_map<StringID, ASTNodeID> declarations;
 
 	void process(const char* file_path);
 	void process_tokens();
 	void advance();
 
 	bool expected(CTokenType type, const char* format, ...);
-	void add_declaration(const ASTStorageInfo& storage_info, StringID name, bool is_func);
+	void synchronize();
 
-	void try_parse_statement();
-	void try_parse_function(const ASTStorageInfo& return_type, StringID name);
-	void try_parse_definition(const ASTStorageInfo& storage_info, StringID name);
+	template<typename T>
+	[[nodiscard]] ASTNodeID create_node()
+	{ 
+		T* node = new T();
+		return pool.add(node);
+	}
+
+	template<typename T>
+	[[nodiscard]] T* get_node(ASTNodeID node)
+	{
+		return reinterpret_cast<T*>(pool.get(node));
+	}
+
+	std::vector<ASTNodeID>& get_main_nodes() { return main_nodes; }
+
+	ASTNodeID try_parse_statement();
+
+	ASTNodeID parse_function();
+	ASTNodeID parse_var();
+	ASTNodeID parse_const();
+	ASTNodeID try_parse_expression_statement();
+
 	ASTStorageInfo parse_storage_info();
 };

@@ -14,9 +14,9 @@
       "type": "default",
       "project": "CMakeLists.txt",
       "projectTarget": "ngpc.exe (NGPC\\ngpc.exe)",
-      "name": "launch ngp c compiler",
+      "name": "launch ngp language compiler",
       "currentDir": "${workspaceRoot}",
-      "args": [ "BIOS/start.c" ]
+      "args": [ "BIOS/start.ngpl" ]
     }
   ]
 }

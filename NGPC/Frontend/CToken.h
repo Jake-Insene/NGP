@@ -57,21 +57,21 @@ enum CTokenNumberType
     TN_LONG,
     TN_UNSIGNED,
     TN_FLOAT,
-    TN_DOUBLE,
 };
 
 enum CTokenKeyword
 {
     TK_VOID,
-    TK_CHAR,
-    TK_SHORT,
-    TK_INT,
-    TK_LONG,
-    TK_UNSIGNED,
-    TK_SIGNED,
-    TK_FLOAT,
-    TK_DOUBLE,
+    TK_I8,
+    TK_U8,
+    TK_I16,
+    TK_U16,
+    TK_I32,
+    TK_U32,
+    TK_F32,
 
+    TK_FUNC,
+    TK_VAR,
     TK_CONST,
     TK_STATIC,
     TK_INLINE,
@@ -82,7 +82,6 @@ enum CTokenKeyword
     TK_FOR,
     TK_WHILE,
     TK_DO,
-    TK_GOTO,
     TK_TYPEDEF,
 };
 
@@ -111,7 +110,6 @@ struct CToken
         i64 i;
         u64 u;
         f32 s;
-        f64 d;
     };
 
     [[nodiscard]] std::string_view get_source_file() const { return StringPool::get(source_file); }
@@ -129,7 +127,7 @@ struct CToken
 
     [[nodiscard]] constexpr bool is_primitive_type() const
     {
-        return is(TOKEN_KEYWORD) && subtype >= TK_VOID && subtype <= TK_DOUBLE;
+        return is(TOKEN_KEYWORD) && subtype >= TK_VOID && subtype <= TK_F32;
     }
 
     [[nodiscard]] constexpr bool is_storage_mod() const
@@ -138,9 +136,21 @@ struct CToken
             && (subtype == TK_STATIC || subtype == TK_INLINE || subtype == TK_CONST);
     }
 
-    [[nodiscard]] constexpr bool is_sign_specifier() const
+    [[nodiscard]] constexpr bool is_func() const
     {
         return is(TOKEN_KEYWORD)
-            && (subtype == TK_SIGNED || subtype == TK_UNSIGNED);
+            && (subtype == TK_FUNC);
+    }
+
+    [[nodiscard]] constexpr bool is_var() const
+    {
+        return is(TOKEN_KEYWORD)
+            && (subtype == TK_VAR);
+    }
+
+    [[nodiscard]] constexpr bool is_const() const
+    {
+        return is(TOKEN_KEYWORD)
+            && (subtype == TK_CONST);
     }
 };

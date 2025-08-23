@@ -6,6 +6,7 @@
 /******************************************************/
 #include "Backend/CCompiler.h"
 #include "ErrorManager.h"
+#include <fstream>
 
 
 bool CCompiler::compile_file(const char* file_path, const char* output_path)
@@ -16,5 +17,56 @@ bool CCompiler::compile_file(const char* file_path, const char* output_path)
         return false;
     }
 
+    std::vector<ASTNodeID> statements = parser.get_main_nodes();
+    for (auto stat_id : statements)
+    {
+        ASTStatement* statement = parser.get_node<ASTStatement>(stat_id);
+        compile_statement(statement);
+    }
+
+    std::string output_file_name = output_path;
+    output_file_name += ".s";
+
+    std::ofstream output{ output_file_name, std::ios::binary };
+    output << output_str;
+
 	return true;
+}
+
+void CCompiler::compile_statement(ASTStatement* statement)
+{
+    if (statement->statement_type == AST_STATEMENT_FUNC)
+    {
+        compile_function((ASTStatementFunc*)statement);
+    }
+}
+
+void CCompiler::compile_function(ASTStatementFunc* func)
+{
+    output_str.append(StringPool::get(func->name));
+    output_str.append(":\n");
+
+    for (auto stat_id : func->statements)
+    {
+        ASTStatement* statement = parser.get_node<ASTStatement>(stat_id);
+        compile_func_statement(statement);
+    }
+
+    output_str.append("\tret\n");
+}
+
+void CCompiler::compile_func_statement(ASTStatement* statement)
+{
+    if (statement->statement_type == AST_STATEMENT_FUNC)
+    {
+
+    }
+    else if (statement->statement_type == AST_STATEMENT_VAR)
+    {
+
+    }
+    else if (statement->statement_type == AST_STATEMENT_CONST)
+    {
+
+    }
 }

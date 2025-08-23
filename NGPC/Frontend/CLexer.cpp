@@ -24,15 +24,17 @@ SymbolInfo symbols[] =
 
     // keywords
     {.symbol = "void", .size = 4, .type = TOKEN_KEYWORD, .subtype = TK_VOID },
-    {.symbol = "char", .size = 4, .type = TOKEN_KEYWORD, .subtype = TK_CHAR },
-    {.symbol = "short", .size = 5, .type = TOKEN_KEYWORD, .subtype = TK_SHORT },
-    {.symbol = "int", .size = 3, .type = TOKEN_KEYWORD, .subtype = TK_INT },
-    {.symbol = "long", .size = 4, .type = TOKEN_KEYWORD, .subtype = TK_LONG },
-    {.symbol = "unsigned", .size = 8, .type = TOKEN_KEYWORD, .subtype = TK_UNSIGNED },
-    {.symbol = "signed", .size = 6, .type = TOKEN_KEYWORD, .subtype = TK_SIGNED },
-    {.symbol = "float", .size = 5, .type = TOKEN_KEYWORD, .subtype = TK_FLOAT },
-    {.symbol = "double", .size = 6, .type = TOKEN_KEYWORD, .subtype = TK_DOUBLE },
+    {.symbol = "i8", .size = 2, .type = TOKEN_KEYWORD, .subtype = TK_I8 },
+    {.symbol = "u8", .size = 2, .type = TOKEN_KEYWORD, .subtype = TK_U8 },
+    {.symbol = "i16", .size = 3, .type = TOKEN_KEYWORD, .subtype = TK_I16 },
+    {.symbol = "u16", .size = 3, .type = TOKEN_KEYWORD, .subtype = TK_U16 },
+    {.symbol = "i32", .size = 3, .type = TOKEN_KEYWORD, .subtype = TK_I32 },
+    {.symbol = "u32", .size = 3, .type = TOKEN_KEYWORD, .subtype = TK_U32 },
+    {.symbol = "f32", .size = 3, .type = TOKEN_KEYWORD, .subtype = TK_F32 },
     
+    {.symbol = "func", .size = 4, .type = TOKEN_KEYWORD, .subtype = TK_FUNC },
+    {.symbol = "var", .size = 3, .type = TOKEN_KEYWORD, .subtype = TK_VAR },
+    {.symbol = "const", .size = 5, .type = TOKEN_KEYWORD, .subtype = TK_CONST },
     {.symbol = "static", .size = 6, .type = TOKEN_KEYWORD, .subtype = TK_STATIC },
     {.symbol = "inline", .size = 6, .type = TOKEN_KEYWORD, .subtype = TK_INLINE },
     {.symbol = "struct", .size = 6, .type = TOKEN_KEYWORD, .subtype = TK_STRUCT },
@@ -42,8 +44,6 @@ SymbolInfo symbols[] =
     {.symbol = "for", .size = 3, .type = TOKEN_KEYWORD, .subtype = TK_FOR },
     {.symbol = "while", .size = 5, .type = TOKEN_KEYWORD, .subtype = TK_WHILE },
     {.symbol = "do", .size = 2, .type = TOKEN_KEYWORD, .subtype = TK_DO },
-    {.symbol = "goto", .size = 4, .type = TOKEN_KEYWORD, .subtype = TK_GOTO },
-    {.symbol = "const", .size = 5, .type = TOKEN_KEYWORD, .subtype = TK_CONST },
 };
 
 #define MAKE_TOKEN(TYPE) { \
@@ -366,13 +366,13 @@ CToken CLexer::get_number()
 
     if (current == '.')
     {
-        tk.subtype = TN_DOUBLE;
+        tk.subtype = TN_FLOAT;
         advance(); // Skip '.'
 
         while (is_num(current))
             advance();
 
-        tk.d = std::strtod((char*)content + start, nullptr);
+        tk.s = std::strtof((char*)content + start, nullptr);
     }
     else
     {

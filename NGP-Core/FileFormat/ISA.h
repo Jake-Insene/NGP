@@ -49,37 +49,36 @@ enum NGPBaseOpcode : u8
 
     NGP_LOAD_STORE_IMMEDIATE = 0x5,
     NGP_LOAD_STORE_FP_IMMEDIATE = 0x6,
-    NGP_LOAD_STORE_PAIR = 0x8,
+    NGP_LOAD_STORE_PAIR = 0x7,
 
-    NGP_EXTENDEDALU = 0x9,
-    NGP_NON_BINARY = 0xA,
+    NGP_EXTENDEDALU = 0x8,
+    NGP_NON_BINARY = 0x9,
 
-    NGP_LD_PC = 0xB,
-    NGP_LD_S_PC = 0xC,
-    NGP_LD_D_PC = 0xD,
-    NGP_LD_V_PC = 0xE,
-    NGP_ADR_PC = 0xF,
+    NGP_LD_PC = 0xA,
+    NGP_LD_S_PC = 0xB,
+    NGP_LD_V_PC = 0xC,
+    NGP_ADR_PC = 0xD,
 
-    NGP_IMMEDIATE = 0x10,
+    NGP_IMMEDIATE = 0xE,
 
-    NGP_ADD_IMMEDIATE = 0x11,
-    NGP_ADDS_IMMEDIATE = 0x12,
-    NGP_SUB_IMMEDIATE = 0x13,
-    NGP_SUBS_IMMEDIATE = 0x14,
+    NGP_ADD_IMMEDIATE = 0xF,
+    NGP_ADDS_IMMEDIATE = 0x10,
+    NGP_SUB_IMMEDIATE = 0x11,
+    NGP_SUBS_IMMEDIATE = 0x12,
 
-    NGP_AND_IMMEDIATE = 0x15,
-    NGP_ANDS_IMMEDIATE = 0x16,
-    NGP_OR_IMMEDIATE = 0x17,
-    NGP_ORN_IMMEDIATE = 0x18,
-    NGP_EOR_IMMEDIATE = 0x19,
+    NGP_AND_IMMEDIATE = 0x13,
+    NGP_ANDS_IMMEDIATE = 0x14,
+    NGP_OR_IMMEDIATE = 0x15,
+    NGP_ORN_IMMEDIATE = 0x16,
+    NGP_EOR_IMMEDIATE = 0x17,
 
-    NGP_TBZ = 0x1A,
-    NGP_TBNZ = 0x1B,
+    NGP_TBZ = 0x18,
+    NGP_TBNZ = 0x19,
 
-    NGP_CBZ = 0x1C,
-    NGP_CBNZ = 0x1D,
+    NGP_CBZ = 0x1A,
+    NGP_CBNZ = 0x1B,
 
-    NGP_FP_4OP = 0x1E,
+    NGP_FP_4OP = 0x1C,
 };
 
 // Branch (Conditional)
@@ -176,13 +175,11 @@ enum NGP3OP
 
     //LD[S/D/Q] Rd, [Rb, Ri]
     NGP_LD_S = 0x28,
-    NGP_LD_D = 0x29,
-    NGP_LD_V = 0x2A,
+    NGP_LD_V = 0x29,
 
     //ST[S/D/Q] Rfs, [Rb, Ri]
-    NGP_ST_S = 0x2B,
-    NGP_ST_D = 0x2C,
-    NGP_ST_V = 0x2D,
+    NGP_ST_S = 0x2A,
+    NGP_ST_V = 0x2B,
 };
 
 // Binary (FP)
@@ -198,64 +195,41 @@ enum NGPFPOp
 
     // OPC Rd, Rfs
     NGP_FMOV_S_S = 0x0,
-    NGP_FMOV_D_D = 0x1,
-    NGP_FMOV_V_V = 0x2,
-    NGP_FMOV_W_S = 0x3,
-    NGP_FMOV_S_W = 0x4,
+    NGP_FMOV_V_V = 0x1,
+    NGP_FMOV_W_S = 0x2,
+    NGP_FMOV_S_W = 0x3,
 
-    NGP_FCVT_S_D = 0x5,
-    NGP_FCVT_D_S = 0x6,
-
-    NGP_SCVTF_S_W = 0x7,
-    NGP_SCVTF_D_W = 0x8,
-    NGP_UCVTF_S_W = 0x9,
-    NGP_UCVTF_D_W = 0xa,
+    NGP_SCVTF_S_W = 0x4,
+    NGP_UCVTF_S_W = 0x5,
 
     // OPC Rd, Rfs, Rss
-    NGP_FADD_S = 0xB,
-    NGP_FSUB_S = 0xC,
-    NGP_FMUL_S = 0xD,
-    NGP_FDIV_S = 0xE,
+    NGP_FADD_S = 0x6,
+    NGP_FSUB_S = 0x7,
+    NGP_FMUL_S = 0x8,
+    NGP_FDIV_S = 0x9,
 
-    NGP_FADD_D = 0xF,
-    NGP_FSUB_D = 0x10,
-    NGP_FMUL_D = 0x11,
-    NGP_FDIV_D = 0x12,
+    NGP_FABS_S = 0xA,
 
-    NGP_FABS_S = 0x13,
-    NGP_FABS_D = 0x14,
+    NGP_FNEG_S = 0xB,
 
-    NGP_FNEG_S = 0x15,
-    NGP_FNEG_D = 0x16,
+    // FINS Rd[Src1 & 0x3], Rss
+    NGP_FINS_V_W = 0xC,
+    // FSMOV Rd, Rfs[Src1 & 0x3]
+    NGP_FSMOV_W_V = 0xD,
+    // FUMOV Rd, Rfs[Src1 & 0x1]
+    NGP_FUMOV_W_V = 0xE,
 
-    // FINS Rd.s4[Src1 & 0x3], Rss
-    NGP_FINS_V_S4_W = 0x17,
-    // FSMOV Rd, Rfs.s4[Src1 & 0x3]
-    NGP_FSMOV_W_V_S4 = 0x18,
-    // FSMOV Rd, Rfs.d2[Src1 & 0x1]
-    NGP_FUMOV_W_V_S4 = 0x19,
+    // FDUP Rd, Rfs[Src1 & 0x3]
+    NGP_FDUP_S_V = 0xF,
+    // FDUP Rd, Rfs[Src1 & 0x3]
+    NGP_FDUP_V_V = 0x10,
 
-    // FDUP Rd, Rfs.s4[Src1 & 0x3]
-    NGP_FDUP_S_V_S4 = 0x1A,
-    // FDUP Rd, Rfs.s4[Src1 & 0x1]
-    NGP_FDUP_D_V_D2 = 0x1B,
-    // FDUP Rd.s4, Rfs.s4[Src1 & 0x3]
-    NGP_FDUP_V_V_S4 = 0x1C,
-    // FDUP Rd.d2, Rfs.d2[Src1 & 0x1]
-    NGP_FDUP_V_V_D2 = 0x1D,
+    NGP_FADD_V = 0x11,
+    NGP_FSUB_V = 0x12,
+    NGP_FMUL_V = 0x13,
+    NGP_FDIV_V = 0x14,
 
-    NGP_FADD_V_S4 = 0x1E,
-    NGP_FSUB_V_S4 = 0x1F,
-    NGP_FMUL_V_S4 = 0x20,
-    NGP_FDIV_V_S4 = 0x21,
-
-    NGP_FADD_V_D2 = 0x22,
-    NGP_FSUB_V_D2 = 0x23,
-    NGP_FMUL_V_D2 = 0x24,
-    NGP_FDIV_V_D2 = 0x25,
-
-    NGP_FNEG_V_S4 = 0x26,
-    NGP_FNEG_V_D2 = 0x27,
+    NGP_FNEG_V = 0x15,
 };
 
 // Memory (Immediate)
@@ -297,13 +271,11 @@ enum NGPMemoryFPImmediate
 
     // LD[S/D/Q] Rd, [Rb, #[-/+]Imm12]
     NGP_LD_S_IMMEDIATE = 0x0,
-    NGP_LD_D_IMMEDIATE = 0x1,
-    NGP_LD_V_IMMEDIATE = 0x2,
+    NGP_LD_V_IMMEDIATE = 0x1,
 
     // ST[S/D/Q] Rs, [Rb, #[-/+]Imm12]
-    NGP_ST_S_IMMEDIATE = 0x3,
-    NGP_ST_D_IMMEDIATE = 0x4,
-    NGP_ST_V_IMMEDIATE = 0x5,
+    NGP_ST_S_IMMEDIATE = 0x2,
+    NGP_ST_V_IMMEDIATE = 0x3,
 };
 
 // Memory Pair
@@ -325,14 +297,12 @@ enum NGPLoadStorePair
     // LDP[S/D/Q] Rfd, Rsd, [Rb, #[-/+]Imm7]
     NGP_LDP = 0x0,
     NGP_LDP_S = 0x1,
-    NGP_LDP_D = 0x2,
-    NGP_LDP_V = 0x3,
+    NGP_LDP_V = 0x2,
 
     // STP[S/D/Q] Rfs, Rss, [Rb, #[-/+]Imm7]
-    NGP_STP = 0x4,
-    NGP_STP_S = 0x5,
-    NGP_STP_D = 0x6,
-    NGP_STP_V = 0x7,
+    NGP_STP = 0x3,
+    NGP_STP_S = 0x4,
+    NGP_STP_V = 0x5,
 };
 
 // ExtendedALU Opcode
@@ -429,7 +399,7 @@ enum NGPNonBinary
 enum NGPImmediate
 {
     // Rd = R[Dest]
-
+    
     // MOV Rd, #Imm16 << 16
     NGP_MOVT_IMMEDIATE = 0x0,
 
@@ -439,7 +409,6 @@ enum NGPImmediate
     // Rd = RF[S/D][Dest]
     // FMOV Rd, #Imm16
     NGP_FMOV_S_IMMEDIATE = 0x2,
-    NGP_FMOV_D_IMMEDIATE = 0x3,
     NGP_FMOV_V_IMMEDIATE = 0x3,
 };
 
@@ -458,12 +427,8 @@ enum NGPFP4Op
     // SF = Subfix
 
     NGP_FMADD_S = 0x0,
-    NGP_FMADD_D = 0x1,
-    NGP_FMSUB_S = 0x2,
-    NGP_FMSUB_D = 0x3,
+    NGP_FMSUB_S = 0x1,
 
-    // FINS Rd.s4[Src1 & 0x3], Rss.s4[Src3 & 0x3]
-    NGP_FINS_V_S4 = 0x4,
-    // FINS Rd.d2[Src1 & 0x1], Rss.d2[Src3 & 0x1]
-    NGP_FINS_V_D2 = 0x5,
+    // FINS Rd[Src1 & 0x3], Rss[Src3 & 0x3]
+    NGP_FINS_V = 0x2,
 };

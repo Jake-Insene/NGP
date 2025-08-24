@@ -415,14 +415,8 @@ u16 Assembler::get_register(AsmToken tk)
         return u8(tk.subtype);
     else if (tk.subtype >= TOKEN_S0 && tk.subtype <= TOKEN_S31)
         return u8(tk.subtype - TOKEN_S0);
-    else if (tk.subtype >= TOKEN_D0 && tk.subtype <= TOKEN_D31)
-        return u8(tk.subtype - TOKEN_D0);
     else if (tk.subtype >= TOKEN_V0 && tk.subtype <= TOKEN_V31)
         return u8(tk.subtype - TOKEN_V0);
-    else if (tk.subtype >= TOKEN_V0_S4 && tk.subtype <= TOKEN_V31_S4)
-        return u8(tk.subtype - TOKEN_V0_S4);
-    else if (tk.subtype >= TOKEN_V0_D2 && tk.subtype <= TOKEN_V31_D2)
-        return u8(tk.subtype - TOKEN_V0_D2);
     else if (tk.subtype >= TOKEN_PSR && tk.subtype <= TOKEN_END_SYSTEM_REGS)
         return u8(tk.subtype - TOKEN_PSR);
 

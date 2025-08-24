@@ -526,10 +526,8 @@ static FORCE_INLINE void _3op(CPUInterpreter& core, const u32 inst)
         CASE_W(NGP_STH, u16, Bus::write_word);
         CASE_W(NGP_STB, u8, Bus::write_word);
         CASE_SIMD_R(NGP_LD_S, w, Bus::read_word);
-        CASE_SIMD_R(NGP_LD_D, dw, Bus::read_dword);
         CASE_SIMD_R(NGP_LD_V, qw, Bus::read_qword);
         CASE_SIMD_W(NGP_ST_S, w, Bus::write_word);
-        CASE_SIMD_W(NGP_ST_D, dw, Bus::write_dword);
         CASE_SIMD_W(NGP_ST_V, qw, Bus::write_qword);
     default:
         break;
@@ -554,9 +552,6 @@ static FORCE_INLINE void fp_op(CPUInterpreter& core, const u32 inst)
     case NGP_FMOV_S_S:
         core.simd[dest].s = core.simd[src1].s;
         break;
-    case NGP_FMOV_D_D:
-        core.simd[dest].d = core.simd[src1].d;
-        break;
     case NGP_FMOV_V_V:
         core.simd[dest].vec = core.simd[src1].vec;
         break;
@@ -566,23 +561,11 @@ static FORCE_INLINE void fp_op(CPUInterpreter& core, const u32 inst)
     case NGP_FMOV_S_W:
         core.simd[dest].w = core.list[src1];
         break;
-    case NGP_FCVT_S_D:
-        core.simd[dest].s = core.simd[src1].d;
-        break;
-    case NGP_FCVT_D_S:
-        core.simd[dest].d = core.simd[src1].s;
-        break;
     case NGP_SCVTF_S_W:
         core.simd[dest].s = core.ilist[src1];
         break;
-    case NGP_SCVTF_D_W:
-        core.simd[dest].d = core.ilist[src1];
-        break;
     case NGP_UCVTF_S_W:
         core.simd[dest].s = core.list[src1];
-        break;
-    case NGP_UCVTF_D_W:
-        core.simd[dest].d = core.list[src1];
         break;
     case NGP_FADD_S:
         core.simd[dest].s = core.simd[src1].s + core.simd[src2].s;
@@ -601,57 +584,28 @@ static FORCE_INLINE void fp_op(CPUInterpreter& core, const u32 inst)
         }
         core.simd[dest].s = core.simd[src1].s / core.simd[src2].s;
         break;
-    case NGP_FADD_D:
-        core.simd[dest].d = core.simd[src1].d + core.simd[src2].d;
-        break;
-    case NGP_FSUB_D:
-        core.simd[dest].d = core.simd[src1].d - core.simd[src2].d;
-        break;
-    case NGP_FMUL_D:
-        core.simd[dest].d = core.simd[src1].d * core.simd[src2].d;
-        break;
-    case NGP_FDIV_D:
-        if (core.simd[src2].d == 0)
-        {
-            core.make_exception(CPUInterpreter::DivideByZeroException, CPUInterpreter::ExceptionVBOffset, CPUInterpreter::CommentNone);
-            break;
-        }
-        core.simd[dest].d = core.simd[src1].d / core.simd[src2].d;
-        break;
     case NGP_FABS_S:
         core.simd[dest].s = std::fabs(core.simd[dest].s);
-        break;
-    case NGP_FABS_D:
-        core.simd[dest].d = std::fabs(core.simd[dest].d);
         break;
     case NGP_FNEG_S:
         core.simd[dest].s = -core.simd[dest].s;
         break;
-    case NGP_FNEG_D:
-        core.simd[dest].d = -core.simd[dest].d;
-        break;
-    case NGP_FINS_V_S4_W:
+    case NGP_FINS_V_W:
         core.simd[dest].vec.s4[src1 & 0x3] = core.list[src2];
         break;
-    case NGP_FSMOV_W_V_S4:
+    case NGP_FSMOV_W_V:
         core.ilist[dest] = core.simd[src1].vec.s4[src2 & 0x3];
         break;
-    case NGP_FUMOV_W_V_S4:
+    case NGP_FUMOV_W_V:
         core.list[dest] = core.simd[src1].vec.s4[src2 & 0x3];
         break;
-    case NGP_FDUP_S_V_S4:
+    case NGP_FDUP_S_V:
     {
         CPUInterpreter::Vec128 vec = core.simd[src1].vec;
         core.simd[dest].s = vec.s4[src2 & 0x3];
     }
         break;
-    case NGP_FDUP_D_V_D2:
-    {
-        CPUInterpreter::Vec128 vec = core.simd[src1].vec;
-        core.simd[dest].d = vec.d2[src2 & 0x1];
-    }
-        break;
-    case NGP_FDUP_V_V_S4:
+    case NGP_FDUP_V_V:
     {
         CPUInterpreter::Vec128 vec = core.simd[src1].vec;
         core.simd[dest].vec.s4[0] = vec.s4[src2 & 0x3];
@@ -660,14 +614,7 @@ static FORCE_INLINE void fp_op(CPUInterpreter& core, const u32 inst)
         core.simd[dest].vec.s4[3] = vec.s4[src2 & 0x3];
     }
         break;
-    case NGP_FDUP_V_V_D2:
-    {
-        CPUInterpreter::Vec128 vec = core.simd[src1].vec;
-        core.simd[dest].vec.d2[0] = vec.d2[src2 & 0x1];
-        core.simd[dest].vec.d2[1] = vec.d2[src2 & 0x1];
-    }
-        break;
-    case NGP_FADD_V_S4:
+    case NGP_FADD_V:
     {
         CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
         CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
@@ -677,7 +624,7 @@ static FORCE_INLINE void fp_op(CPUInterpreter& core, const u32 inst)
         core.simd[dest].vec.s4[3] = op1.s4[3] + op2.s4[3];
     }
     break;
-    case NGP_FSUB_V_S4:
+    case NGP_FSUB_V:
     {
         CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
         CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
@@ -687,7 +634,7 @@ static FORCE_INLINE void fp_op(CPUInterpreter& core, const u32 inst)
         core.simd[dest].vec.s4[3] = op1.s4[3] - op2.s4[3];
     }
         break;
-    case NGP_FMUL_V_S4:
+    case NGP_FMUL_V:
     {
         CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
         CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
@@ -697,7 +644,7 @@ static FORCE_INLINE void fp_op(CPUInterpreter& core, const u32 inst)
         core.simd[dest].vec.s4[3] = op1.s4[3] * op2.s4[3];
     }
         break;
-    case NGP_FDIV_V_S4:
+    case NGP_FDIV_V:
     {
         CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
         CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
@@ -712,44 +659,7 @@ static FORCE_INLINE void fp_op(CPUInterpreter& core, const u32 inst)
         core.simd[dest].vec.s4[3] = op1.s4[3] / op2.s4[3];
     }
         break;
-    case NGP_FADD_V_D2:
-    {
-        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
-        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
-        core.simd[dest].vec.d2[0] = op1.d2[0] + op2.d2[0];
-        core.simd[dest].vec.d2[1] = op1.d2[1] + op2.d2[1];
-    }
-    break;
-    case NGP_FSUB_V_D2:
-    {
-        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
-        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
-        core.simd[dest].vec.d2[0] = op1.s4[0] - op2.d2[0];
-        core.simd[dest].vec.d2[1] = op1.s4[1] - op2.d2[1];
-    }
-        break;
-    case NGP_FMUL_V_D2:
-    {
-        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
-        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
-        core.simd[dest].vec.d2[0] = op1.d2[0] * op2.d2[0];
-        core.simd[dest].vec.d2[1] = op1.d2[1] * op2.d2[1];
-    }
-        break;
-    case NGP_FDIV_V_D2:
-    {
-        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
-        CPUInterpreter::Vec128 op2 = core.simd[src2].vec;
-        if (op2.d2[0] == 0 || op2.d2[1] == 0)
-        {
-            core.make_exception(CPUInterpreter::DivideByZeroException, CPUInterpreter::ExceptionVBOffset, CPUInterpreter::CommentNone);
-            break;
-        }
-        core.simd[dest].vec.d2[0] = op1.d2[0] / op2.d2[0];
-        core.simd[dest].vec.d2[1] = op1.d2[1] / op2.d2[1];
-    }
-        break;
-    case NGP_FNEG_V_S4:
+    case NGP_FNEG_V:
     {
         CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
         core.simd[dest].vec.s4[0] = -op1.s4[0];
@@ -758,13 +668,6 @@ static FORCE_INLINE void fp_op(CPUInterpreter& core, const u32 inst)
         core.simd[dest].vec.s4[3] = -op1.s4[3];
     }
         break;
-    case NGP_FNEG_V_D2:
-    {
-        CPUInterpreter::Vec128 op1 = core.simd[src1].vec;
-        core.simd[dest].vec.d2[0] = -op1.d2[0];
-        core.simd[dest].vec.d2[1] = -op1.d2[1];
-    }
-    break;
     }
 }
 
@@ -814,17 +717,11 @@ static FORCE_INLINE void load_store_fp_immediate(CPUInterpreter& core, const u32
     case NGP_LD_S_IMMEDIATE:
         core.simd[dest_src].w = Bus::read_word(core.list[base] + (imm << 2));
         break;
-    case NGP_LD_D_IMMEDIATE:
-        core.simd[dest_src].dw = Bus::read_dword(core.list[base] + (imm << 3));
-        break;
     case NGP_LD_V_IMMEDIATE:
         core.simd[dest_src].qw = Bus::read_qword(core.list[base] + (imm << 4));
         break;
     case NGP_ST_S_IMMEDIATE:
         Bus::write_word(core.list[base] + (imm << 2), core.simd[dest_src].w);
-        break;
-    case NGP_ST_D_IMMEDIATE:
-        Bus::write_dword(core.list[base] + (imm << 3), core.simd[dest_src].dw);
         break;
     case NGP_ST_V_IMMEDIATE:
         Bus::write_qword(core.list[base] + (imm << 4), core.simd[dest_src].qw);
@@ -897,14 +794,6 @@ static FORCE_INLINE void ld_s_pc(CPUInterpreter& core, const u32 inst)
     const u32 disp_inst = inst >> 11;
     const u32 disp = inst & 0x8000'0000 ? (0xFFE0'0000 | disp_inst) << 2 : disp_inst << 2;
     core.simd[dest].w = Bus::read_word(core.pc + disp);
-}
-
-static FORCE_INLINE void ld_d_pc(CPUInterpreter& core, const u32 inst)
-{
-    const u8 dest = (inst >> 6) & 0x1F;
-    const u32 disp_inst = inst >> 11;
-    const u32 disp = inst & 0x8000'0000 ? (0xFFE0'0000 | disp_inst) << 2 : disp_inst << 2;
-    core.simd[dest].dw = Bus::read_dword(core.pc + disp);
 }
 
 static FORCE_INLINE void ld_v_pc(CPUInterpreter& core, const u32 inst)
@@ -989,20 +878,11 @@ static FORCE_INLINE void fp_4op(CPUInterpreter& core, const u32 inst)
     case NGP_FMADD_S:
         core.simd[dest].s = core.simd[src3].s + (core.simd[src1].s * core.simd[src2].s);
         break;
-    case NGP_FMADD_D:
-        core.simd[dest].d = core.simd[src3].d + (core.simd[src1].d * core.simd[src2].d);
-        break;
     case NGP_FMSUB_S:
         core.simd[dest].s = core.simd[src3].s - (core.simd[src1].s * core.simd[src2].s);
         break;
-    case NGP_FMSUB_D:
-        core.simd[dest].d = core.simd[src3].d - (core.simd[src1].d * core.simd[src2].d);
-        break;
-    case NGP_FINS_V_S4:
+    case NGP_FINS_V:
         core.simd[dest].vec.s4[src1 & 0x3] = core.simd[src2].vec.s4[src3 & 0x3];
-        break;
-    case NGP_FINS_V_D2:
-        core.simd[dest].vec.d2[src1 & 0x1] = core.simd[src2].vec.d2[src3 & 0x1];
         break;
     }
 }
@@ -1032,9 +912,8 @@ void CPUInterpreter::print_registers()
 
     for (u32 i = 0; i < 32; i++)
     {
-        printf("S%d = %f, D%d = %f, Q%d = { %f, %f, %f, %f }\n", 
+        printf("S%d = %f, Q%d = { %f, %f, %f, %f }\n", 
             i, simd[i].s,
-            i, simd[i].d,
             i, simd[i].vec.vec4.x, simd[i].vec.vec4.y, simd[i].vec.vec4.z, simd[i].vec.vec4.w
         );
     }
@@ -1099,13 +978,11 @@ usize CPUInterpreter::run(usize num_cycles)
             CASE(NGP_FP_OP, fp_op);
             CASE(NGP_LOAD_STORE_IMMEDIATE, load_store_immediate);
             CASE(NGP_LOAD_STORE_FP_IMMEDIATE, load_store_fp_immediate);
-            CASE(0x7, [](CPUCore&,Word) {});
             CASE(NGP_LOAD_STORE_PAIR, load_store_pair);
             CASE(NGP_EXTENDEDALU, extended_alu);
             CASE(NGP_NON_BINARY, non_binary);
             CASE(NGP_LD_PC, ld_pc);
             CASE(NGP_LD_S_PC, ld_s_pc);
-            CASE(NGP_LD_D_PC, ld_d_pc);
             CASE(NGP_LD_V_PC, ld_v_pc);
             CASE(NGP_ADR_PC, adr_pc);
             CASE(NGP_IMMEDIATE, immediate);

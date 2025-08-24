@@ -123,39 +123,6 @@ enum AsmTokenRegister : u8
     TOKEN_S30,
     TOKEN_S31,
 
-    TOKEN_D0,
-    TOKEN_D1,
-    TOKEN_D2,
-    TOKEN_D3,
-    TOKEN_D4,
-    TOKEN_D5,
-    TOKEN_D6,
-    TOKEN_D7,
-    TOKEN_D8,
-    TOKEN_D9,
-    TOKEN_D10,
-    TOKEN_D11,
-    TOKEN_D12,
-    TOKEN_D13,
-    TOKEN_D14,
-    TOKEN_D15,
-    TOKEN_D16,
-    TOKEN_D17,
-    TOKEN_D18,
-    TOKEN_D19,
-    TOKEN_D20,
-    TOKEN_D21,
-    TOKEN_D22,
-    TOKEN_D23,
-    TOKEN_D24,
-    TOKEN_D25,
-    TOKEN_D26,
-    TOKEN_D27,
-    TOKEN_D28,
-    TOKEN_D29,
-    TOKEN_D30,
-    TOKEN_D31,
-
     TOKEN_V0,
     TOKEN_V1,
     TOKEN_V2,
@@ -188,72 +155,6 @@ enum AsmTokenRegister : u8
     TOKEN_V29,
     TOKEN_V30,
     TOKEN_V31,
-
-    TOKEN_V0_S4,
-    TOKEN_V1_S4,
-    TOKEN_V2_S4,
-    TOKEN_V3_S4,
-    TOKEN_V4_S4,
-    TOKEN_V5_S4,
-    TOKEN_V6_S4,
-    TOKEN_V7_S4,
-    TOKEN_V8_S4,
-    TOKEN_V9_S4,
-    TOKEN_V10_S4,
-    TOKEN_V11_S4,
-    TOKEN_V12_S4,
-    TOKEN_V13_S4,
-    TOKEN_V14_S4,
-    TOKEN_V15_S4,
-    TOKEN_V16_S4,
-    TOKEN_V17_S4,
-    TOKEN_V18_S4,
-    TOKEN_V19_S4,
-    TOKEN_V20_S4,
-    TOKEN_V21_S4,
-    TOKEN_V22_S4,
-    TOKEN_V23_S4,
-    TOKEN_V24_S4,
-    TOKEN_V25_S4,
-    TOKEN_V26_S4,
-    TOKEN_V27_S4,
-    TOKEN_V28_S4,
-    TOKEN_V29_S4,
-    TOKEN_V30_S4,
-    TOKEN_V31_S4,
-
-    TOKEN_V0_D2,
-    TOKEN_V1_D2,
-    TOKEN_V2_D2,
-    TOKEN_V3_D2,
-    TOKEN_V4_D2,
-    TOKEN_V5_D2,
-    TOKEN_V6_D2,
-    TOKEN_V7_D2,
-    TOKEN_V8_D2,
-    TOKEN_V9_D2,
-    TOKEN_V10_D2,
-    TOKEN_V11_D2,
-    TOKEN_V12_D2,
-    TOKEN_V13_D2,
-    TOKEN_V14_D2,
-    TOKEN_V15_D2,
-    TOKEN_V16_D2,
-    TOKEN_V17_D2,
-    TOKEN_V18_D2,
-    TOKEN_V19_D2,
-    TOKEN_V20_D2,
-    TOKEN_V21_D2,
-    TOKEN_V22_D2,
-    TOKEN_V23_D2,
-    TOKEN_V24_D2,
-    TOKEN_V25_D2,
-    TOKEN_V26_D2,
-    TOKEN_V27_D2,
-    TOKEN_V28_D2,
-    TOKEN_V29_D2,
-    TOKEN_V30_D2,
-    TOKEN_V31_D2,
 
     TOKEN_PSR,
     TOKEN_CURRENT_EL,
@@ -297,9 +198,7 @@ enum AsmTokenDirective : u8
     TD_WORD,
     TD_DWORD,
     TD_FLOAT32,
-    TD_FLOAT64,
     TD_SINGLE,
-    TD_DOUBLE,
     TD_ZERO,
     TD_SPACE,
     TD_ALIGN,
@@ -364,7 +263,6 @@ enum AsmTokenInstruction : u8
     TI_FMOV,
     TI_FSMOV,
     TI_FUMOV,
-    TI_FCVT,
     TI_SCVTF,
     TI_UCVTF,
 
@@ -427,19 +325,11 @@ enum AsmTokenInstruction : u8
     TI_MRS,
 };
 
-enum FPSubfix
-{
-    FPSubfixNone = 0,
-    FPSubfixS4,
-    FPSubfixD2,
-};
-
 enum FPType
 {
     FPNone = 0,
     FPSingle = 1,
-    FPDouble = 2,
-    FPVector = 3,
+    FPVector = 2,
 };
 
 struct AsmToken
@@ -484,7 +374,7 @@ struct AsmToken
 
     [[nodiscard]] constexpr bool is_fp_reg() const
     {
-        return is_single_reg() || is_double_reg() || is_vector_reg();
+        return is_single_reg() || is_vector_reg();
     }
 
     [[nodiscard]] constexpr bool is_single_reg() const
@@ -492,39 +382,16 @@ struct AsmToken
         return is(TOKEN_REGISTER) && (subtype >= TOKEN_S0 && subtype <= TOKEN_S31);
     }
 
-    [[nodiscard]] constexpr bool is_double_reg() const
-    {
-        return is(TOKEN_REGISTER) && (subtype >= TOKEN_D0 && subtype <= TOKEN_D31);
-    }
-
     [[nodiscard]] constexpr bool is_vector_reg() const
     {
-        return is(TOKEN_REGISTER) && (subtype >= TOKEN_V0 && subtype <= TOKEN_V31_D2);
-    }
-
-    [[nodiscard]] constexpr bool is_vector_s4_reg() const
-    {
-        return is(TOKEN_REGISTER) && (subtype >= TOKEN_V0_S4 && subtype <= TOKEN_V31_S4);
-    }
-
-    [[nodiscard]] constexpr bool is_vector_d2_reg() const
-    {
-        return is(TOKEN_REGISTER) && (subtype >= TOKEN_V0_D2 && subtype <= TOKEN_V31_D2);
+        return is(TOKEN_REGISTER) && (subtype >= TOKEN_V0 && subtype <= TOKEN_V0);
     }
 
     [[nodiscard]] constexpr FPType get_fp_type() const
     {
         return is_single_reg() ? FPSingle
-            : is_double_reg() ? FPDouble
             : is_vector_reg() ? FPVector
             : FPNone;
-    }
-
-    [[nodiscard]] constexpr FPSubfix get_fp_subfix() const
-    {
-        return is_vector_s4_reg() ? FPSubfixS4
-            : is_vector_d2_reg() ? FPSubfixD2
-            : FPSubfixNone;
     }
 
     [[nodiscard]] constexpr bool is_system_reg() const

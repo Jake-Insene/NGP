@@ -261,34 +261,6 @@ void Assembler::assemble_directive()
         }
     }
     break;
-    case TD_FLOAT64:
-    {
-        bool is_first = true;
-        u32 index = token_index - 3;
-        u32 prog_idx = program_index;
-        while (current->is(TOKEN_COMMA) || is_first)
-        {
-            if (is_first)
-            {
-                is_first = false;
-            }
-            else
-            {
-                advance(); // ,
-            }
-
-            AsmToken f = parse_expression(ParsePrecedence::Start);
-            if (!f.is(TOKEN_IMMEDIATE))
-            {
-                MAKE_ERROR(f, return, "a immediate value was expected");
-            }
-            
-            HANDLE_NON_VALID_IMM_FP(f, index, prog_idx);
-            new_word() = f.u & 0xFFFF'FFFF;
-            new_word() = f.u >> 32;
-        }
-    }
-    break;
     case TD_SINGLE:
     {
         bool is_first = true;
@@ -314,34 +286,6 @@ void Assembler::assemble_directive()
             HANDLE_NON_VALID_IMM_FP(f, index, prog_idx);
             f.s = f32(f.d);
             new_word() = f.u;
-        }
-    }
-    break;
-    case TD_DOUBLE:
-    {
-        bool is_first = true;
-        u32 index = token_index - 3;
-        u32 prog_idx = program_index;
-        while (current->is(TOKEN_COMMA) || is_first)
-        {
-            if (is_first)
-            {
-                is_first = false;
-            }
-            else
-            {
-                advance(); // ,
-            }
-
-            AsmToken f = parse_expression(ParsePrecedence::Start);
-            if (!f.is(TOKEN_IMMEDIATE))
-            {
-                MAKE_ERROR(f, return, "a immediate value was expected");
-            }
-
-            HANDLE_NON_VALID_IMM_FP(f, index, prog_idx);
-            new_word() = f.u & 0xFFFF'FFFF;
-            new_word() = f.u >> 32;
         }
     }
     break;

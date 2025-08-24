@@ -132,7 +132,7 @@ struct Assembler
     // assemble_instruction();
     void assemble_load_store(u32& inst, u8 imm_opcode, u8 index_opc, u8 alignment, bool handle_symbol);
     void assemble_binary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit);
-    void assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 v_d2_opc);
+    void assemble_fbinary(u32& inst, u8 s_opc, u8 v_s4_opc);
     void assemble_comparison(u32& inst, u8 opc, u8 opc_imm, u16 immediate_limit);
     void assemble_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8));
     void assemble_fp_three_operands(u32& inst, u32(*fn)(u8, u8, u8, u8, FPType));

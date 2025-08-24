@@ -13,6 +13,14 @@
     {
       "type": "default",
       "project": "CMakeLists.txt",
+      "projectTarget": "ngpas.exe (NGPAS\\ngpas.exe)",
+      "name": "compile bios",
+      "currentDir": "${workspaceRoot}",
+      "args": [ "BIOS/BIOS.asm" ]
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
       "projectTarget": "ngpc.exe (NGPC\\ngpc.exe)",
       "name": "launch ngp language compiler",
       "currentDir": "${workspaceRoot}",

@@ -157,13 +157,7 @@ struct alignas(64) CPUCore
             f32 x, y, z, w;
         } vec4;
 
-        struct
-        {
-            f64 x, y;
-        } vec2;
-
         f32 s4[4];
-        f64 d2[2];
     };
 
     union SIMDRegister
@@ -172,7 +166,6 @@ struct alignas(64) CPUCore
         QWord qw;
         f32 s;
         Word w;
-        f64 d;
         DWord dw;
     };
 

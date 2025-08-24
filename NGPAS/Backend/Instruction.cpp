@@ -17,9 +17,9 @@
     AsmToken* VAR_TK = last;\
     u16 VAR;\
     if(!try_get_register_tk(*last, VAR, RegisterVector)) { BREAKER ; }\
-    if(last->get_fp_subfix() == FPSubfixNone)\
+    if(!last->is_vector_reg())\
     {\
-        MAKE_ERROR((*last), BREAKER, "expected a vector subfixed register");\
+        MAKE_ERROR((*last), BREAKER, "expected a vector register");\
     }\
     if(!expected_left_key()) { BREAKER; };\
     AsmToken VAR_IDX = parse_expression(ParsePrecedence::Start);\
@@ -266,7 +266,7 @@ void Assembler::assemble_instruction()
             break;
         AsmToken* dest_tk = last;
         AsmToken dest_index;
-        if (dest_tk->get_fp_subfix() != FPSubfixNone)
+        if (dest_tk->is_vector_reg())
         {
             if(!expected_left_key())
                 break;
@@ -294,8 +294,8 @@ void Assembler::assemble_instruction()
             {
                 MAKE_ERROR((*dest_tk), break, "invalid register operands");
             }
-            else if ((!dest_tk->is_single_reg() && dest_tk->get_fp_subfix() != FPSubfixS4 && operand.is_gp_reg())
-                || (dest_tk->is_gp_reg() && !operand.is_single_reg() && operand.get_fp_subfix() != FPSubfixS4))
+            else if ((!dest_tk->is_single_reg() && operand.is_gp_reg())
+                || (dest_tk->is_gp_reg() && !operand.is_single_reg()))
             {
                 MAKE_ERROR((*dest_tk), break, "register width mismatch");
             }
@@ -304,21 +304,13 @@ void Assembler::assemble_instruction()
             {
                 MAKE_ERROR((*dest_tk), break, "register type mismatch");
             }
-            else if (dest_tk->get_fp_type() == FPSingle && operand.is_vector_reg() && operand.get_fp_subfix() != FPSubfixS4)
-            {
-                MAKE_ERROR((*dest_tk), break, "register type mismatch");
-            }
-            else if (dest_tk->get_fp_type() == FPDouble && operand.is_vector_reg() && operand.get_fp_subfix() != FPSubfixD2)
-            {
-                MAKE_ERROR((*dest_tk), break, "register type mismatch");
-            }
-            else if(dest_tk->is_vector_reg() && dest_tk->get_fp_subfix() == FPSubfixS4 
-                && operand.is_fp_reg() && operand.get_fp_subfix() == FPSubfixNone)
+            else if(dest_tk->is_vector_reg() && dest_tk->get_fp_type() == FPVector
+                && operand.is_fp_reg())
             {
                 MAKE_ERROR((*dest_tk), break, "register type mismatch");
             }
 
-            if (!dest_tk->is_vector_reg() && operand.get_fp_subfix() != FPSubfixNone)
+            if (!dest_tk->is_vector_reg() && operand.is_vector_reg())
             {
                 if(!expected_left_key())
                     break;
@@ -332,18 +324,14 @@ void Assembler::assemble_instruction()
 
                 if (dest_tk->is_single_reg())
                 {
-                    inst = fbinary(NGP_FDUP_S_V_S4, dest, get_register(operand), src_index.u & 0x3);
-                }
-                else if (dest_tk->is_single_reg())
-                {
-                    inst = fbinary(NGP_FDUP_D_V_D2, dest, get_register(operand), src_index.u & 0x3);
+                    inst = fbinary(NGP_FDUP_S_V, dest, get_register(operand), src_index.u & 0x3);
                 }
                 else if (dest_tk->is_gp_reg())
                 {
-                    inst = fbinary(NGP_FUMOV_W_V_S4, dest, get_register(operand), src_index.u & 0x3);
+                    inst = fbinary(NGP_FUMOV_W_V, dest, get_register(operand), src_index.u & 0x3);
                 }
             }
-            else if (dest_tk->is_vector_reg() && operand.get_fp_subfix() != FPSubfixNone)
+            else if (dest_tk->is_vector_reg() && operand.is_vector_reg())
             {
                 if (!expected_left_key())
                     break;
@@ -355,18 +343,14 @@ void Assembler::assemble_instruction()
                 if (!expected_right_key())
                     break;
 
-                if (operand.get_fp_subfix() == FPSubfixS4)
+                if (operand.is_vector_reg())
                 {
-                    inst = fbinary(NGP_FDUP_V_V_S4, dest, get_register(operand), src_index.u & 0x3);
-                }
-                else if (operand.get_fp_subfix() == FPSubfixD2)
-                {
-                    inst = fbinary(NGP_FDUP_V_V_D2, dest, get_register(operand), src_index.u & 0x1);
+                    inst = fbinary(NGP_FDUP_V_V, dest, get_register(operand), src_index.u & 0x3);
                 }
             }
-            else if (dest_tk->get_fp_subfix() != FPSubfixNone && operand.is_gp_reg())
+            else if (dest_tk->is_vector_reg() && operand.is_gp_reg())
             {
-                inst = fbinary(NGP_FINS_V_S4_W, dest, dest_index.u & 0x3, get_register(operand));
+                inst = fbinary(NGP_FINS_V_W, dest, dest_index.u & 0x3, get_register(operand));
             }
             else if (dest_tk->is_single_reg() && operand.is_gp_reg())
             {
@@ -379,10 +363,6 @@ void Assembler::assemble_instruction()
             else if (dest_tk->is_single_reg())
             {
                 inst = fbinary(NGP_FMOV_S_S, dest, get_register(operand), 0);
-            }
-            else if (dest_tk->is_double_reg())
-            {
-                inst = fbinary(NGP_FMOV_D_D, dest, get_register(operand), 0);
             }
             else if (dest_tk->is_vector_reg())
             {
@@ -408,9 +388,9 @@ void Assembler::assemble_instruction()
             break;
 
         GET_VINDEX_REG(src, src_tk, src_index, "expected source vector register", break);
-        if (src_tk->get_fp_subfix() == FPSubfixS4)
+        if (src_tk->is_vector_reg())
         {
-            inst = fbinary(NGP_FSMOV_W_V_S4, dest, src, src_index.u & 0x3);
+            inst = fbinary(NGP_FSMOV_W_V, dest, src, src_index.u & 0x3);
         }
         else
         {
@@ -427,37 +407,13 @@ void Assembler::assemble_instruction()
             break;
 
         GET_VINDEX_REG(src, src_tk, src_index, "expected source vector register", break);
-        if (src_tk->get_fp_subfix() == FPSubfixS4)
+        if (src_tk->is_vector_reg())
         {
-            inst = fbinary(NGP_FUMOV_W_V_S4, dest, src, src_index.u & 0x3);
+            inst = fbinary(NGP_FUMOV_W_V, dest, src, src_index.u & 0x3);
         }
         else
         {
             MAKE_ERROR((*src_tk), break, "register width mismatch");
-        }
-    }
-        break;
-    case TI_FCVT:
-    {
-        u16 dest;
-        if (!try_get_register(dest, RegisterFP, "expected destination register"))
-            break;
-        AsmToken* dest_tk = last;
-        if (!expected_comma())
-            break;
-
-        u16 src;
-        if(!try_get_register(src, RegisterFP, "expected source register"))
-            break;
-        AsmToken* src_tk = last;
-
-        if (dest_tk->is_single_reg() && src_tk->is_double_reg())
-        {
-            inst = fbinary(NGP_FCVT_S_D, dest, src, 0);
-        }
-        else if (dest_tk->is_double_reg() && src_tk->is_single_reg())
-        {
-            inst = fbinary(NGP_FCVT_D_S, dest, src, 0);
         }
     }
         break;
@@ -480,10 +436,6 @@ void Assembler::assemble_instruction()
         {
             inst = fbinary(NGP_SCVTF_S_W, dest, src, 0);
         }
-        else if (dest_tk->is_double_reg())
-        {
-            inst = fbinary(NGP_SCVTF_D_W, dest, src, 0);
-        }
     }
         break;
     case TI_UCVTF:
@@ -504,23 +456,19 @@ void Assembler::assemble_instruction()
         {
             inst = fbinary(NGP_UCVTF_S_W, dest, src, 0);
         }
-        else if (dest_tk->is_double_reg())
-        {
-            inst = fbinary(NGP_UCVTF_D_W, dest, src, 0);
-        }
     }
         break;
     case TI_FADD:
-        assemble_fbinary(inst, NGP_FADD_S, NGP_FADD_D, NGP_FADD_V_S4, NGP_FADD_V_D2);
+        assemble_fbinary(inst, NGP_FADD_S, NGP_FADD_V);
         break;
     case TI_FSUB:
-        assemble_fbinary(inst, NGP_FSUB_S, NGP_FSUB_D, NGP_FSUB_V_S4, NGP_FSUB_V_D2);
+        assemble_fbinary(inst, NGP_FSUB_S, NGP_FSUB_V);
         break;
     case TI_FMUL:
-        assemble_fbinary(inst, NGP_FMUL_S, NGP_FMUL_D, NGP_FMUL_V_S4, NGP_FMUL_V_D2);
+        assemble_fbinary(inst, NGP_FMUL_S, NGP_FMUL_V);
         break;
     case TI_FDIV:
-        assemble_fbinary(inst, NGP_FDIV_S, NGP_FDIV_D, NGP_FDIV_V_S4, NGP_FDIV_V_D2);
+        assemble_fbinary(inst, NGP_FDIV_S, NGP_FDIV_V);
         break;
     case TI_FNEG:
     {
@@ -537,8 +485,7 @@ void Assembler::assemble_instruction()
             break;
         AsmToken* src_tk = last;
 
-        if (dest_tk->get_fp_type() != src_tk->get_fp_type() 
-            || dest_tk->get_fp_subfix() != src_tk->get_fp_subfix())
+        if (dest_tk->get_fp_type() != src_tk->get_fp_type())
         {
             MAKE_ERROR((*dest_tk), break, "register width mismatch");
         }
@@ -547,17 +494,9 @@ void Assembler::assemble_instruction()
         {
             inst = fbinary(NGP_FNEG_S, dest, src, 0);
         }
-        else if (dest_tk->get_fp_type() == FPDouble)
+        else if (dest_tk->is_vector_reg())
         {
-            inst = fbinary(NGP_FNEG_D, dest, src, 0);
-        }
-        else if (dest_tk->get_fp_subfix() == FPSubfixS4)
-        {
-            inst = fbinary(NGP_FNEG_V_S4, dest, src, 0);
-        }
-        else if (dest_tk->get_fp_subfix() == FPSubfixD2)
-        {
-            inst = fbinary(NGP_FNEG_V_D2, dest, src, 0);
+            inst = fbinary(NGP_FNEG_V, dest, src, 0);
         }
     }
         break;
@@ -584,10 +523,6 @@ void Assembler::assemble_instruction()
         {
             inst = fbinary(NGP_FABS_S, dest, src, 0);
         }
-        else if (dest_tk->get_fp_type() == FPDouble)
-        {
-            inst = fbinary(NGP_FABS_D, dest, src, 0);
-        }
     }
     break;
     case TI_FINS:
@@ -602,15 +537,14 @@ void Assembler::assemble_instruction()
             MAKE_ERROR(operand, break, "expected source register");
         }
 
-        if(operand.is_vector_reg() && dest_tk->get_fp_subfix() != operand.get_fp_subfix()
-            && operand.is_fp_reg())
+        if(operand.is_vector_reg() && !dest_tk->is_vector_reg())
         {
             MAKE_ERROR((*dest_tk), break, "register subfix mismatch");
         }
 
         if (operand.is_gp_reg())
         {
-            inst = fbinary(NGP_FINS_V_S4_W, dest, dest_index.u & 0x3, get_register(operand));
+            inst = fbinary(NGP_FINS_V_W, dest, dest_index.u & 0x3, get_register(operand));
         }
         else
         {
@@ -624,13 +558,9 @@ void Assembler::assemble_instruction()
             if (!expected_right_key())
                 break;
 
-            if (dest_tk->get_fp_subfix() == FPSubfixS4 && operand.get_fp_subfix() == FPSubfixS4)
+            if (dest_tk->is_vector_reg())
             {
-                inst = fp_4op(NGP_FINS_V_S4, dest, dest_index.u & 0x3, src_index.u, operand.u & 0x3);
-            }
-            else
-            {
-                inst = fp_4op(NGP_FINS_V_D2, dest, dest_index.u & 0x1, src_index.u, src_index.u & 0x1);
+                inst = fp_4op(NGP_FINS_V, dest, dest_index.u & 0x3, src_index.u, operand.u & 0x3);
             }
         }
     }
@@ -646,22 +576,14 @@ void Assembler::assemble_instruction()
 
         GET_VINDEX_REG(src, src_tk, src_index, "expected source register", break);
 
-        if (dest_tk->get_fp_type() == FPSingle && src_tk->get_fp_subfix() != FPSubfixS4)
+        if (dest_tk->get_fp_type() == FPSingle && !src_tk->is_vector_reg())
         {
-            MAKE_ERROR((*dest_tk), break, "register width mismatch")
-        }
-        else if (dest_tk->get_fp_type() == FPDouble && src_tk->get_fp_subfix() != FPSubfixD2)
-        {
-            MAKE_ERROR((*dest_tk), break, "register width mismatch")
+            MAKE_ERROR((*dest_tk), break, "register type mismatch")
         }
 
         if (dest_tk->get_fp_type() == FPSingle)
         {
-            inst = fbinary(NGP_FDUP_S_V_S4, dest, src, src_index.u & 0x3);
-        }
-        else if(dest_tk->get_fp_type() == FPDouble)
-        {
-            inst = fbinary(NGP_FDUP_D_V_D2, dest, src, src_index.u & 0x1);
+            inst = fbinary(NGP_FDUP_S_V, dest, src, src_index.u & 0x3);
         }
     }
         break;
@@ -672,11 +594,6 @@ void Assembler::assemble_instruction()
                 {
                     return fp_4op(NGP_FMADD_S, dest, src1, src2, src3);
                 }
-                else if (fp_type == FPDouble)
-                {
-                    return fp_4op(NGP_FMADD_D, dest, src1, src2, src3);
-                }
-
                 return 0U;
             }
         );
@@ -688,11 +605,6 @@ void Assembler::assemble_instruction()
                 {
                     return fp_4op(NGP_FMSUB_S, dest, src1, src2, src3);
                 }
-                else if (fp_type == FPDouble)
-                {
-                    return fp_4op(NGP_FMSUB_D, dest, src1, src2, src3);
-                }
-
                 return 0U;
             }
         );
@@ -1003,10 +915,6 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             {
                 inst = pcrel(NGP_LD_S_PC, dest, i32((symbol.u - program_index) / 4));
             }
-            else if (fp_type == FPDouble)
-            {
-                inst = pcrel(NGP_LD_D_PC, dest, i32((symbol.u - program_index) / 4));
-            }
             else if (fp_type == FPVector)
             {
                 inst = pcrel(NGP_LD_V_PC, dest, i32((symbol.u - program_index) / 4));
@@ -1046,10 +954,6 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             if (fp_type == FPSingle)
             {
                 inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_S_IMMEDIATE : NGP_LD_S_IMMEDIATE, dest, base, 0, 0);
-            }
-            else if (fp_type == FPDouble)
-            {
-                inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_D_IMMEDIATE : NGP_LD_D_IMMEDIATE, dest, base, 0, 0);
             }
             else if (fp_type == FPVector)
             {
@@ -1103,10 +1007,6 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             {
                 inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_S_IMMEDIATE : NGP_LD_S_IMMEDIATE, dest, base, offset / alignment, sub);
             }
-            else if (fp_type == FPDouble)
-            {
-                inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_D_IMMEDIATE : NGP_LD_D_IMMEDIATE, dest, base, offset / alignment, sub);
-            }
             else if (fp_type == FPVector)
             {
                 inst = fmemoryi(imm_opcode == NGP_ST_IMMEDIATE ? NGP_ST_V_IMMEDIATE : NGP_LD_V_IMMEDIATE, dest, base, offset / alignment, sub);
@@ -1127,10 +1027,6 @@ void Assembler::assemble_load_store(u32& inst, u8 imm_opcode,
             if (fp_type == FPSingle)
             {
                 inst = inst_3op(NGP_LD_S, dest, base, reg_index);
-            }
-            else if (fp_type == FPDouble)
-            {
-                inst = inst_3op(NGP_LD_D, dest, base, reg_index);
             }
             else if (fp_type == FPVector)
             {
@@ -1200,7 +1096,7 @@ void Assembler::assemble_binary(u32& inst, u8 opc, u8 opc_imm, u16 immediate_lim
     }
 }
 
-void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 v_d2_opc)
+void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 v_s4_opc)
 {
     u16 dest;
     if (!try_get_register(dest, RegisterFPOrVector, "expected destination register"))
@@ -1227,16 +1123,12 @@ void Assembler::assemble_fbinary(u32& inst, u8 s_opc, u8 d_opc, u8 v_s4_opc, u8 
         return;
     
     if (dest_tk->get_fp_type() != src1_tk->get_fp_type() 
-        || dest_tk->get_fp_type() != src2_tk->get_fp_type()
-        || (dest_tk->get_fp_subfix() != src1_tk->get_fp_subfix() || dest_tk->get_fp_subfix() != src2_tk->get_fp_subfix()))
+        || dest_tk->get_fp_type() != src2_tk->get_fp_type())
     {
         MAKE_ERROR((*dest_tk), return, "register type mismatch");
     }
 
-    u8 final_opc = dest_tk->get_fp_type() == FPSingle ? s_opc 
-        : dest_tk->get_fp_type() == FPDouble ? d_opc
-        : dest_tk->get_fp_subfix() == FPSubfixNone ? v_s4_opc
-        : v_d2_opc;
+    u8 final_opc = dest_tk->get_fp_type() == FPSingle ? s_opc : v_s4_opc;
     inst = fbinary(final_opc, dest, src1, src2);
 }
 

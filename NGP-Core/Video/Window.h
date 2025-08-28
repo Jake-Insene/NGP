@@ -9,8 +9,8 @@
 
 struct Window
 {
-    static constexpr i32 DefaultWindowWidth = 1080;
-    static constexpr i32 DefaultWindowHeight = 720;
+    static constexpr i32 DefaultWindowWidth = 800;
+    static constexpr i32 DefaultWindowHeight = 600;
 
     static void initialize(i32 width, i32 height);
     static void shutdown();

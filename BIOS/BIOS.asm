@@ -75,12 +75,13 @@ CommandListBegin:
 	.word 0
 	.word 0
 	.word 0
-	.word 0x200000FF
+	.word 0x210000FF
 	.word 0x00000000
 	.word 0x01000100
-	.word 0x2000FF00
+	.word 0x2200FF00
 	.word 0x00000000
-	.word 0x00010001
+	.word 0x00000010
+	.word 0x00100010
 	.zero 0x1000
 CommandListEnd:
 

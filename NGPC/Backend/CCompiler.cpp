@@ -41,21 +41,24 @@ void CCompiler::compile_statement(ASTStatement* statement)
     }
 }
 
-void CCompiler::compile_function(ASTStatementFunc* func)
+void CCompiler::compile_function(ASTStatementFunc* stat_func)
 {
-    output_str.append(StringPool::get(func->name));
+    output_str.append(StringPool::get(stat_func->name));
     output_str.append(":\n");
 
-    for (auto stat_id : func->statements)
+    FunctionInfo& func = functions.insert({ stat_func->name, FunctionInfo() }).first->second;
+    func.name = stat_func->name;
+    func.return_type = stat_func->return_info;
+
+    for (auto stat_id : stat_func->statements)
     {
-        ASTStatement* statement = parser.get_node<ASTStatement>(stat_id);
-        compile_func_statement(statement);
+        compile_func_statement(func, parser.get_node<ASTStatement>(stat_id));
     }
 
     output_str.append("\tret\n");
 }
 
-void CCompiler::compile_func_statement(ASTStatement* statement)
+void CCompiler::compile_func_statement(FunctionInfo& func, ASTStatement* statement)
 {
     if (statement->statement_type == AST_STATEMENT_FUNC)
     {
@@ -63,10 +66,15 @@ void CCompiler::compile_func_statement(ASTStatement* statement)
     }
     else if (statement->statement_type == AST_STATEMENT_VAR)
     {
-
+        compile_func_var(func, (ASTStatementVar*)statement);
     }
     else if (statement->statement_type == AST_STATEMENT_CONST)
     {
 
     }
+}
+
+void CCompiler::compile_func_var(FunctionInfo& func, ASTStatementVar* var)
+{
+    func.add_local(var->name, var->storage_info);
 }

@@ -323,6 +323,4 @@ void D3D11GU::update_framebuffer(PhysicalAddress fb, void* va)
     state.immediate_context->Map(vfb.framebuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
     memcpy(mapped.pData, va, vfb.size.x * vfb.size.y * 4);
     state.immediate_context->Unmap(vfb.framebuffer, 0);
-
-    D3D11_LOGGER("Framebuffer 0x%016llX updated from address: 0x%016llX", (u64)vfb.framebuffer, (u64)va);
 }

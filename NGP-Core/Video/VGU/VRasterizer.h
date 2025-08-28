@@ -47,10 +47,14 @@ struct VRasterizer
 
 	static void pixel_default(Vector2I, Color) {}
 	static void pixel(Vector2I position, Color rgb);
+	static void pixel_line(Vector2I position, i32 width, Color rgb);
 
 	static void set_draw_buffer(PhysicalAddress address, Vector2I size, 
 		Vector2I offset, GU::TextureFormat format);
 
+	static void line(VertexColor p0, VertexColor p1);
+	static void rect(Vector2 position, Vector2 size, Color color);
 	static void fill_rect(Vector2 position, Vector2 size, Color color);
+	static void triangle(VertexColor v0, VertexColor v1, VertexColor v2);
 	static void fill_triangle(VertexColor v0, VertexColor v1, VertexColor v2);
 };

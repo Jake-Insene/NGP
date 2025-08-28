@@ -11,6 +11,44 @@
 struct Vector2
 {
     f32 x, y;
+
+    [[nodiscard]] constexpr Vector2 operator+(const Vector2& v) const
+    {
+        return Vector2(x + v.x, y + v.y);
+    }
+    
+    [[nodiscard]] constexpr Vector2 operator-(const Vector2& v) const 
+    { 
+        return Vector2(x - v.x, y - v.y); 
+    }
+
+    [[nodiscard]] constexpr Vector2 operator*(const Vector2& v) const
+    {
+        return Vector2(x * v.x, y * v.y);
+    }
+
+    [[nodiscard]] constexpr Vector2 operator*(const f32 v) const
+    {
+        return Vector2(x * v, y * v);
+    }
+
+    [[nodiscard]] constexpr Vector2 operator/(const Vector2& v) const
+    {
+        return Vector2(x / v.x, y / v.y);
+    }
+
+    [[nodiscard]] constexpr Vector2 operator/(const f32 v) const
+    {
+        return Vector2(x / v, y / v);
+    }
+
+    [[nodiscard]] constexpr void operator/=(const f32 v)
+    {
+        x /= v;
+        y /= v;
+    }
+
+    [[nodiscard]] const f32 lenght() const { return std::sqrt(x*x + y*y); }
 };
 
 struct Vector2I
@@ -45,3 +83,16 @@ union Color
 
     Word rgba;
 };
+
+
+template<typename T>
+T min(T x, T y)
+{
+    return x > y ? y : x;
+}
+
+template<typename T>
+T max(T x, T y)
+{
+    return x > y ? x : y;
+}

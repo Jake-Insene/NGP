@@ -96,7 +96,7 @@ void VGU::initialize()
     state.irq_pending = false;
 
     // Internal driver
-    state.internal_driver = get_internal_driver(GUDevice::D3D12);
+    state.internal_driver = get_internal_driver(GUDevice::D3D11);
     state.internal_driver.initialize();
 
     state.queue.cmd_list = VirtualAddress(0);

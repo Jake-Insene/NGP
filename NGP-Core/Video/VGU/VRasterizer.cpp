@@ -34,12 +34,34 @@ void VRasterizer::pixel(Vector2I position, Color rgb)
     {
     case PP_RGBA8:
     {
-        if (position.x < 0 || position.x >= state.draw_buffer.size.x
-            || position.x < 0 || position.x >= state.draw_buffer.size.y)
+        if (position.x < 0 || position.x > state.draw_buffer.size.x
+            || position.y < 0 || position.y > state.draw_buffer.size.y)
             return;
 
         Word* pixels = (Word*)state.draw_buffer.address;
-        pixels[(position.y * state.draw_buffer.size.y) + position.x] = rgb.rgba;
+        pixels[(position.y * state.draw_buffer.size.x) + position.x] = rgb.rgba;
+    }
+    break;
+    default:
+        break;
+    }
+}
+
+void VRasterizer::pixel_line(Vector2I position, i32 width, Color rgb)
+{
+    switch (state.put_pixel)
+    {
+    case PP_RGBA8:
+    {
+        if (position.x < 0 || position.x + width > state.draw_buffer.size.x
+            || position.y < 0 || position.y >= state.draw_buffer.size.y)
+            return;
+
+        Word* pixels = ((Word*)state.draw_buffer.address) + state.draw_buffer.size.x * position.y;
+        for (i32 x = position.x; x < position.x + width; x++)
+        {
+            pixels[x] = rgb.rgba;
+        }
     }
     break;
     default:
@@ -58,19 +80,141 @@ void VRasterizer::set_draw_buffer(PhysicalAddress address, Vector2I size,
     state.put_pixel = PP_RGBA8;
 }
 
+Vector2 move_linear(Vector2 current, Vector2 target, float speed, float dt)
+{
+    Vector2 direction = target - current;
+    f32 distance = direction.lenght();
+
+    if (distance < 1e-6f)
+        return target;
+
+    direction /= distance;
+    float step = speed * dt;
+
+    if (step >= distance)
+        return target;
+
+    return current + direction * step;
+}
+
+float approach(float current, float target, float delta)
+{
+    if (current < target)
+    {
+        current += delta;
+        if (current > target) current = target;
+    }
+    else if (current > target)
+    {
+        current -= delta;
+        if (current < target) current = target;
+    }
+    return current;
+}
+
+void VRasterizer::line(VertexColor p0, VertexColor p1)
+{
+    i32 x0 = (i32)std::round(p0.position.x);
+    i32 y0 = (i32)std::round(p0.position.y);
+    i32 x1 = (i32)std::round(p1.position.x);
+    i32 y1 = (i32)std::round(p1.position.y);
+
+    i32 dx = std::abs(x1 - x0);
+    i32 dy = -std::abs(y1 - y0);
+    i32 sx = (x0 < x1) ? 1 : -1;
+    i32 sy = (y0 < y1) ? 1 : -1;
+    i32 err = dx + dy;
+
+    while (true)
+    {
+        pixel(Vector2I(x0, y0), p0.color);
+
+        if (x0 == x1 && y0 == y1) break;
+        i32 e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+}
+
+void VRasterizer::rect(Vector2 position, Vector2 size, Color color)
+{
+    VertexColor v0 = VertexColor(position, color);
+    VertexColor v1 = VertexColor(position + Vector2(size.x, 0), color);
+    VertexColor v2 = VertexColor(position + Vector2(0, size.y), color);
+    VertexColor v3 = VertexColor(position + size, color);
+
+    line(v0, v1);
+    line(v1, v2);
+    line(v2, v3);
+    line(v3, v1);
+}
+
 void VRasterizer::fill_rect(Vector2 position, Vector2 size, Color color)
 {
     VGU::VFramebuffer& fb = VGU::get_current_framebuffer();
 
     for (i32 y1 = position.y; y1 < position.y + size.y; y1++)
     {
-        for (i32 x1 = position.x; x1 < position.x + size.x; x1++)
-        {
-            pixel(Vector2I(x1, y1), color);
-        }
+        pixel_line(Vector2I(position.x, y1), size.x, color);
     }
+}
+
+void VRasterizer::triangle(VertexColor v0, VertexColor v1, VertexColor v2)
+{
+    line(v0, v1);
+    line(v1, v2);
+    line(v2, v0);
+}
+
+Color shade(VRasterizer::VertexColor v0, VRasterizer::VertexColor v1, 
+    VRasterizer::VertexColor v2, int w0, int w1, int w2)
+{
+    Color output = {};
+    output.r = (int(v0.color.r) * w0 + int(v1.color.r) * w1 + int(v2.color.r) * w2) / 256;
+    output.g = (int(v0.color.g) * w0 + int(v1.color.g) * w1 + int(v2.color.g) * w2) / 256;
+    output.b = (int(v0.color.b) * w0 + int(v1.color.b) * w1 + int(v2.color.b) * w2) / 256;
+    output.a = 255;
+    return output;
 }
 
 void VRasterizer::fill_triangle(VertexColor v0, VertexColor v1, VertexColor v2)
 {
+    // 1. Bounding box
+    int minX = min(v0.position.x, min(v1.position.x, v2.position.x));
+    int maxX = max(v0.position.x, max(v1.position.x, v2.position.x));
+    int minY = min(v0.position.y, min(v1.position.y, v2.position.y));
+    int maxY = max(v0.position.y, max(v1.position.y, v2.position.y));
+
+    // 2. Edge setup
+    int A01 = v0.position.y - v1.position.y, B01 = v1.position.x - v0.position.x;
+    int A12 = v1.position.y - v2.position.y, B12 = v2.position.x - v1.position.x;
+    int A20 = v2.position.y - v0.position.y, B20 = v0.position.x - v2.position.x;
+
+    int w0_row = (A12 * (minX - v2.position.x)) + (B12 * (minY - v2.position.y));
+    int w1_row = (A20 * (minX - v0.position.x)) + (B20 * (minY - v0.position.y));
+    int w2_row = (A01 * (minX - v1.position.x)) + (B01 * (minY - v1.position.y));
+
+    // 3. Rasterize
+    for (int y = minY; y <= maxY; y++)
+    {
+        int w0 = w0_row;
+        if (w0 >= 256) w0 = 255;
+        int w1 = w1_row;
+        if (w1 >= 256) w1 = 255;
+        int w2 = w2_row;
+        if (w2 >= 256) w2 = 255;
+
+        for (int x = minX; x <= maxX; x++)
+        {
+            if (w0 >= 0 && w1 >= 0 && w2 >= 0)
+            {
+                pixel(Vector2I(x, y), shade(v0,v1,v2,w0,w1,w2));
+            }
+            w0 += A12; w1 += A20; w2 += A01;
+        }
+
+        w0_row += B12;
+        w1_row += B20;
+        w2_row += B01;
+    }
 }

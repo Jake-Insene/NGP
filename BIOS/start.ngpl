@@ -1,13 +1,9 @@
 
-macro DISPLAY_FORMAT_CREATE(Width, Height, Fmt)
-{
-	(Width & 0x3FFF) | ((Height & 0x3FFF) << 14) | ((Fmt & 0x1F) << 28)
-}
-
-const DISPLAY_CONFIG: u32 = DISPLAY_FORMAT_CREATE(255, 255, 0x0)
+/*
+const DISPLAY_CONFIG: u32 = (256 | 256 << 14);
 
 var command_list: u32[0x1000] =
-{
+[
 	0,
 	0,
 	0,
@@ -17,22 +13,21 @@ var command_list: u32[0x1000] =
 	0x2000FF00,
 	0x00000000,
 	0x00010001,
-	0x1000
-};
+];
 
-var framebuffers: u32[] =
-{
+var framebuffers: u32[2] =
+[
 	0x00000000,
 	0x40000000,
-};
+];
 
 // Called from BIOS.asm
 func StartBIOS()
 {
 	
 	EnableDisplay();
-	var draw_buffer: i32 = 0;
-	var disp_buffer: i32 = 1;
+	var draw_buffer: u32 = 0;
+	var disp_buffer: u32 = 1;
 
 	while(1)
 	{
@@ -42,8 +37,13 @@ func StartBIOS()
 		GUSendCommandList(command_list, 0x1000);
 		PresentDisplay();
 
-		draw_buffer ^= 1;
-		display_buffer ^= 1;
+		draw_buffer = draw_buffer ^ 1;
+		display_buffer = display_buffer ^ 1;
 	}
+}
+*/
 
+func StartBIOS()
+{
+	var value: i32 = 10;
 }

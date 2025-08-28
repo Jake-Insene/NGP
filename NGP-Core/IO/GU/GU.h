@@ -39,7 +39,6 @@ struct GU
         GU_QUEUE_LEN =  0x001C,
     };
 
-
     enum IRQMask
     {
         IRQ_MASK_QUEUE = 0x1,
@@ -85,25 +84,36 @@ struct GU
         CMD_END = 0x0,
 
         // 0x01AAAAAA | Draw Buffer Address in command arguments, aligned in 256 bytes
-        // 0x0FHHHWWW | W, H size of the framebuffer, F for draw buffer texture format,
-        // 0xYYYYXXXX | X, Y offset.
+        // 0x0FHHHWWW | W - H size of the framebuffer, F for draw buffer texture format,
+        // 0xYYYYXXXX | X - Y offset.
         CMD_DRAW_BUFFER = 0x1,
         
         // 0x02AAAAAA | Texture address in command arguments, aligned in 256 bytes.
-        // 0xTFHHHWWW | W, H size of the texture, F for texture format,
+        // 0xTFHHHWWW | W - H size of the texture, F for texture format,
         //              T is for the texture unit.
         CMD_TEXTURE_SET = 0x2,
 
-        // 0x20BBGGRR | RGB color in command arguments, 8 bits each component.
-        // 0xYYYYXXXX | X, Y top left coordinates of the rectangle.
-        // 0xHHHHWWWW | W, H size of the rectangle.
+        // 0x20BBGGRR | RGB line color in command arguments, 8 bits each component.
+        // 0xYYYYXXXX | X - Y top left coordinates of the rectangle.
+        // 0xHHHHWWWW | W - H size of the rectangle.
         CMD_RECT = 0x20,
 
-        // 0x21BBGGRR | RGB color in command arguments, 8 bits each component.
-        // 0xYYYYXXXX | X, Y top left coordinates of the first vertex of the triangle.
-        // 0xYYYYXXXX | X, Y top left coordinates of the second vertex of the triangle.
-        // 0xYYYYXXXX | X, Y top left coordinates of the third vertex of the triangle.
-        CMD_TRIANGLE = 0x21,
+        // 0x21BBGGRR | RGB fill color in command arguments, 8 bits each component.
+        // 0xYYYYXXXX | X - Y top left coordinates of the rectangle.
+        // 0xHHHHWWWW | W - H size of the rectangle.
+        CMD_FILL_RECT = 0x21,
+
+        // 0x22BBGGRR | RGB line color in command arguments, 8 bits each component.
+        // 0xYYYYXXXX | X - Y top left coordinates of the first vertex of the triangle.
+        // 0xYYYYXXXX | X - Y top left coordinates of the second vertex of the triangle.
+        // 0xYYYYXXXX | X - Y top left coordinates of the third vertex of the triangle.
+        CMD_TRIANGLE = 0x22,
+
+        // 0x23BBGGRR | RGB fill color in command arguments, 8 bits each component.
+        // 0xYYYYXXXX | X - Y top left coordinates of the first vertex of the triangle.
+        // 0xYYYYXXXX | X - Y top left coordinates of the second vertex of the triangle.
+        // 0xYYYYXXXX | X - Y top left coordinates of the third vertex of the triangle.
+        CMD_FILL_TRIANGLE = 0x23,
     };
 
     struct GURegisters

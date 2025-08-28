@@ -47,14 +47,14 @@ enum CTokenType
     TOKEN_MINUS,
     TOKEN_STAR,
     TOKEN_SLASH,
+
+    TOKEN_COUNT,
 };
 
 enum CTokenNumberType
 {
     TN_BYTE,
-    TN_SHORT,
-    TN_INT,
-    TN_LONG,
+    TN_SIGNED,
     TN_UNSIGNED,
     TN_FLOAT,
 };
@@ -102,13 +102,11 @@ struct CToken
 
     union
     {
-        u8 byte[8];
-        u16 ishort[4];
-        u16 ushort[4];
+        u8 byte[4];
+        u16 ishort[2];
+        u16 ushort[2];
         i32 iword;
         u32 uword;
-        i64 i;
-        u64 u;
         f32 s;
     };
 
@@ -152,5 +150,11 @@ struct CToken
     {
         return is(TOKEN_KEYWORD)
             && (subtype == TK_CONST);
+    }
+
+    [[nodiscard]] constexpr bool is_keyword(CTokenKeyword kw) const
+    {
+        return is(TOKEN_KEYWORD)
+            && (subtype == kw);
     }
 };

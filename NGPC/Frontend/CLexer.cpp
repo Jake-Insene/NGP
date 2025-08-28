@@ -81,6 +81,7 @@ void CLexer::set(StringID source_file, u8* ctn, u32 s)
 
 CToken CLexer::get_next()
 {
+lexer_routine:
     CToken tk = {};
     tk.type = TOKEN_ERROR;
     tk.source_file = file_path;
@@ -88,7 +89,6 @@ CToken CLexer::get_next()
 
     skip_white_space();
 
-lexer_routine:
     switch (current)
     {
     case ':':
@@ -187,6 +187,24 @@ lexer_routine:
             }
 
             goto lexer_routine;
+        }
+        else if (peek(1) == '*')
+        {
+            advance(); // /*
+            advance();
+
+            u32 last_line = line;
+            while (current != '\0')
+            {
+                if (current == '*' && peek(1) == '/')
+                {
+                    advance(); // */
+                    advance();
+                    goto lexer_routine;
+                }
+
+                advance();
+            }
         }
         else
         {
@@ -317,11 +335,6 @@ CToken CLexer::get_number()
         .line = line,
     };
 
-    if (current == '#')
-    {
-        advance();
-    }
-
     int base = 10;
     if (current == '0')
     {
@@ -374,10 +387,17 @@ CToken CLexer::get_number()
 
         tk.s = std::strtof((char*)content + start, nullptr);
     }
+    else if (current == 'u' || current == 'U')
+    {
+        advance(); // u/U
+        tk.subtype = TN_UNSIGNED;
+
+        tk.uword = std::stoul((char*)content + start, nullptr, base);
+    }
     else
     {
-        tk.u = std::stoull((char*)content + start, nullptr, base);
-        tk.subtype = TN_UNSIGNED;
+        tk.subtype = TN_SIGNED;
+        tk.uword = std::stol((char*)content + start, nullptr, base);
     }
 
     return tk;

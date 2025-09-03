@@ -16,7 +16,7 @@ struct GLGU
     static void initialize();
     static void shutdown();
 
-    static void present(bool vsync);
+    static bool present(bool vsync);
 
     static void display_set_config(i32 width, i32 height, Display::DisplayFormat display_format);
     static void display_set_address(VirtualAddress vva);

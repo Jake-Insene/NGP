@@ -531,7 +531,7 @@ void D3D12GU::present_framebuffer(PhysicalAddress fb, bool vsync)
     state.queue_graphics->Signal(frame.fence, ++frame.fence_value);
 }
 
-void D3D12GU::present(bool vsync)
+bool D3D12GU::present(bool vsync)
 {
     Framebuffer& frame = state.framebuffers[state.current_frame];
     if (frame.fence_value != frame.fence->GetCompletedValue())
@@ -567,6 +567,8 @@ void D3D12GU::present(bool vsync)
 
     // Signal fence
     state.queue_graphics->Signal(frame.fence, ++frame.fence_value);
+
+    return true;
 }
 
 PhysicalAddress D3D12GU::create_framebuffer(i32 width, i32 height)

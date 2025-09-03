@@ -76,7 +76,7 @@ struct D3D12GU
     static void shutdown();
 
     static void present_framebuffer(PhysicalAddress fb, bool vsync);
-    static void present(bool vsync);
+    static bool present(bool vsync);
 
     static PhysicalAddress create_framebuffer(i32 width, i32 height);
     static void update_framebuffer(PhysicalAddress fb, void* va);

@@ -242,8 +242,10 @@ void Emulator::loop()
 
         Window::update();
         IO::dispatch();
-        GUDevice::present(true);
-        fps++;
+        if (GUDevice::present(false))
+        {
+            fps++;
+        }
         elapsed += Time::get_time() - start;
 
         if (elapsed >= 1.0)

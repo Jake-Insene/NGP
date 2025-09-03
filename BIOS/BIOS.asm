@@ -78,10 +78,10 @@ CommandListBegin:
 	.word 0x210000FF
 	.word 0x00000000
 	.word 0x01000100
-	.word 0x2200FF00
-	.word 0x00000000
-	.word 0x00000010
-	.word 0x00100010
+	.word 0x2300FF00
+	.word (100 | 4 << 16)
+	.word (20 | 200 << 16)
+	.word (200 | 200 << 16)
 	.zero 0x1000
 CommandListEnd:
 

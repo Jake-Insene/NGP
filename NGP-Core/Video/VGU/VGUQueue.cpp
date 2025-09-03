@@ -44,16 +44,30 @@ static constexpr Word MinimumWordsPerCommand[256] =
     0,
     0,
     2, // CMD_RECT
+    2, // CMD_FILL_RECT
     3, // CMD_TRIANGLE
+    3, // CMD_FILL_TRIANGLE
 };
+
+void VGUQueue::initialize()
+{
+    state.cmd_list = VirtualAddress(0);
+    state.cmd_len = 0;
+}
+
+void VGUQueue::shutdown()
+{
+
+}
 
 
 void VGUQueue::try_execute()
 {
-    if (signal == QUEUE_SIGNAL_IDLE)
+    if (state.signal == QUEUE_SIGNAL_IDLE)
         return;
 
-    Word* cmd_words = (Word*)Bus::get_physical_addr(cmd_list);
+    Word* cmd_words = (Word*)Bus::get_physical_addr(state.cmd_list);
+    Word cmd_len = state.cmd_len;
 
     while (cmd_len)
     {
@@ -65,7 +79,7 @@ void VGUQueue::try_execute()
 
         if (cmd_len < MinimumWordsPerCommand[cmd])
         {
-            state = GU::QUEUE_ERROR_BAD_LEN;
+            state.queue_state = GU::QUEUE_ERROR_BAD_LEN;
             return;
         }
 
@@ -89,7 +103,7 @@ void VGUQueue::try_execute()
             u16 h = (cmd_w >> 12) & 0xFFF;
             GU::TextureFormat db_format = GU::TextureFormat(cmd_w >> 24);
 
-            cmd_w = cmd_words[0];
+            cmd_w = cmd_words[1];
             cmd_words++;
             cmd_len--;
 
@@ -221,10 +235,8 @@ void VGUQueue::try_execute()
             v2.position.y = (vertex2 >> 16);
 
             v0.color = rgb;
-            v1.color.r = 255;
-            v1.color.a = 255;
-            v2.color.b = 255;
-            v2.color.a = 255;
+            v1.color = rgb;
+            v2.color = rgb;
 
             VRasterizer::fill_triangle(v0, v1, v2);
         }
@@ -236,7 +248,7 @@ void VGUQueue::try_execute()
 
     VRasterizer::reset_state();
 
-    cmd_list = 0;
-    cmd_len = 0;
-    signal = QUEUE_SIGNAL_IDLE;
+    state.cmd_list = 0;
+    state.cmd_len = 0;
+    state.signal = QUEUE_SIGNAL_IDLE;
 }

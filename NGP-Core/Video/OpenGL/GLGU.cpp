@@ -29,7 +29,10 @@ GUDevice::GUDriver GLGU::get_driver()
 void GLGU::initialize() {}
 void GLGU::shutdown() {}
 
-void GLGU::present(bool vsync) {}
+bool GLGU::present(bool vsync) 
+{
+    return true;
+}
 
 void GLGU::display_set_config(i32 width, i32 height, Display::DisplayFormat display_format) {}
 void GLGU::display_set_address(VirtualAddress vva) {}

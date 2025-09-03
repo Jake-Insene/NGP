@@ -23,7 +23,7 @@ struct GUDevice
         void(*shutdown)();
 
         void(*present_framebuffer)(PhysicalAddress, bool);
-        void(*present)(bool);
+        bool(*present)(bool);
         void(*request_present)();
 
         void(*display_set_config)(i32, i32, Display::DisplayFormat);
@@ -63,7 +63,7 @@ struct GUDevice
     static void initialize(DriverApi api);
 
     VTFUNCDEF(shutdown);
-    VTFUNCDEFARG1(present, bool);
+    VTFUNCDEFRETARG1(bool, present, bool);
     VTFUNCDEF(request_present);
 
     VTFUNCDEFARG3(display_set_config, i32, i32, Display::DisplayFormat);

@@ -167,54 +167,71 @@ void VRasterizer::triangle(VertexColor v0, VertexColor v1, VertexColor v2)
 }
 
 Color shade(VRasterizer::VertexColor v0, VRasterizer::VertexColor v1, 
-    VRasterizer::VertexColor v2, int w0, int w1, int w2)
+    VRasterizer::VertexColor v2, int w0, int w1, int w2, int denom)
 {
     Color output = {};
-    output.r = (int(v0.color.r) * w0 + int(v1.color.r) * w1 + int(v2.color.r) * w2) / 256;
-    output.g = (int(v0.color.g) * w0 + int(v1.color.g) * w1 + int(v2.color.g) * w2) / 256;
-    output.b = (int(v0.color.b) * w0 + int(v1.color.b) * w1 + int(v2.color.b) * w2) / 256;
+    output.r = (int(v0.color.r) * w0 + int(v1.color.r) * w1 + int(v2.color.r) * w2) / denom;
+    output.g = (int(v0.color.g) * w0 + int(v1.color.g) * w1 + int(v2.color.g) * w2) / denom;
+    output.b = (int(v0.color.b) * w0 + int(v1.color.b) * w1 + int(v2.color.b) * w2) / denom;
     output.a = 255;
     return output;
 }
 
 void VRasterizer::fill_triangle(VertexColor v0, VertexColor v1, VertexColor v2)
 {
-    // 1. Bounding box
-    int minX = min(v0.position.x, min(v1.position.x, v2.position.x));
-    int maxX = max(v0.position.x, max(v1.position.x, v2.position.x));
-    int minY = min(v0.position.y, min(v1.position.y, v2.position.y));
-    int maxY = max(v0.position.y, max(v1.position.y, v2.position.y));
+    int x0 = (int)std::round(v0.position.x), y0 = (int)std::round(v0.position.y);
+    int x1 = (int)std::round(v1.position.x), y1 = (int)std::round(v1.position.y);
+    int x2 = (int)std::round(v2.position.x), y2 = (int)std::round(v2.position.y);
 
-    // 2. Edge setup
-    int A01 = v0.position.y - v1.position.y, B01 = v1.position.x - v0.position.x;
-    int A12 = v1.position.y - v2.position.y, B12 = v2.position.x - v1.position.x;
-    int A20 = v2.position.y - v0.position.y, B20 = v0.position.x - v2.position.x;
+    // Bounding box (clipped to draw buffer)
+    int minX = std::max(0, std::min({ x0, x1, x2 }));
+    int maxX = std::min(state.draw_buffer.size.x - 1, std::max({ x0, x1, x2 }));
+    int minY = std::max(0, std::min({ y0, y1, y2 }));
+    int maxY = std::min(state.draw_buffer.size.y - 1, std::max({ y0, y1, y2 }));
+    if (minX > maxX || minY > maxY) return;
 
-    int w0_row = (A12 * (minX - v2.position.x)) + (B12 * (minY - v2.position.y));
-    int w1_row = (A20 * (minX - v0.position.x)) + (B20 * (minY - v0.position.y));
-    int w2_row = (A01 * (minX - v1.position.x)) + (B01 * (minY - v1.position.y));
+    // Edge setup
+    int A01 = y0 - y1, B01 = x1 - x0;
+    int A12 = y1 - y2, B12 = x2 - x1;
+    int A20 = y2 - y0, B20 = x0 - x2;
 
-    // 3. Rasterize
-    for (int y = minY; y <= maxY; y++)
+    // Triangle area (twice the area). If 0 -> degenerate.
+    int denom = A12 * (x0 - x2) + B12 * (y0 - y2);
+    if (denom == 0) return;
+
+    // Normalize orientation so denom > 0 (flip everything if needed)
+    if (denom < 0)
     {
-        int w0 = w0_row;
-        if (w0 >= 256) w0 = 255;
-        int w1 = w1_row;
-        if (w1 >= 256) w1 = 255;
-        int w2 = w2_row;
-        if (w2 >= 256) w2 = 255;
+        denom = -denom;
+        A01 = -A01; B01 = -B01;
+        A12 = -A12; B12 = -B12;
+        A20 = -A20; B20 = -B20;
+    }
 
-        for (int x = minX; x <= maxX; x++)
+    // Edge function values at (minX, minY)
+    int w0_row = A12 * (minX - x2) + B12 * (minY - y2);
+    int w1_row = A20 * (minX - x0) + B20 * (minY - y0);
+    int w2_row = A01 * (minX - x1) + B01 * (minY - y1);
+
+    // Rasterize (>= 0 works now that denom is positive)
+    for (int y = minY; y <= maxY; ++y)
+    {
+        int w0 = w0_row, w1 = w1_row, w2 = w2_row;
+
+        for (int x = minX; x <= maxX; ++x)
         {
             if (w0 >= 0 && w1 >= 0 && w2 >= 0)
             {
-                pixel(Vector2I(x, y), shade(v0,v1,v2,w0,w1,w2));
+                pixel(Vector2I(x, y), shade(v0, v1, v2, w0, w1, w2, denom));
             }
-            w0 += A12; w1 += A20; w2 += A01;
+            w0 += A12;  // step E12 by +A12 when x++
+            w1 += A20;  // step E20 by +A20
+            w2 += A01;  // step E01 by +A01
         }
 
-        w0_row += B12;
+        w0_row += B12; // step by +B12 when y++
         w1_row += B20;
         w2_row += B01;
     }
 }
+

@@ -99,8 +99,7 @@ void VGU::initialize()
     state.internal_driver = get_internal_driver(GUDevice::D3D11);
     state.internal_driver.initialize();
 
-    state.queue.cmd_list = VirtualAddress(0);
-    state.queue.cmd_len = 0;
+    VGUQueue::initialize();
 
     state.cached_framebuffers.clear();
     state.current_fb = -1;
@@ -111,6 +110,7 @@ void VGU::initialize()
 void VGU::shutdown()
 {
     VRasterizer::shutdown();
+    VGUQueue::shutdown();
 
     OS::deallocate_virtual_memory((void*)VRamAddress);
 
@@ -118,19 +118,20 @@ void VGU::shutdown()
 }
 
 
-void VGU::present(bool vsync)
+bool VGU::present(bool vsync)
 {
     state.sync_mutex.lock();
     bool present_requested = state.present_requested;
     state.sync_mutex.unlock();
 
     if (state.display_address == nullptr || state.current_fb == InvalidFB || !present_requested)
-        return;
+        return false;
 
     state.internal_driver.update_framebuffer(get_current_framebuffer().framebuffer, state.display_address);
     state.internal_driver.present_framebuffer(get_current_framebuffer().framebuffer, vsync);
 
     set_present_requested(false);
+    return true;
 }
 
 void VGU::request_present()
@@ -178,16 +179,15 @@ void VGU::queue_execute(VirtualAddress cmd_list, Word cmd_len)
         return;
 
     state.queue_mutex.lock();
-    state.queue.cmd_list = cmd_list;
-    state.queue.cmd_len = cmd_len;
-    state.queue.set_signal(VGUQueue::QUEUE_SIGNAL_RUN);
+    VGUQueue::set_state(cmd_list, cmd_len, VGUQueue::get_state());
+    VGUQueue::set_signal(VGUQueue::QUEUE_SIGNAL_RUN);
     state.queue_mutex.unlock();
 }
 
 void VGU::queue_dispatch()
 {
     state.queue_mutex.lock();
-    state.queue.try_execute();
+    VGUQueue::try_execute();
     state.queue_mutex.unlock();
 }
 

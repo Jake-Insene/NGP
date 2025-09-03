@@ -268,7 +268,7 @@ void D3D11GU::present_framebuffer(PhysicalAddress fb, bool vsync)
     state.swap_chain->Present(vsync, 0);
 }
 
-void D3D11GU::present(bool vsync)
+bool D3D11GU::present(bool vsync)
 {
     state.immediate_context->OMSetRenderTargets(1, &state.rtv, nullptr);
 
@@ -281,6 +281,7 @@ void D3D11GU::present(bool vsync)
     state.immediate_context->ClearRenderTargetView(state.rtv, state.clear_color);
 
     state.swap_chain->Present(vsync, 0);
+    return true;
 }
 
 PhysicalAddress D3D11GU::create_framebuffer(i32 width, i32 height)
